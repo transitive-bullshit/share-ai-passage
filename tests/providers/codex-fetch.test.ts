@@ -249,16 +249,6 @@ describe('public Codex downloads through the provider fetch boundary', () => {
     expect(network.request).toHaveBeenCalledTimes(2)
   })
 
-  it('allows two CDN redirects before the final download', async () => {
-    for (let hop = 1; hop <= 2; hop++)
-      respond(302, '', `https://cdn.oaiusercontent.com/snapshots/${hop}`)
-    respond(200, snapshot)
-
-    expect((await fetchSource(source)).status).toBe('available')
-    expect(network.lookup).toHaveBeenCalledTimes(3)
-    expect(network.request).toHaveBeenCalledTimes(3)
-  })
-
   it('stops before requesting a third redirect', async () => {
     for (let hop = 1; hop <= 3; hop++)
       respond(302, '', `https://cdn.oaiusercontent.com/snapshots/${hop}`)

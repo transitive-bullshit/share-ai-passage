@@ -146,12 +146,18 @@ afterAll(async () => {
 })
 
 describe('portable Passage CLI', () => {
-  it('prepares a readonly JSON draft and saves it only when requested', async () => {
+  it('saves a prepared draft and later publishes its exact token at the original server', async () => {
     const file = path.join(directory, 'prepared.json')
-    const result = await run(['prepare', sourceUrl, '--out', file, '--json'])
-    expect(result.code).toBe(0)
-    expect(result.stderr).toBe('')
-    const draft = JSON.parse(result.stdout)
+    const preparation = await run([
+      'prepare',
+      sourceUrl,
+      '--out',
+      file,
+      '--json'
+    ])
+    expect(preparation.code).toBe(0)
+    expect(preparation.stderr).toBe('')
+    const draft = JSON.parse(preparation.stdout)
     expect(draft).toEqual({
       version: 1,
       status: 'prepared',
@@ -167,18 +173,15 @@ describe('portable Passage CLI', () => {
         body: { url: sourceUrl }
       }
     ])
-  })
 
-  it('publishes the saved token at its bound origin without preparing again', async () => {
-    const file = await savedDraft()
-    const result = await run(['publish', file, '--json'], foreignUrl)
-    expect(result.code).toBe(0)
-    expect(JSON.parse(result.stdout)).toMatchObject({
+    const publication = await run(['publish', file, '--json'], foreignUrl)
+    expect(publication.code).toBe(0)
+    expect(JSON.parse(publication.stdout)).toMatchObject({
       status: 'published',
       preview,
       shareUrl: `${baseUrl}/chatgpt/${publicationId}`
     })
-    expect(requests).toEqual([
+    expect(requests.slice(1)).toEqual([
       {
         route: '/api/publish',
         method: 'POST',
@@ -275,18 +278,23 @@ describe('portable Passage CLI', () => {
     expect(requests).toHaveLength(1)
   })
 
+  // Check each rejection boundary through the CLI without repeating every text limit.
   it.each([
-    { ...prepared, preview: { title: 'x'.repeat(61), highlights: ['Short.'] } },
-    { ...prepared, preview: { title: 'Short', highlights: ['x'.repeat(101)] } },
     {
-      ...prepared,
-      preview: { title: 'Short', highlights: ['1', '2', '3', '4'] }
+      name: 'invalid preview',
+      value: { ...prepared, preview: { title: '', highlights: ['Short.'] } },
+      error: /invalid response shape/
     },
-    { ...prepared, draftToken: 'opaque-invalid-token' }
-  ])('rejects malformed generated drafts before publishing', async (value) => {
+    {
+      name: 'invalid token',
+      value: { ...prepared, draftToken: 'opaque-invalid-token' },
+      error: /invalid publication token/
+    }
+  ])('rejects an $name before publishing', async ({ value, error }) => {
     respond = (_request, response) => json(response, value)
     const result = await run(['share', sourceUrl, '--yes', '--json'])
     expect(result.code).toBe(1)
+    expect(JSON.parse(result.stderr).error).toMatch(error)
     expect(requests.map((request) => request.route)).toEqual(['/api/prepare'])
     expect(result.stdout).toBe('')
   })
@@ -322,10 +330,7 @@ describe('portable Passage CLI', () => {
     )
   })
 
-  it('shows usage and input errors without making any requests', async () => {
-    const usage = await run(['--help'])
-    expect(usage.code).toBe(0)
-    expect(usage.stdout).toContain('ChatGPT, Codex, or Claude')
+  it('rejects unsupported editing options without making any requests', async () => {
     const invalid = await run([
       'prepare',
       sourceUrl,

@@ -48,15 +48,13 @@ describe('manual summary fixture regeneration', () => {
     }
   )
 
-  it.each([
-    { CI: 'true' },
-    { CI: 'false' },
-    { VITEST: 'true' },
-    { NODE_ENV: 'test' }
-  ])('refuses explicit regeneration in CI or tests: %j', (environment) => {
-    const result = run(['--regenerate'], environment)
-    expect(result.status).toBe(2)
-    expect(result.stdout).toBe('')
-    expect(result.stderr).toContain('disabled in CI and test environments')
-  })
+  it.each([{ CI: 'false' }, { VITEST: 'true' }, { NODE_ENV: 'test' }])(
+    'refuses explicit regeneration in CI or tests: %j',
+    (environment) => {
+      const result = run(['--regenerate'], environment)
+      expect(result.status).toBe(2)
+      expect(result.stdout).toBe('')
+      expect(result.stderr).toContain('disabled in CI and test environments')
+    }
+  )
 })

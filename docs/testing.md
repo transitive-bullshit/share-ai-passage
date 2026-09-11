@@ -1,0 +1,31 @@
+# Testing guidelines
+
+## Choosing permanent tests
+
+Be relaxed about adding and keeping fast, isolated unit tests. A small, deterministic test of meaningful behavior, an edge case, or a regression can earn its place even for a reversible, low-impact change. Keep setup and assertions simple; tests that merely repeat implementation details or check arbitrary constants add little confidence.
+
+Be more judicious with heavyweight integration and end-to-end tests. They are essential for behavior that depends on real browsers, builds, storage, process boundaries, or interactions between components, but impose greater runtime, CI, debugging, and maintenance costs. Each test should cover an important failure mode that cheaper tests cannot adequately catch. Prefer focused scenarios and representative combinations; expand provider, card-template, viewport, and lifecycle matrices when the combinations expose distinct risks.
+
+Judge a test by its actual dependencies and cost, not its filename or runner. A test that renders PNGs with native libraries, accesses PostgreSQL, launches a subprocess, or starts a server is an integration test even if it runs under the unit command. Use the cheapest layer that gives credible coverage. Keep real database tests for constraints, concurrency, and persistence; real CLI tests for process and file boundaries; and browser checks for rendering and native interaction that mocks cannot establish.
+
+## Running and maintaining tests
+
+Run tests appropriate to the change and complete required checks. Once those pass, broaden or repeat testing only when new changes, failures, or unresolved concerns justify it; otherwise, continue toward completing the task. These guidelines preserve the checks required by the affected area and release workflow.
+
+When reviewing expensive tests, consider the unique failures they catch alongside measured runtime, flakiness, setup, and maintenance burden. Simplify duplicate scenarios and move suitable assertions to cheaper tests before removing valuable coverage. Keep critical user journeys and known regressions covered. Changing how often a heavyweight suite runs requires preserving its relevant change and release checks.
+
+The repository check is `pnpm test`; its commands are defined in [package.json](../package.json), and test discovery and isolation live in [vitest.config.ts](../vitest.config.ts). Despite its name, `test:unit` currently includes native card rendering, CLI subprocesses, and PostgreSQL integration tests. Keep DOM-free tests in the Node environment.
+
+PostgreSQL suites require `TEST_DATABASE_URL` pointing to a migrated, disposable local database. A run without it skips those suites and is not a complete repository validation. Keep model and provider responses mocked or fixture-backed in the committed suite; retain the credential and external-network guards. Production credentials and live model calls belong outside routine tests.
+
+## GitHub Actions budget
+
+Keep routine GitHub Actions usage limited to the [core test job](../.github/workflows/test.yml). Preserve its database, repository, and production-build checks. Additional browser jobs, schedules, shards, and platform matrices need a concrete validation gap rather than being incidental test maintenance.
+
+Before proposing more automation, identify the gap and estimate run frequency, total runner time, and artifact storage. Count setup, builds, every matrix entry, and reruns; a shorter wall-clock duration does not necessarily mean lower cost. Avoid duplicate push/PR runs and repeated runs on unchanged code. Bound retries, job timeouts, and artifact retention, and cancel superseded runs where appropriate.
+
+Run relevant production HTTP smoke, removal, packaging, and browser checks separately when changes or releases need them. Record commands, tested revision, results, and remaining gaps in [verification notes](VERIFICATION.md). Live extraction and paid fixture generation are explicit checks outside `pnpm test`; use saved fixtures when they establish the behavior under test. Reduced automatic CI does not waive relevant release checks.
+
+## Temporary tests
+
+Temporary tests may break these guidelines when they help validate an implementation or reproduce an issue. Before finishing, review tests added for the investigation for inclusion in the long-term, committed suite. Apply the relaxed bar to useful isolated unit tests and the higher bar to heavyweight tests; remove tests that only served the investigation.

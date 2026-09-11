@@ -2,6 +2,18 @@
 
 For the current production-readiness assessment and follow-up fixes, see [the September 11 launch audit](LAUNCH_READINESS.md).
 
+## Testing guidance and suite pruning — September 11, 2026
+
+[Testing guidelines](testing.md) now define how this project chooses permanent tests, runs integration checks, budgets CI, and retires investigation-only tests. `AGENTS.md` links to them for test and CI work. The audit retained inexpensive parser, security, Unicode, reader, preference, and configuration regressions, plus real PostgreSQL constraints/concurrency and both process shutdown signals.
+
+Repeated card rasterization fell from **54 PNGs to 14**. All five templates still render with their assets, fonts, and full-length text; the tightest layout also retains an all-wide-character maximum-length case. One real preview/public PNG comparison verifies the selected appearance, while route-policy cases mock the renderer. The four-file card/reader/preferences group changed from 86 tests in 21.02 seconds to 67 in 8.50 seconds. These are single local runs, not a controlled benchmark.
+
+CLI tests now publish the actual file saved by preparation. Duplicate subprocess cases were removed; the CLI/fixture/production group starts 26 Node processes instead of 30. Persistence uses two representative styles, and cleanup seeds 30 published records with bulk inserts instead of repeating 30 preparation/publication workflows, preserving the regression beyond the 25-source cleanup batch. A duplicate redirect-success case and redundant CI font-preparation step were removed. CI still runs migrations, all repository checks, and the production build.
+
+On the working tree based on `0736ec01c61e386fceb9dcb9ec82c9791a060355`, **395 tests across 21 files passed in 8.41 seconds**, down from 419 cases. This used Node 24.5.0 and `pnpm test:unit` with `TEST_DATABASE_URL` set to the migrated local PostgreSQL instance. Provider/model calls remained mocked or fixture-backed. The existing appearance-validation test also passed with no database configured after moving it outside the database-gated group.
+
+The plain repository checks encountered unrelated formatting, lint, and TypeScript errors in the untracked `docs/brand-exploration/round-02/` draft (`build-report.json` and `build.ts`). Those files were left untouched. Formatting and lint passed with that directory excluded for this validation, and TypeScript passed through an ignored temporary config extending the normal config with the same exclusion. No committed check configuration was weakened. No production build or live smoke was repeated for this test/documentation-only change.
+
 ## Automatic application origins — September 11, 2026
 
 The app no longer reads `APP_URL`. It uses Portless's injected public URL for development, Vercel's production or branch/deployment hostname when hosted, and Next's `PORT` for direct localhost runs. Request validation follows Next's Origin/Host pattern, so visiting an alternate deployment hostname does not require an origin allowlist. Forged forwarded-host headers are ignored.

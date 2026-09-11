@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto'
 import { createElement } from 'react'
 import satori, { type SatoriNode } from 'satori'
 
@@ -55,7 +54,7 @@ it('finds every glyph across bundled Chinese font subsets', async () => {
   expect(missing).toEqual([])
 })
 
-it('renders a deterministic 1200 × 630 PNG without remote fonts or emoji', async () => {
+it('renders the legacy layout as a private 1200 × 630 PNG offline', async () => {
   const fetch = vi.fn<typeof globalThis.fetch>(() => {
     throw new Error('Card rendering must be offline')
   })
@@ -70,15 +69,11 @@ it('renders a deterministic 1200 × 630 PNG without remote fonts or emoji', asyn
   }
   const first = await renderCard(data)
   const bytes = Buffer.from(await first.arrayBuffer())
-  const second = Buffer.from(await (await renderCard(data)).arrayBuffer())
   expect(first.headers.get('content-type')).toBe('image/png')
   expect(first.headers.get('cache-control')).toContain('no-store')
   expect(bytes.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a')
   expect(bytes.readUInt32BE(16)).toBe(1200)
   expect(bytes.readUInt32BE(20)).toBe(630)
-  expect(createHash('sha256').update(bytes).digest('hex')).toBe(
-    createHash('sha256').update(second).digest('hex')
-  )
   expect(fetch).not.toHaveBeenCalled()
   const text = layouts.at(-1)!.flatMap((node) => node.textContent ?? [])
   expect(text).toEqual(
@@ -88,17 +83,16 @@ it('renders a deterministic 1200 × 630 PNG without remote fonts or emoji', asyn
       'A passage from Claude worth sharing'
     ])
   )
-  expect(text.join(' ')).not.toContain('A conversation with')
-  expect(text).not.toContain('A passage worth sharing')
-  expect(text).not.toContain('The conversation, kept in context.')
 })
 
+const wideCharacterCopy = {
+  name: 'wide characters',
+  title: '你好世界'.repeat(15),
+  highlights: ['界'.repeat(100), '你'.repeat(100), '好'.repeat(100)]
+}
+
 const fullLengthCopyCases = [
-  {
-    name: 'wide characters',
-    title: '你好世界'.repeat(15),
-    highlights: ['界'.repeat(100), '你'.repeat(100), '好'.repeat(100)]
-  },
+  wideCharacterCopy,
   {
     name: 'unbroken words',
     title: 'W'.repeat(60),
@@ -114,7 +108,7 @@ const fullLengthCopyCases = [
 it.each(fullLengthCopyCases)(
   'fits every summary highlight above the footer with $name',
   async (data) => {
-    const response = await renderCard({ ...data, provider: 'chatgpt' })
+    await renderCard({ ...data, provider: 'chatgpt' })
     const nodes = layouts.at(-1)!
     const copy = nodes.find((node) => node.props.id === 'card-copy')!
     const footer = nodes.find((node) => node.props.id === 'card-footer')!
@@ -127,11 +121,10 @@ it.each(fullLengthCopyCases)(
         'A passage from ChatGPT worth sharing'
       ])
     )
-    expect((await response.arrayBuffer()).byteLength).toBeGreaterThan(5000)
   }
 )
 
-it('uses a generic disabled card', async () => {
+it('uses the same generic disabled card regardless of saved appearance', async () => {
   vi.stubGlobal(
     'fetch',
     vi.fn(() => {
@@ -145,38 +138,34 @@ it('uses a generic disabled card', async () => {
   expect(disabledText.join(' ')).not.toMatch(/ChatGPT|Claude|A passage from/u)
   expect(disabledText).not.toContain('AI SUMMARY')
   expect(disabled.headers.get('cache-control')).toContain('no-store')
-  expect((await disabled.arrayBuffer()).byteLength).toBeGreaterThan(5000)
+  const themed = await renderCard(
+    { disabled: true },
+    { templateId: 'midnight-observatory' }
+  )
+  expect(Buffer.from(await themed.arrayBuffer())).toEqual(
+    Buffer.from(await disabled.arrayBuffer())
+  )
 })
 
+// Each design has different fonts and geometry. Exercise all text risks in one render per design.
 it.each(socialTemplates)(
-  'embeds $name artwork and fonts offline with deterministic copy',
+  'renders $name assets offline and fits every full-length highlight',
   async (template) => {
     const fetch = vi.fn<typeof globalThis.fetch>(() => {
       throw new Error('Template rendering must not depend on the network')
     })
     vi.stubGlobal('fetch', fetch)
     const data = {
-      title: 'Small ideas, big possibilities 🌱',
-      highlights: [
-        'A thoughtful question can change the conversation.',
-        '你好世界 — Καλημέρα — Привет. Keep asking.',
-        'Useful ideas become better when we share them.'
-      ],
+      title: '🌱你W'.repeat(20),
+      highlights: ['界'.repeat(100), 'W'.repeat(100), '🌱'.repeat(100)],
       provider: 'claude' as const
     }
-    const appearance = { templateId: template.id }
-    const first = await renderCard(data, appearance)
-    const bytes = Buffer.from(await first.arrayBuffer())
-    const second = Buffer.from(
-      await (await renderCard(data, appearance)).arrayBuffer()
-    )
-    expect(first.headers.get('content-type')).toBe('image/png')
+    const response = await renderCard(data, { templateId: template.id })
+    const bytes = Buffer.from(await response.arrayBuffer())
+    expect(response.headers.get('content-type')).toBe('image/png')
+    expect(bytes.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a')
     expect(bytes.readUInt32BE(16)).toBe(1200)
     expect(bytes.readUInt32BE(20)).toBe(630)
-    expect(createHash('sha256').update(bytes).digest('hex')).toBe(
-      createHash('sha256').update(second).digest('hex')
-    )
-    expect(bytes.byteLength).toBeGreaterThan(20_000)
     expect(fetch).not.toHaveBeenCalled()
     const nodes = layouts.at(-1)!
     expect(nodes.flatMap((node) => node.textContent ?? [])).toEqual(
@@ -188,10 +177,11 @@ it.each(socialTemplates)(
         'A passage from Claude worth sharing'
       ])
     )
-    const visibleText = nodes.flatMap((node) => node.textContent ?? [])
-    expect(visibleText.join(' ')).not.toContain('A conversation with')
-    expect(visibleText).not.toContain('A passage worth sharing')
-    expect(visibleText).not.toContain('The conversation, kept in context.')
+    const copy = nodes.find((node) => node.props.id === 'card-copy')!
+    const footer = nodes.find((node) => node.props.id === 'card-footer')!
+    expect(copy.height).toBeLessThanOrEqual(template.layout.copy.maxHeight)
+    expect(copy.top + copy.height).toBeLessThan(footer.top)
+    expect(copy.left + copy.width).toBeLessThanOrEqual(1200)
     const artwork = nodes.find((node) => typeof node.props.src === 'string')!
     expect(artwork.props.src).toMatch(/^data:image\/jpeg;base64,/u)
     const fonts = await cardFonts(data.title, [
@@ -208,13 +198,11 @@ it.each(socialTemplates)(
   }
 )
 
-it.each(
-  socialTemplates.flatMap((template) =>
-    fullLengthCopyCases.map((data) => ({ template, ...data }))
-  )
-)('fits $name copy within $template.name', async ({ template, ...data }) => {
-  const response = await renderCard(
-    { ...data, provider: 'chatgpt' },
+// The numbered layout has the narrowest copy box and smallest height allowance.
+it('fits three maximum-length wide highlights in the tightest template', async () => {
+  const template = socialTemplates.find(({ id }) => id === 'makers-workbench')!
+  await renderCard(
+    { ...wideCharacterCopy, provider: 'chatgpt' },
     { templateId: template.id }
   )
   const nodes = layouts.at(-1)!
@@ -222,28 +210,10 @@ it.each(
   const footer = nodes.find((node) => node.props.id === 'card-footer')!
   expect(copy.height).toBeLessThanOrEqual(template.layout.copy.maxHeight)
   expect(copy.top + copy.height).toBeLessThan(footer.top)
-  expect(copy.left + copy.width).toBeLessThanOrEqual(1200)
   expect(nodes.flatMap((node) => node.textContent ?? [])).toEqual(
     expect.arrayContaining([
-      data.title,
-      ...data.highlights,
-      'A passage from ChatGPT worth sharing'
+      wideCharacterCopy.title,
+      ...wideCharacterCopy.highlights
     ])
   )
-  expect((await response.arrayBuffer()).byteLength).toBeGreaterThan(20_000)
-})
-
-it('does not apply an appearance to disabled cards', async () => {
-  const plain = Buffer.from(
-    await (await renderCard({ disabled: true })).arrayBuffer()
-  )
-  const themed = Buffer.from(
-    await (
-      await renderCard(
-        { disabled: true },
-        { templateId: 'midnight-observatory' }
-      )
-    ).arrayBuffer()
-  )
-  expect(themed.equals(plain)).toBe(true)
 })

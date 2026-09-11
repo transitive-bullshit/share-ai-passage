@@ -38,7 +38,6 @@ import {
   prepareSource,
   publishPreview
 } from '@/lib/service'
-import { socialTemplateIds } from '@/lib/social-templates'
 
 const upstream = vi.hoisted(() => ({
   fetchSource: vi.fn<(source: SourceReference) => Promise<ProviderResult>>(),
@@ -114,6 +113,14 @@ async function preparedPublication(url = sourceUrl()) {
   const published = await publishPreview(prepared.draftToken)
   return { url, prepared, published, source: await sourceRecord(url) }
 }
+
+it('rejects invalid appearance at the publication service boundary', async () => {
+  await expect(
+    publishPreview('unread-draft', {
+      templateId: 'unknown'
+    } as unknown as CardAppearance)
+  ).rejects.toMatchObject({ status: 400 })
+})
 
 describe.skipIf(!testUrl)('publication lifecycle with PostgreSQL', () => {
   beforeAll(() => {
@@ -194,52 +201,37 @@ describe.skipIf(!testUrl)('publication lifecycle with PostgreSQL', () => {
     expect(await getPublication('chatgpt', firstId)).toBeNull()
   })
 
-  it('saves all five templates independently and reuses the same content and style across drafts', async () => {
+  it('saves different templates independently and reuses the same content and style across drafts', async () => {
     const url = sourceUrl()
     const first = await prepareSource(url)
+    const appearances: CardAppearance[] = [
+      DEFAULT_CARD_APPEARANCE,
+      { templateId: 'electric-risograph' }
+    ]
     const styled = await Promise.all(
-      socialTemplateIds.map(async (templateId) => {
-        const retries = await Promise.all(
-          Array.from({ length: 3 }, () =>
-            publishPreview(first.draftToken, { templateId })
-          )
-        )
-        expect(new Set(retries.map((value) => value.publicationId)).size).toBe(
-          1
-        )
-        return { templateId, publicationId: retries[0]!.publicationId }
-      })
+      appearances.map(async (appearance) => ({
+        appearance,
+        ...(await publishPreview(first.draftToken, appearance))
+      }))
     )
-    expect(new Set(styled.map((value) => value.publicationId)).size).toBe(5)
+    expect(new Set(styled.map((value) => value.publicationId)).size).toBe(2)
 
     advance(1000)
     const next = await prepareSource(url)
     expect(next.draftToken).not.toBe(first.draftToken)
-    for (const { templateId, publicationId } of styled) {
-      const reused = await publishPreview(next.draftToken, { templateId })
+    for (const { appearance, publicationId } of styled) {
+      const reused = await publishPreview(next.draftToken, appearance)
       expect(reused.publicationId).toBe(publicationId)
       const saved = await getPublication('chatgpt', publicationId)
-      expect(saved!.publication.appearance).toEqual({ templateId })
+      expect(saved!.publication.appearance).toEqual(appearance)
       expect(saved!.publication.cardVersion).toBe(3)
       expect(saved!.preview).toEqual(generatedPreview)
       expect(saved!.snapshot.messages).toEqual(original.messages)
     }
     const defaultPublication = await publishPreview(next.draftToken)
-    expect(defaultPublication.publicationId).toBe(
-      styled.find(
-        ({ templateId }) => templateId === DEFAULT_CARD_APPEARANCE.templateId
-      )!.publicationId
-    )
+    expect(defaultPublication.publicationId).toBe(styled[0]!.publicationId)
     expect(upstream.fetchSource).toHaveBeenCalledTimes(1)
     expect(upstream.suggestPreview).toHaveBeenCalledTimes(1)
-  })
-
-  it('rejects invalid appearance at the publication service boundary', async () => {
-    await expect(
-      publishPreview('unread-draft', {
-        templateId: 'unknown'
-      } as unknown as CardAppearance)
-    ).rejects.toMatchObject({ status: 400 })
   })
 
   it('measures content freshness independently of a later availability check', async () => {
@@ -663,10 +655,46 @@ describe.skipIf(!testUrl)('publication lifecycle with PostgreSQL', () => {
     // An old, isolated fixture period keeps current local app data outside this sweep.
     const fixtureStart = new Date('2000-01-01T12:00:00.000Z')
     vi.setSystemTime(fixtureStart)
-    const publishedOnly = []
-    for (let index = 0; index < 30; index++) {
-      publishedOnly.push(await preparedPublication())
-    }
+    // Keep more than one cleanup batch, without repeating publication workflows.
+    const publishedOnly = Array.from({ length: 30 }, () => ({
+      id: randomUUID(),
+      url: sourceUrl(),
+      snapshotId: randomUUID()
+    }))
+    await getDb()
+      .insert(sources)
+      .values(
+        publishedOnly.map(({ id, url }) => ({
+          id,
+          provider: 'chatgpt' as const,
+          canonicalUrl: url,
+          providerShareId: url.split('/').at(-1)!,
+          updatedAt: fixtureStart
+        }))
+      )
+    await getDb()
+      .insert(snapshots)
+      .values(
+        publishedOnly.map(({ id, snapshotId }) => ({
+          id: snapshotId,
+          sourceId: id,
+          contentHash: randomUUID(),
+          title: original.title,
+          messages: original.messages,
+          parserVersion: original.parserVersion,
+          capturedAt: fixtureStart
+        }))
+      )
+    await getDb()
+      .insert(publications)
+      .values(
+        publishedOnly.map(({ id, snapshotId }) => ({
+          sourceId: id,
+          snapshotId,
+          fingerprint: randomUUID(),
+          ...generatedPreview
+        }))
+      )
     const abandonedUrl = sourceUrl()
     const abandoned = await prepareSource(abandonedUrl)
     const abandonedSnapshotId = readDraftToken(abandoned.draftToken).snapshotId
@@ -720,7 +748,7 @@ describe.skipIf(!testUrl)('publication lifecycle with PostgreSQL', () => {
     expect((await getDraft(recent.draftToken)).snapshot.messages).toEqual(
       original.messages
     )
-    const publishedSourceIds = publishedOnly.map((value) => value.source.id)
+    const publishedSourceIds = publishedOnly.map((value) => value.id)
     expect(
       await getDb()
         .select()
@@ -741,6 +769,6 @@ describe.skipIf(!testUrl)('publication lifecycle with PostgreSQL', () => {
     expect(
       preserved.every((publication) => publication.disabledAt === null)
     ).toBe(true)
-    expect(upstream.fetchSource).toHaveBeenCalledTimes(32)
+    expect(upstream.fetchSource).toHaveBeenCalledTimes(2)
   })
 })

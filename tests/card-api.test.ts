@@ -40,6 +40,7 @@ const service = vi.hoisted(() => ({
   getPublication: vi.fn<() => Promise<ReturnType<typeof publication> | null>>()
 }))
 vi.mock('@/lib/service', () => service)
+vi.mock('@/lib/card', () => ({ renderCard: vi.fn<typeof renderCard>() }))
 
 function request(body: unknown) {
   return new Request('http://localhost:3000/api/card', {
@@ -75,6 +76,9 @@ async function bytes(response: Response) {
 
 describe('saved social-card appearance routes', () => {
   beforeEach(() => {
+    vi.mocked(renderCard)
+      .mockReset()
+      .mockImplementation(async () => new Response('rendered card'))
     service.enforceBudget.mockReset().mockResolvedValue(undefined)
     service.getDraft.mockReset().mockResolvedValue({
       preview: savedPreview,
@@ -83,34 +87,43 @@ describe('saved social-card appearance routes', () => {
     service.getPublication.mockReset().mockResolvedValue(publication())
   })
 
-  it.each(socialTemplateIds)(
-    'shows the exact %s preview after publication and ignores query overrides',
-    async (templateId) => {
-      const appearance = { templateId }
-      service.getPublication.mockResolvedValue(publication(appearance))
-      const preview = await bytes(
-        await previewImage(
-          request({ draftToken: 'signed-preview', appearance })
-        )
-      )
-      const published = await bytes(
-        await publicRequest('?template=unknown&appearance=edited')
-      )
-      expect(published.equals(preview)).toBe(true)
-      expect(service.getDraft).toHaveBeenCalledExactlyOnceWith('signed-preview')
-      expect(service.getPublication).toHaveBeenCalledExactlyOnceWith(
-        'claude',
-        'publication-id'
+  // Keep one composed PNG comparison; other route cases test the renderer boundary.
+  it('shows the exact reviewed preview after publication and ignores query overrides', async () => {
+    const actual =
+      await vi.importActual<typeof import('@/lib/card')>('@/lib/card')
+    vi.mocked(renderCard).mockImplementation(actual.renderCard)
+    const appearance = { templateId: 'friendly-lab' as const }
+    service.getPublication.mockResolvedValue(publication(appearance))
+    const preview = await bytes(
+      await previewImage(request({ draftToken: 'signed-preview', appearance }))
+    )
+    const published = await bytes(
+      await publicRequest('?template=unknown&appearance=edited')
+    )
+    expect(published.equals(preview)).toBe(true)
+    for (const call of [1, 2]) {
+      expect(renderCard).toHaveBeenNthCalledWith(
+        call,
+        { ...savedPreview, provider: 'claude' },
+        appearance
       )
     }
-  )
+    expect(service.getDraft).toHaveBeenCalledExactlyOnceWith('signed-preview')
+    expect(service.getPublication).toHaveBeenCalledExactlyOnceWith(
+      'claude',
+      'publication-id'
+    )
+  })
 
   it('uses the initial template when the preview request omits appearance', async () => {
-    const preview = await bytes(
-      await previewImage(request({ draftToken: 'signed-preview' }))
+    const response = await previewImage(
+      request({ draftToken: 'signed-preview' })
     )
-    const published = await bytes(await publicRequest())
-    expect(published.equals(preview)).toBe(true)
+    expect(response.status).toBe(200)
+    expect(renderCard).toHaveBeenCalledExactlyOnceWith(
+      { ...savedPreview, provider: 'claude' },
+      DEFAULT_CARD_APPEARANCE
+    )
   })
 
   it.each([
@@ -132,23 +145,24 @@ describe('saved social-card appearance routes', () => {
     }
   )
 
-  it('keeps unthemed legacy summary publications visually unchanged', async () => {
+  it('keeps legacy publications on the unthemed renderer', async () => {
     service.getPublication.mockResolvedValue(publication(null))
-    const published = await bytes(await publicRequest('?template=friendly-lab'))
-    const original = await bytes(
-      await renderCard({ ...savedPreview, provider: 'claude' })
+    const response = await publicRequest('?template=friendly-lab')
+    expect(response.status).toBe(200)
+    expect(renderCard).toHaveBeenCalledExactlyOnceWith(
+      { ...savedPreview, provider: 'claude' },
+      undefined
     )
-    expect(published.equals(original)).toBe(true)
   })
 
-  it('uses the generic unavailable card after removal regardless of saved appearance', async () => {
+  it('passes only the disabled state to the renderer after removal', async () => {
     service.getPublication.mockResolvedValue({
       ...publication({ templateId: 'friendly-lab' }),
       disabled: true
     })
-    const published = await bytes(await publicRequest())
-    const unavailable = await bytes(await renderCard({ disabled: true }))
-    expect(published.equals(unavailable)).toBe(true)
+    const response = await publicRequest()
+    expect(response.status).toBe(200)
+    expect(renderCard).toHaveBeenCalledExactlyOnceWith({ disabled: true })
   })
 
   it('returns a private 404 for a missing publication', async () => {
@@ -161,14 +175,16 @@ describe('saved social-card appearance routes', () => {
   it.each(socialTemplateIds)(
     'offers an allowlisted %s example image',
     async (templateId) => {
-      const image = await bytes(
-        await exampleImage(
-          new Request(
-            `http://localhost:3000/api/example-card?template=${templateId}`
-          )
+      const response = await exampleImage(
+        new Request(
+          `http://localhost:3000/api/example-card?template=${templateId}`
         )
       )
-      expect(image.byteLength).toBeGreaterThan(5000)
+      expect(response.status).toBe(200)
+      expect(renderCard).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ example: true }),
+        { templateId }
+      )
     }
   )
 
