@@ -28,6 +28,7 @@ import {
 } from '@/lib/domain'
 import { readDraftToken } from '@/lib/drafts'
 import { AppError } from '@/lib/errors'
+import { message } from '@/lib/messages'
 import {
   checkAvailability,
   cleanupPreparations,
@@ -59,19 +60,12 @@ const original: ExtractedConversation = {
   title: 'Small changes that compound',
   parserVersion: 'synthetic-v1',
   messages: [
-    {
-      id: 'user-1',
-      speaker: 'user',
-      markdown: 'How can I make steady progress?',
-      text: 'How can I make steady progress?'
-    },
-    {
-      id: 'assistant-1',
-      speaker: 'assistant',
-      markdown:
-        'Start small 🌱 and keep showing up.\n\n**Consistency** compounds.',
-      text: 'Start small 🌱 and keep showing up.\n\nConsistency compounds.'
-    }
+    message('user-1', 'user', 'How can I make steady progress?'),
+    message(
+      'assistant-1',
+      'assistant',
+      'Start small 🌱 and keep showing up.\n\n**Consistency** compounds.'
+    )
   ]
 }
 
@@ -80,12 +74,7 @@ const changed: ExtractedConversation = {
   title: 'A later version of the conversation',
   messages: [
     ...original.messages,
-    {
-      id: 'assistant-2',
-      speaker: 'assistant',
-      markdown: 'A new saved turn.',
-      text: 'A new saved turn.'
-    }
+    message('assistant-2', 'assistant', 'A new saved turn.')
   ]
 }
 
@@ -200,12 +189,9 @@ describe.skipIf(!testUrl)('publication lifecycle with PostgreSQL', () => {
     expect(duplicates[0]!.shareUrl).toContain('/claude/')
     expect(prepared.preview).toEqual(generatedPreview)
     expect(prepared).not.toHaveProperty('messages')
-    expect(prepared).not.toHaveProperty('suggestion')
     expect(first!.preview).toEqual(prepared.preview)
     expect(first!.publication.cardVersion).toBe(3)
     expect(first!.publication.appearance).toEqual(DEFAULT_CARD_APPEARANCE)
-    expect(first!.excerpt).toBeNull()
-    expect(first!.selection).toBeNull()
     expect(await getPublication('chatgpt', firstId)).toBeNull()
   })
 
@@ -323,21 +309,13 @@ describe.skipIf(!testUrl)('publication lifecycle with PostgreSQL', () => {
     })
   })
 
-  it('generates a preview for a fresh legacy snapshot without refetching or advancing content freshness', async () => {
+  it('generates a preview for a fresh snapshot without a preview without refetching or advancing content freshness', async () => {
     const url = sourceUrl()
     const first = await prepareSource(url)
     const { snapshot } = await getDraft(first.draftToken)
     await getDb()
       .update(snapshots)
-      .set({
-        preview: null,
-        suggestion: {
-          title: 'Legacy title',
-          messageId: 'assistant-1',
-          start: 0,
-          end: 13
-        }
-      })
+      .set({ preview: null })
       .where(eq(snapshots.id, snapshot.id))
     advance(limits.cooldownMs)
     const prepared = await prepareSource(url)
@@ -372,30 +350,6 @@ describe.skipIf(!testUrl)('publication lifecycle with PostgreSQL', () => {
     const prepared = await prepareSource(url)
     expect(prepared.preview).toEqual(generatedPreview)
     expect(upstream.suggestPreview).toHaveBeenCalledTimes(2)
-  })
-
-  it('preserves existing publications that used an exact excerpt', async () => {
-    const prepared = await prepareSource(sourceUrl())
-    const { source, snapshot } = await getDraft(prepared.draftToken)
-    const [legacy] = await getDb()
-      .insert(publications)
-      .values({
-        sourceId: source.id,
-        snapshotId: snapshot.id,
-        fingerprint: randomUUID(),
-        title: 'Legacy passage',
-        messageId: 'assistant-1',
-        excerptStart: 0,
-        excerptEnd: 13
-      })
-      .returning()
-    const saved = await getPublication('chatgpt', legacy!.id)
-    expect(saved!.publication.appearance).toBeNull()
-    expect(saved!.preview).toBeNull()
-    expect(saved!.excerpt).toEqual({
-      speaker: 'assistant',
-      text: 'Start small 🌱'
-    })
   })
 
   it('shares the manual cooldown across publications and admits checks at its exact boundary', async () => {

@@ -3,12 +3,14 @@ import { describe, expect, it } from 'vitest'
 import { type ExtractedConversation, type Message } from '../lib/domain'
 import { SUMMARY_INPUT_LIMIT, summaryInput } from '../lib/summary'
 
-function message(speaker: Message['speaker'], text: string): Message {
+function message(role: Message['role'], text: string): Message {
   return {
-    id: `${speaker}-${text.slice(0, 20)}`,
-    speaker,
-    text,
-    markdown: text
+    id: `${role}-${text.slice(0, 20)}`,
+    type: 'message',
+    role,
+    content: [
+      { type: role === 'assistant' ? 'output_text' : 'input_text', text }
+    ]
   }
 }
 
@@ -26,7 +28,7 @@ function compact(source: ExtractedConversation) {
     sourceTitle: string
     truncated: boolean
     messages: {
-      speaker: Message['speaker']
+      role: Message['role']
       text: string
       middleOmitted?: true
     }[]
@@ -37,6 +39,7 @@ describe('bounded summary input', () => {
   it('preserves short conversations, including empty messages and tool context', () => {
     const source = conversation([
       message('system', 'Some context'),
+      message('developer', 'Developer context'),
       message('user', '  A question\nwith formatting  '),
       message('assistant', ''),
       message('tool', 'Result from a tool'),
@@ -45,8 +48,38 @@ describe('bounded summary input', () => {
     expect(compact(source)).toEqual({
       sourceTitle: source.title,
       truncated: false,
-      messages: source.messages.map(({ speaker, text }) => ({ speaker, text }))
+      messages: [
+        { role: 'system', text: 'Some context' },
+        { role: 'developer', text: 'Developer context' },
+        { role: 'user', text: 'A question\nwith formatting' },
+        { role: 'assistant', text: '' },
+        { role: 'tool', text: 'Result from a tool' },
+        { role: 'assistant', text: 'The answer' }
+      ]
     })
+  })
+
+  it('summarizes original text blocks without including media omission labels', () => {
+    const source = conversation([
+      {
+        id: 'mixed-content',
+        type: 'message',
+        role: 'user',
+        content: [
+          { type: 'input_text', text: 'Before the **image**.' },
+          { type: 'omitted', kind: 'image', reason: 'not_exposed' },
+          {
+            type: 'input_text',
+            text: 'After the [image](https://example.com).'
+          }
+        ]
+      }
+    ])
+    const savedContent = JSON.stringify(source.messages)
+    expect(compact(source).messages).toEqual([
+      { role: 'user', text: 'Before the image.\n\nAfter the image.' }
+    ])
+    expect(JSON.stringify(source.messages)).toBe(savedContent)
   })
 
   it('prioritizes the actual first user and last assistant over system and tool noise', () => {
@@ -65,11 +98,15 @@ describe('bounded summary input', () => {
     const data = compact(source)
     expect(data.truncated).toBe(true)
     expect(data.messages).toEqual([
-      { speaker: 'user', text: question },
-      { speaker: 'assistant', text: answer }
+      { role: 'user', text: question },
+      { role: 'assistant', text: answer }
     ])
-    expect(source.messages[0]!.text).toBe('LEADING SYSTEM '.repeat(3_000))
-    expect(source.messages[5]!.text).toBe(answer)
+    expect(source.messages[0]!.content).toEqual([
+      { type: 'input_text', text: 'LEADING SYSTEM '.repeat(3_000) }
+    ])
+    expect(source.messages[5]!.content).toEqual([
+      { type: 'output_text', text: answer }
+    ])
   })
 
   it('keeps ordered context at both conversation edges and drops the middle', () => {
@@ -118,31 +155,29 @@ describe('bounded summary input', () => {
 
   it.each(['user', 'assistant'] as const)(
     'gives spare space from a short anchor to an oversized %s message',
-    (longSpeaker) => {
+    (longRole) => {
       const source = conversation([
         message(
           'user',
-          longSpeaker === 'user'
+          longRole === 'user'
             ? `BEGIN ${'q'.repeat(40_000)} END`
             : 'Short question'
         ),
         message(
           'assistant',
-          longSpeaker === 'assistant'
+          longRole === 'assistant'
             ? `BEGIN ${'a'.repeat(40_000)} END`
             : 'Short answer'
         )
       ])
       const data = compact(source)
-      const long = data.messages.find(({ speaker }) => speaker === longSpeaker)!
-      const short = data.messages.find(
-        ({ speaker }) => speaker !== longSpeaker
-      )!
+      const long = data.messages.find(({ role }) => role === longRole)!
+      const short = data.messages.find(({ role }) => role !== longRole)!
       expect(long.middleOmitted).toBe(true)
       expect(long.text.length).toBeGreaterThan(19_000)
       expect(short).toEqual({
-        speaker: longSpeaker === 'user' ? 'assistant' : 'user',
-        text: longSpeaker === 'user' ? 'Short answer' : 'Short question'
+        role: longRole === 'user' ? 'assistant' : 'user',
+        text: longRole === 'user' ? 'Short answer' : 'Short question'
       })
     }
   )
@@ -169,8 +204,8 @@ describe('bounded summary input', () => {
       ])
     )
     expect(data.messages).toEqual([
-      { speaker: 'user', text: 'First question' },
-      { speaker: 'tool', text: 'Last available result' }
+      { role: 'user', text: 'First question' },
+      { role: 'tool', text: 'Last available result' }
     ])
   })
 
@@ -183,12 +218,12 @@ describe('bounded summary input', () => {
       ])
     )
     expect(data.messages).toEqual([
-      { speaker: 'system', text: 'First available context' },
-      { speaker: 'tool', text: 'Last available result' }
+      { role: 'system', text: 'First available context' },
+      { role: 'tool', text: 'Last available result' }
     ])
     expect(
       compact(conversation([message('user', ' '.repeat(30_000))])).messages
-    ).toEqual([])
+    ).toEqual([{ role: 'user', text: '' }])
   })
 
   it('includes JSON escaping and astral Unicode in the encoded size limit', () => {

@@ -6,6 +6,7 @@ import type { LookupFunction } from 'node:net'
 import { Readable } from 'node:stream'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { messageMarkdown, messageText } from '../../lib/messages'
 import { fetchSource, parseSourceUrl } from '../../lib/providers'
 
 const network = vi.hoisted(() => ({
@@ -105,17 +106,17 @@ describe('public Codex downloads through the provider fetch boundary', () => {
     expect(result.status).toBe('available')
     if (result.status !== 'available') throw new Error(result.reason)
     expect(
-      result.conversation.messages.map(({ speaker, text }) => ({
-        speaker,
-        text
+      result.conversation.messages.map((entry) => ({
+        role: entry.role,
+        text: messageText(entry)
       }))
     ).toEqual([
-      { speaker: 'user', text: 'Explain the first step.' },
-      { speaker: 'assistant', text: 'Start with a small example.' },
-      { speaker: 'user', text: 'What comes next?' },
-      { speaker: 'assistant', text: 'Check the result.' }
+      { role: 'user', text: 'Explain the first step.' },
+      { role: 'assistant', text: 'Start with a small example.' },
+      { role: 'user', text: 'What comes next?' },
+      { role: 'assistant', text: 'Check the result.' }
     ])
-    expect(result.conversation.messages[1]!.markdown).toBe(
+    expect(messageMarkdown(result.conversation.messages[1]!)).toBe(
       'Start with a **small** example.'
     )
     expect(

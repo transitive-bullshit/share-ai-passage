@@ -1,5 +1,5 @@
-import type { Message, ProviderResult } from '../domain'
-import { finishConversation, message, record } from './normalize'
+import type { Message, MessageContent, ProviderResult } from '../domain'
+import { finishConversation, message, record, textContent } from './normalize'
 
 export function parseClaude(payload: unknown, status: number): ProviderResult {
   const data = record(payload)
@@ -44,58 +44,93 @@ export function parseClaude(payload: unknown, status: number): ProviderResult {
     })
     .sort((a, b) => Number(a.index) - Number(b.index))
   const messages: Message[] = entries.map((entry) => {
-    const speaker = entry.sender === 'human' ? 'user' : entry.sender
-    if (speaker !== 'user' && speaker !== 'assistant')
-      throw new Error('Claude returned an unsupported speaker label.')
+    const role = entry.sender === 'human' ? 'user' : entry.sender
+    if (role !== 'user' && role !== 'assistant')
+      throw new Error('Claude returned an unsupported message role.')
     if (entry.truncated === true)
       throw new Error(
         'Claude returned a truncated conversation. This share cannot be captured in full.'
       )
-    const pieces: string[] = []
-    const excerptPieces: string[] = []
-    const addText = (text: string) => {
-      pieces.push(text)
-      excerptPieces.push(text)
-    }
+    const content: MessageContent[] = []
+    let inlineImages = 0
     if (Array.isArray(entry.content) && entry.content.length) {
       for (const value of entry.content) {
         const block = record(value)
-        if (block?.type === 'text' && typeof block.text === 'string')
-          addText(block.text)
-        else if (block?.type === 'thinking') pieces.push('[Thinking omitted]')
-        else if (block?.type === 'tool_use' || block?.type === 'tool_result')
-          pieces.push('[Tool or interactive artifact omitted]')
-        else if (block?.type === 'image') pieces.push('[Image omitted]')
-        else pieces.push('[Unsupported content omitted]')
+        if (block?.type === 'text' && typeof block.text === 'string') {
+          content.push(textContent(role, block.text))
+        } else if (block?.type === 'thinking') {
+          content.push({
+            type: 'omitted',
+            kind: 'thinking',
+            reason: 'unsupported'
+          })
+        } else if (
+          block?.type === 'tool_use' ||
+          block?.type === 'tool_result'
+        ) {
+          content.push({
+            type: 'omitted',
+            kind: 'artifact',
+            reason: 'unsupported'
+          })
+        } else if (block?.type === 'image') {
+          content.push({
+            type: 'omitted',
+            kind: 'image',
+            reason: 'not_exposed'
+          })
+          inlineImages++
+        } else {
+          content.push({
+            type: 'omitted',
+            kind: 'unknown',
+            reason: 'unsupported'
+          })
+        }
       }
     } else if (typeof entry.text === 'string') {
-      addText(entry.text)
+      content.push(textContent(role, entry.text))
     } else {
       throw new Error('Claude returned a message without readable content.')
     }
-    const images = typeof entry.image_count === 'number' ? entry.image_count : 0
+    const reportedImages = positiveCount(entry.image_count)
+    // Counts describe the whole message; inline images already have a block.
+    const images = Math.max(0, reportedImages - inlineImages)
     const files = Math.max(
-      typeof entry.file_count === 'number' ? entry.file_count : 0,
+      positiveCount(entry.file_count),
       Array.isArray(entry.files) ? entry.files.length : 0,
       Array.isArray(entry.attachments) ? entry.attachments.length : 0
     )
-    if (images)
-      pieces.push(`[${images} image${images === 1 ? '' : 's'} omitted]`)
-    if (files)
-      pieces.push(`[${files} attachment${files === 1 ? '' : 's'} omitted]`)
-    return message(
-      String(entry.uuid),
-      speaker,
-      pieces.join('\n\n'),
-      excerptPieces.join('\n\n')
-    )
+    if (images) {
+      content.push({
+        type: 'omitted',
+        kind: 'image',
+        reason: 'not_exposed',
+        count: images
+      })
+    }
+    if (files) {
+      content.push({
+        type: 'omitted',
+        kind: 'file',
+        reason: 'not_exposed',
+        count: files
+      })
+    }
+    return message(String(entry.uuid), role, content)
   })
   return {
     status: 'available',
     conversation: finishConversation(
       data.snapshot_name,
       messages,
-      'claude-public-json-v1'
+      'claude-public-json-v2'
     )
   }
+}
+
+function positiveCount(value: unknown): number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0
+    ? value
+    : 0
 }

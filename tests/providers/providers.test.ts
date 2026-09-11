@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest'
 import { parseChatgpt } from '../../lib/providers/chatgpt'
 import { parseClaude } from '../../lib/providers/claude'
 import { classifyResponse } from '../../lib/providers'
-import { plainText } from '../../lib/providers/normalize'
+import { messageMarkdown, messageText, plainText } from '../../lib/messages'
 import {
   isPublicAddress,
   readBoundedBody
@@ -255,11 +255,13 @@ describe('observed sanitized provider payloads', () => {
     )
     expect(
       result.conversation.messages.some((entry) =>
-        entry.markdown.includes('```python')
+        messageMarkdown(entry).includes('```python')
       )
     ).toBe(true)
     expect(
-      result.conversation.messages.some((entry) => entry.text.includes('```'))
+      result.conversation.messages.some((entry) =>
+        messageText(entry).includes('```')
+      )
     ).toBe(false)
   })
 
@@ -267,20 +269,22 @@ describe('observed sanitized provider payloads', () => {
     const result = parseClaude(await fixture('claude-code'), 200)
     expect(result.status).toBe('available')
     if (result.status !== 'available') return
-    expect(result.conversation.messages.map((entry) => entry.speaker)).toEqual([
+    expect(result.conversation.messages.map((entry) => entry.role)).toEqual([
       'user',
       'assistant'
     ])
-    expect(result.conversation.messages[1]!.markdown).toContain('```python')
+    expect(messageMarkdown(result.conversation.messages[1]!)).toContain(
+      '```python'
+    )
     const tools = parseClaude(await fixture('claude-tools'), 200)
     expect(tools.status).toBe('available')
     if (tools.status !== 'available') return
-    expect(tools.conversation.messages[1]!.markdown).toContain(
+    expect(messageMarkdown(tools.conversation.messages[1]!)).toContain(
       '[Tool or interactive artifact omitted]'
     )
   })
 
-  it('preserves Markdown text, code, Unicode, and link labels for excerpt selection', () => {
+  it('derives plain text from Markdown, code, Unicode, and link labels', () => {
     const text = plainText(
       '# Heading\n\nA **bold** choice with [a link](https://example.com) and café 🧑🏽‍💻.\n\n```ts\nconst x = 1\n```'
     )
@@ -302,29 +306,150 @@ describe('observed sanitized provider payloads', () => {
     const result = parseChatgpt(input, 200)
     expect(result.status).toBe('available')
     if (result.status !== 'available') return
-    expect(
-      result.conversation.messages.find(
-        (entry) => entry.id === visible.message.id
-      )!.markdown
-    ).toContain('[Image omitted]')
-    expect(
-      result.conversation.messages.find(
-        (entry) => entry.id === visible.message.id
-      )!.text
-    ).toBe('Look at this.')
+    const captured = result.conversation.messages.find(
+      (entry) => entry.id === visible.message.id
+    )!
+    expect(messageMarkdown(captured)).toContain('[Image omitted]')
+    expect(messageText(captured)).toBe('Look at this.')
+    expect(captured.content.slice(0, 2)).toEqual([
+      { type: 'input_text', text: 'Look at this.' },
+      { type: 'omitted', kind: 'image', reason: 'not_exposed' }
+    ])
   })
 
-  it('does not permit synthetic omission markers to become attributed excerpts', async () => {
+  it('excludes omission labels from original source text', async () => {
     const input = await fixture('claude-tools')
     const result = parseClaude(input, 200)
     if (result.status !== 'available')
       throw new Error('Fixture should be available')
     expect(
-      result.conversation.messages.map((entry) => entry.text).join('')
+      result.conversation.messages.map(messageText).join('')
     ).not.toContain('omitted]')
     for (const entry of input.chat_messages) entry.content = [{ type: 'image' }]
     expect(() => parseClaude(input, 200)).toThrow(
       'did not contain a readable conversation'
+    )
+  })
+
+  it('preserves mixed content order without mistaking source text for omission labels', () => {
+    const result = parseChatgpt(
+      {
+        is_public: true,
+        linear_conversation: [
+          {
+            message: {
+              id: 'mixed',
+              author: { role: 'user' },
+              content: {
+                parts: [
+                  '**Before.**',
+                  {
+                    content_type: 'image_asset_pointer',
+                    asset_pointer: 'file://not-saved'
+                  },
+                  'The source literally says [Image omitted].',
+                  {
+                    content_type: 'future_media',
+                    url: 'https://not-saved.example/media'
+                  }
+                ]
+              },
+              metadata: {
+                attachments: [{ url: 'https://not-saved.example/file' }]
+              }
+            }
+          }
+        ]
+      },
+      200
+    )
+    if (result.status !== 'available')
+      throw new Error('Expected a public message')
+    const captured = result.conversation.messages[0]!
+    expect(captured.content).toEqual([
+      { type: 'input_text', text: '**Before.**' },
+      { type: 'omitted', kind: 'image', reason: 'not_exposed' },
+      {
+        type: 'input_text',
+        text: 'The source literally says [Image omitted].'
+      },
+      { type: 'omitted', kind: 'unknown', reason: 'unsupported' },
+      { type: 'omitted', kind: 'file', reason: 'not_exposed', count: 1 }
+    ])
+    expect(messageText(captured)).toBe(
+      'Before.\n\nThe source literally says [Image omitted].'
+    )
+    expect(JSON.stringify(captured)).not.toContain('not-saved')
+    expect(captured).not.toHaveProperty('speaker')
+    expect(captured).not.toHaveProperty('markdown')
+    expect(captured).not.toHaveProperty('text')
+  })
+
+  it('maps provider roles to Responses text kinds while retaining the local tool role', () => {
+    const roles = ['user', 'assistant', 'system', 'developer', 'tool']
+    const result = parseChatgpt(
+      {
+        is_public: true,
+        linear_conversation: roles.map((role) => ({
+          message: { id: role, author: { role }, content: { parts: [role] } }
+        }))
+      },
+      200
+    )
+    if (result.status !== 'available')
+      throw new Error('Expected public messages')
+    expect(result.conversation.messages.map(({ role }) => role)).toEqual(roles)
+    expect(
+      result.conversation.messages.map(({ content }) => content.at(-1)?.type)
+    ).toEqual([
+      'input_text',
+      'output_text',
+      'input_text',
+      'input_text',
+      'input_text'
+    ])
+    const tool = result.conversation.messages.at(-1)!
+    expect(tool.content[0]).toEqual({
+      type: 'omitted',
+      kind: 'tool',
+      reason: 'unsupported'
+    })
+    expect(messageText(tool)).toBe('tool')
+  })
+
+  it('preserves Claude text and inline images while accounting for unexposed media counts', () => {
+    const result = parseClaude(
+      {
+        is_public: true,
+        chat_messages: [
+          {
+            uuid: 'mixed',
+            index: 0,
+            sender: 'human',
+            image_count: 2,
+            file_count: 2,
+            attachments: [{}, {}],
+            content: [
+              { type: 'text', text: 'Before.' },
+              { type: 'image' },
+              { type: 'text', text: 'After.' }
+            ]
+          }
+        ]
+      },
+      200
+    )
+    if (result.status !== 'available')
+      throw new Error('Expected a public message')
+    expect(result.conversation.messages[0]!.content).toEqual([
+      { type: 'input_text', text: 'Before.' },
+      { type: 'omitted', kind: 'image', reason: 'not_exposed' },
+      { type: 'input_text', text: 'After.' },
+      { type: 'omitted', kind: 'image', reason: 'not_exposed', count: 1 },
+      { type: 'omitted', kind: 'file', reason: 'not_exposed', count: 2 }
+    ])
+    expect(messageText(result.conversation.messages[0]!)).toBe(
+      'Before.\n\nAfter.'
     )
   })
 

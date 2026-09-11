@@ -797,20 +797,6 @@
   font-size: 15px;
   color: #525252;
 }
-.reader-excerpt {
-  padding: 24px 28px;
-  border-left: 2px solid var(--border);
-  margin: 0 0 30px;
-  font-size: 20px;
-  line-height: 1.65;
-}
-.reader-excerpt cite {
-  display: block;
-  margin-top: 15px;
-  color: var(--muted-foreground);
-  font-size: 12px;
-  font-style: normal;
-}
 .reader-source-bar {
   display: flex;
   justify-content: space-between;
@@ -892,10 +878,6 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   color: var(--muted-foreground);
   font-size: 10px;
-}
-.message-position > span {
-  font-size: 9px;
-  color: var(--muted-foreground);
 }
 .markdown {
   font-size: 15px;
@@ -1361,10 +1343,6 @@
   }
   .reader-summary ul {
     font-size: 13px;
-  }
-  .reader-excerpt {
-    padding: 20px;
-    font-size: 18px;
   }
   .snapshot-note {
     font-size: 10px;

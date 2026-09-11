@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { messageMarkdown, messageText } from '../../lib/messages'
 import { parseCodex } from '../../lib/providers/codex'
 
 // Sanitized shapes observed in the user's anonymous public Codex snapshot.
@@ -43,28 +44,35 @@ describe('public Codex snapshots', () => {
     expect(result.status).toBe('available')
     if (result.status !== 'available') return
     expect(result.conversation.title).toBe('A shared code discussion')
-    expect(result.conversation.parserVersion).toBe('codex-public-json-v1')
-    expect(result.conversation.messages.map((entry) => entry.speaker)).toEqual([
+    expect(result.conversation.parserVersion).toBe('codex-public-json-v2')
+    expect(result.conversation.messages.map((entry) => entry.role)).toEqual([
       'user',
       'assistant',
       'assistant',
       'tool',
       'assistant'
     ])
-    expect(result.conversation.messages.map((entry) => entry.text)).toEqual([
+    expect(result.conversation.messages.map(messageText)).toEqual([
       'Explain this code.',
       'Consider the public example.',
       'I will inspect the example.',
       '',
       'Done.\n\nconst greeting = "café"'
     ])
-    expect(result.conversation.messages[1]!.markdown).toContain(
-      '[Reasoning summary]'
+    expect(result.conversation.messages[1]!.content).toEqual([
+      { type: 'output_text', text: 'Consider the public example.' }
+    ])
+    expect(result.conversation.messages.map((entry) => entry.phase)).toEqual([
+      undefined,
+      undefined,
+      'commentary',
+      undefined,
+      'final_answer'
+    ])
+    expect(messageMarkdown(result.conversation.messages[3]!)).toBe(
+      '[Attachment omitted]'
     )
-    expect(result.conversation.messages[3]!.markdown).toBe(
-      '[File changes omitted]'
-    )
-    expect(result.conversation.messages[4]!.markdown).toContain('```ts')
+    expect(messageMarkdown(result.conversation.messages[4]!)).toContain('```ts')
   })
 
   it('assigns stable distinct identities across turns', () => {
@@ -103,17 +111,18 @@ describe('public Codex snapshots', () => {
     )
     if (result.status !== 'available')
       throw new Error('Expected a readable snapshot')
-    expect(result.conversation.messages.map((entry) => entry.text)).toEqual([
+    expect(result.conversation.messages.map(messageText)).toEqual([
       'Describe the picture.',
       '',
       '',
       'A blue circle.'
     ])
-    expect(result.conversation.messages[0]!.markdown).toContain(
+    expect(result.conversation.messages[0]!.content).toEqual([
+      { type: 'omitted', kind: 'image', reason: 'not_exposed' },
+      { type: 'input_text', text: 'Describe the picture.' }
+    ])
+    expect(messageMarkdown(result.conversation.messages[2]!)).toBe(
       '[Image omitted]'
-    )
-    expect(result.conversation.messages[2]!.markdown).toBe(
-      '[Generated image omitted]'
     )
   })
 

@@ -268,7 +268,7 @@ function validateReader(
   let previousOffset = -1
   for (const [index, message] of messages.entries()) {
     const expectedArticle = renderToStaticMarkup(
-      createElement(SavedMessage, { message, index, selected: false })
+      createElement(SavedMessage, { message, index })
     )
     const offset = html.indexOf(expectedArticle)
     verify(

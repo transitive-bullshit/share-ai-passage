@@ -2,6 +2,32 @@
 
 For the current production-readiness assessment and follow-up fixes, see [the September 11 launch audit](LAUNCH_READINESS.md).
 
+## Neon and local production — September 11, 2026
+
+The user-created Neon Free project `wild-moon-12089892` is configured on its `production` branch in AWS Ohio, PostgreSQL 18.6. The database was verified empty before all five checked-in migrations were applied. Direct and pooled connections passed. The production compute was reduced to fixed 0.25 CU; five-minute idle suspension and six-hour recovery history remain enabled.
+
+An explicit local production build passed on Node 24.5.0 and served at `http://localhost:3001`. Browser verification completed a fresh real Codex-source extraction and OpenAI preview generation, loaded the actual card, published, copied the link, and opened the full 37-message reader. A cached API repetition returned the same publication. The PNG was 1200 × 630 with `image/png` and `no-store`; the initial reader HTML contained the correct local image URL and last-message anchor.
+
+Production contains exactly one source, one snapshot, and one publication from this check: `c98aa772-8ce0-458e-ae61-da617c3b4670`. The repeat check created no duplicate records. Its report and card are under ignored `work/production-check/`. This live verification was separate from the offline suite and included one fresh model generation; subsequent preparation reused the saved preview.
+
+Production credentials are in ignored, owner-readable `.env.prod.local`; `.next-prod` is excluded from Git and Docker context. A scan found no configured database URLs, app secret, or OpenAI key in the production client bundles. Ordinary local configuration was preserved. See [production commands](PRODUCTION.md).
+
+Final validation passed **395 tests across 21 files** on Node 24.5.0, including the disposable local PostgreSQL suite, formatting, lint, generated route types, and TypeScript. The final `build:prod` passed. Both `start:prod` and `dev:prod` served the saved 37-message reader and accepted same-origin cached preparation at `http://localhost:3001`; stopping each released port 3001. Separate offline lifecycle tests sent SIGINT and SIGTERM to wrapper processes and verified child shutdown and port reuse. Both live check servers were stopped afterward.
+
+Vercel creation is deliberately deferred pending branding. Hosted provider extraction, external social unfurls, and independent backup/restore remain unverified; connecting a local production build to Neon does not close those gates.
+
+## Schema and message model — September 11, 2026
+
+Publication excerpt fields, cached excerpt suggestions, and their rendering paths were removed. Eight explicitly approved local excerpt publications were deleted by ID; no broad row deletion is included in the migrations. All eight saved snapshots and four summary publications remain.
+
+Messages now use Responses-style `type`, `role`, and ordered `content`, with provider-supplied assistant phases and explicit media omissions. The local migration preserved all 140 saved message IDs, roles, ordering, and Markdown. Required publication highlights and migration idempotency have PostgreSQL regression coverage.
+
+All **368 tests across 20 files passed on Node 24.5.0**, including real local PostgreSQL tests; formatting, lint, generated route types, TypeScript, and the production build passed. The migrated 37-message reader loaded successfully in the local browser. These checks made no live model or provider extraction requests. Actual media payload retrieval/rendering remains outside this schema change; see [the message model](MESSAGE_MODEL.md).
+
+Historical excerpt checks below describe earlier revisions. The removal smoke now uses two generated-summary publications with different card styles; this cleanup has not rerun that HTTP smoke.
+
+## Earlier verification
+
 Verified on September 10, 2026 with the installed Next.js 16.3.4, Node.js 25.9.0, pnpm 12.3.4, and an isolated native PostgreSQL instance on `127.0.0.1:55432`.
 
 ## Passed
@@ -76,4 +102,4 @@ Both supplied Codex links also passed fresh anonymous extraction and the running
 - Docker containers were not started because the local Docker daemon was unavailable. Compose syntax and the native production app were checked; container execution remains a separate environment check.
 - Missing-source classification uses observed provider-specific JSON signatures. A nonexistent share is not a controlled deletion of a formerly available real share. Lifecycle and presentation removal scenarios are verified with controlled synthetic records/results.
 
-The generated preview → publish → read behavior is verified locally, including real Codex sources. Previously published legacy links remain readable.
+The generated preview → publish → read behavior is verified locally, including real Codex sources.

@@ -23,9 +23,8 @@ function publication(
 ) {
   return {
     publication: { title: savedPreview.title, appearance },
-    preview: savedPreview as typeof savedPreview | null,
+    preview: savedPreview,
     source: { provider: 'claude' as const },
-    excerpt: null as { text: string; speaker: 'assistant' } | null,
     disabled: false
   }
 }
@@ -139,26 +138,6 @@ describe('saved social-card appearance routes', () => {
     const published = await bytes(await publicRequest('?template=friendly-lab'))
     const original = await bytes(
       await renderCard({ ...savedPreview, provider: 'claude' })
-    )
-    expect(published.equals(original)).toBe(true)
-  })
-
-  it('keeps legacy excerpt publications readable', async () => {
-    const legacy = publication(null)
-    legacy.preview = null
-    legacy.excerpt = {
-      text: 'Start small and keep showing up.',
-      speaker: 'assistant'
-    }
-    service.getPublication.mockResolvedValue(legacy)
-    const published = await bytes(await publicRequest())
-    const original = await bytes(
-      await renderCard({
-        title: savedPreview.title,
-        excerpt: legacy.excerpt.text,
-        speaker: 'assistant',
-        provider: 'claude'
-      })
     )
     expect(published.equals(original)).toBe(true)
   })

@@ -1,4 +1,4 @@
-import type { Message, ProviderResult } from '../domain'
+import type { Message, MessageContent, ProviderResult } from '../domain'
 import { finishConversation, message, record } from './normalize'
 
 const invalidSnapshot = (): ProviderResult => ({
@@ -46,25 +46,21 @@ export function parseCodex(payload: unknown, status: number): ProviderResult {
           if (!Array.isArray(item.content) || !item.content.length) {
             return invalidSnapshot()
           }
-          const markdown: string[] = []
-          const text: string[] = []
+          const content: MessageContent[] = []
           for (const value of item.content) {
             const block = record(value)
             if (block?.type === 'text' && typeof block.text === 'string') {
-              markdown.push(block.text)
-              text.push(block.text)
+              content.push({ type: 'input_text', text: block.text })
             } else if (
               block?.type === 'image' &&
               typeof block.url === 'string'
             ) {
-              markdown.push('[Image omitted]')
+              content.push(omittedImage(block.url))
             } else {
               return invalidSnapshot()
             }
           }
-          messages.push(
-            message(id, 'user', markdown.join('\n\n'), text.join('\n\n'))
-          )
+          messages.push(message(id, 'user', content))
           break
         }
         case 'agentMessage':
@@ -76,20 +72,13 @@ export function parseCodex(payload: unknown, status: number): ProviderResult {
           ) {
             return invalidSnapshot()
           }
-          messages.push(message(id, 'assistant', item.text))
+          messages.push(message(id, 'assistant', item.text, item.phase))
           break
 
         case 'reasoning':
           if (typeof item.summary !== 'string') return invalidSnapshot()
-          // Only the summary explicitly published in the public snapshot is present.
-          messages.push(
-            message(
-              id,
-              'assistant',
-              `[Reasoning summary]\n\n${item.summary}`,
-              item.summary
-            )
-          )
+          // Preserve only the summary explicitly published in the public snapshot.
+          messages.push(message(id, 'assistant', item.summary))
           break
 
         case 'fileChange':
@@ -107,19 +96,23 @@ export function parseCodex(payload: unknown, status: number): ProviderResult {
           ) {
             return invalidSnapshot()
           }
-          messages.push(message(id, 'tool', '[File changes omitted]', ''))
+          messages.push(
+            message(id, 'tool', [
+              { type: 'omitted', kind: 'file', reason: 'unsupported' }
+            ])
+          )
           break
 
         case 'imageView':
           if (typeof item.url !== 'string') return invalidSnapshot()
-          messages.push(message(id, 'tool', '[Image omitted]', ''))
+          messages.push(message(id, 'tool', [omittedImage(item.url)]))
           break
 
         case 'imageGeneration':
           if (item.status !== 'completed' || typeof item.result !== 'string') {
             return invalidSnapshot()
           }
-          messages.push(message(id, 'tool', '[Generated image omitted]', ''))
+          messages.push(message(id, 'tool', [omittedImage(item.result)]))
           break
 
         default:
@@ -132,7 +125,18 @@ export function parseCodex(payload: unknown, status: number): ProviderResult {
     conversation: finishConversation(
       data.title,
       messages,
-      'codex-public-json-v1'
+      'codex-public-json-v2'
     )
+  }
+}
+
+function omittedImage(reference: string): MessageContent {
+  return {
+    type: 'omitted',
+    kind: 'image',
+    reason:
+      reference === 'codex:shared-image-unavailable'
+        ? 'not_exposed'
+        : 'unsupported'
   }
 }

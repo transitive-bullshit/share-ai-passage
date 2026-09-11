@@ -21,9 +21,13 @@ import {
 } from '@/lib/domain'
 
 export type PreparedDraft = {
+  /** Capability to publish this reviewed snapshot and preview. */
   draftToken: string
+  /** Service hosting the original conversation. */
   provider: Provider
+  /** Public URL of the original share. */
   sourceUrl: string
+  /** Generated title and highlights shown for review. */
   preview: GeneratedPreview
 }
 

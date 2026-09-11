@@ -11,6 +11,7 @@ import { SavedMessage } from '@/components/saved-message'
 import { Button } from '@/components/ui/button'
 import { appUrl } from '@/lib/config'
 import { providerNames } from '@/lib/domain'
+import { messageText } from '@/lib/messages'
 import { checkAvailability, getPublication } from '@/lib/service'
 
 export const dynamic = 'force-dynamic'
@@ -33,7 +34,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     : record.publication.title
   const description = record.disabled
     ? 'The original conversation is no longer publicly available.'
-    : (record.preview?.highlights.join(' ') ?? record.excerpt?.text)
+    : record.preview.highlights.join(' ')
   return {
     title,
     description,
@@ -88,9 +89,9 @@ export default async function ReaderPage({ params }: Props) {
     )
   }
 
-  const { source, snapshot, publication, selection, excerpt, preview } = record
+  const { source, snapshot, publication, preview } = record
   const lastReplyIndex = snapshot.messages.findLastIndex(
-    (message) => message.speaker === 'assistant' && message.text.trim()
+    (message) => message.role === 'assistant' && messageText(message).trim()
   )
   after(async () => {
     try {
@@ -104,15 +105,6 @@ export default async function ReaderPage({ params }: Props) {
     dateStyle: 'long',
     timeZone: 'UTC'
   }).format(snapshot.capturedAt)
-  const excerptSpeaker = excerpt
-    ? {
-        user: 'Human',
-        assistant: providerNames[source.provider],
-        system: 'System',
-        tool: 'Tool'
-      }[excerpt.speaker]
-    : null
-
   return (
     <main id='main' className='reader'>
       <header className='reader-header'>
@@ -123,23 +115,16 @@ export default async function ReaderPage({ params }: Props) {
           <span>Saved on Passage</span>
         </div>
         <h1>{publication.title}</h1>
-        {preview ? (
-          <section className='reader-summary' aria-labelledby='summary-heading'>
-            <h2 id='summary-heading' className='eyebrow'>
-              AI summary
-            </h2>
-            <ul>
-              {preview.highlights.map((highlight, index) => (
-                <li key={index}>{highlight}</li>
-              ))}
-            </ul>
-          </section>
-        ) : excerpt ? (
-          <blockquote className='reader-excerpt'>
-            <p>{excerpt.text}</p>
-            <cite>{excerptSpeaker}</cite>
-          </blockquote>
-        ) : null}
+        <section className='reader-summary' aria-labelledby='summary-heading'>
+          <h2 id='summary-heading' className='eyebrow'>
+            AI summary
+          </h2>
+          <ul>
+            {preview.highlights.map((highlight, index) => (
+              <li key={index}>{highlight}</li>
+            ))}
+          </ul>
+        </section>
         <div className='reader-source-bar'>
           <div className='reader-actions'>
             <Button asChild>
@@ -177,12 +162,7 @@ export default async function ReaderPage({ params }: Props) {
       </div>
       <section className='conversation' aria-label='Saved conversation'>
         {snapshot.messages.map((message, index) => (
-          <SavedMessage
-            key={message.id}
-            message={message}
-            index={index}
-            selected={message.id === selection?.messageId}
-          />
+          <SavedMessage key={message.id} message={message} index={index} />
         ))}
       </section>
       <aside className='reader-end'>

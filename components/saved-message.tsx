@@ -2,11 +2,13 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
 import { type Message } from '@/lib/domain'
+import { messageMarkdown } from '@/lib/messages'
 
-const speakerLabels = {
+const roleLabels = {
   user: 'Human',
   assistant: 'Assistant',
   system: 'System',
+  developer: 'Developer',
   tool: 'Tool'
 }
 
@@ -21,33 +23,29 @@ function safeLink(url: string) {
 
 export function SavedMessage({
   message,
-  index,
-  selected
+  index
 }: {
   message: Message
   index: number
-  selected: boolean
 }) {
   return (
     <article
       className='saved-message'
       id={`message-${index + 1}`}
-      data-speaker={message.speaker}
-      data-selected={selected || undefined}
-      aria-label={`${speakerLabels[message.speaker]}, message ${index + 1}`}
+      data-speaker={message.role}
+      aria-label={`${roleLabels[message.role]}, message ${index + 1}`}
     >
       <div className='message-label'>
         <span className='message-speaker'>
           <span className='message-avatar' aria-hidden='true'>
-            {message.speaker === 'assistant'
+            {message.role === 'assistant'
               ? 'AI'
-              : speakerLabels[message.speaker].slice(0, 1)}
+              : roleLabels[message.role].slice(0, 1)}
           </span>
-          {speakerLabels[message.speaker]}
+          {roleLabels[message.role]}
         </span>
         <span className='message-position'>
           {String(index + 1).padStart(2, '0')}
-          {selected ? <span>SELECTED PASSAGE</span> : null}
         </span>
       </div>
       <div className='markdown'>
@@ -72,7 +70,7 @@ export function SavedMessage({
             )
           }}
         >
-          {message.markdown}
+          {messageMarkdown(message)}
         </ReactMarkdown>
       </div>
     </article>

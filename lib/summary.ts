@@ -3,8 +3,10 @@ import { z } from 'zod'
 import {
   type ExtractedConversation,
   type GeneratedPreview,
+  type Message,
   limits
 } from './domain'
+import { messageText } from './messages'
 
 const invalidUnicode = /[\uD800-\uDFFF]/u
 
@@ -96,10 +98,11 @@ export function validateGeneratedPreview(input: unknown): GeneratedPreview {
 
 export const SUMMARY_INPUT_LIMIT = 20_000
 
-type SummaryMessage = Pick<
-  ExtractedConversation['messages'][number],
-  'speaker' | 'text'
-> & { middleOmitted?: true }
+type SummaryMessage = {
+  role: Message['role']
+  text: string
+  middleOmitted?: true
+}
 
 /** Fit one message by removing its middle without splitting Unicode characters. */
 function fitSummaryMessage(message: SummaryMessage, budget: number) {
@@ -107,7 +110,7 @@ function fitSummaryMessage(message: SummaryMessage, budget: number) {
 
   const characters = Array.from(message.text)
   const shortened = (count: number): SummaryMessage => ({
-    speaker: message.speaker,
+    role: message.role,
     text: `${characters.slice(0, Math.ceil(count / 2)).join('')}\n[Middle omitted]\n${characters.slice(characters.length - Math.floor(count / 2)).join('')}`,
     middleOmitted: true
   })
@@ -124,9 +127,10 @@ function fitSummaryMessage(message: SummaryMessage, budget: number) {
 /** Keep the first request and final answer, spending spare space on edge context. */
 export function summaryInput(conversation: ExtractedConversation) {
   const sourceTitle = Array.from(conversation.title).slice(0, 200).join('')
-  const messages: SummaryMessage[] = conversation.messages.map(
-    ({ speaker, text }) => ({ speaker, text })
-  )
+  const messages: SummaryMessage[] = conversation.messages.map((message) => ({
+    role: message.role,
+    text: messageText(message)
+  }))
   const encode = (selected: SummaryMessage[], truncated: boolean) =>
     JSON.stringify({ sourceTitle, truncated, messages: selected })
   const full = encode(messages, sourceTitle !== conversation.title)
@@ -136,9 +140,9 @@ export function summaryInput(conversation: ExtractedConversation) {
     message.text.trim() ? [index] : []
   )
   const first =
-    nonempty.find((index) => messages[index]!.speaker === 'user') ?? nonempty[0]
+    nonempty.find((index) => messages[index]!.role === 'user') ?? nonempty[0]
   const last =
-    nonempty.findLast((index) => messages[index]!.speaker === 'assistant') ??
+    nonempty.findLast((index) => messages[index]!.role === 'assistant') ??
     nonempty.at(-1)
   const anchors = [...new Set([first, last])].filter(
     (index): index is number => index !== undefined

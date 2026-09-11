@@ -26,6 +26,19 @@ To run Next.js directly at [localhost:3000](http://localhost:3000), use `PORTLES
 
 The native local connection is `postgresql://postgres@127.0.0.1:55432/ai_chat_proxy`. Set `DATABASE_URL` to use any other PostgreSQL instance. After schema changes, run `pnpm db:generate` and commit the migration. Apply checked-in migrations with `pnpm db:migrate`.
 
+### Test against production locally
+
+Neon production is available through explicit commands; ordinary `pnpm dev` keeps its local database.
+
+```sh
+pnpm dev:prod
+# Or run the production build locally:
+pnpm build:prod
+pnpm start:prod
+```
+
+Open `http://localhost:3001`. These commands use **real production data** from ignored `.env.prod.local`; the production build is isolated in `.next-prod`. Use `pnpm db:check:prod` to verify the connection and `pnpm db:migrate:prod` for pending migrations. See [production setup](docs/PRODUCTION.md). Vercel creation is deferred until branding is settled.
+
 ### Docker alternative
 
 Stop the native helper first if it occupies port 55432:
@@ -97,12 +110,12 @@ The portable [passage-share skill](.agents/skills/passage-share/SKILL.md) includ
 
 ## Saved conversations and removal
 
-- A **snapshot** is immutable conversation content with a cached generated preview. A **publication** saves that preview's title, highlights, and selected card appearance. The draft token is bound to the reviewed text; card and publish requests accept the token and an allowlisted template choice. They reject edited title/highlight fields and arbitrary style or asset inputs.
-- Identical submissions with the same template and retried publishes reuse the same publication. A different template produces a separate publication without re-extracting the source or generating another summary. Changed content can produce a new snapshot without changing existing publications. Older publications without a template, including excerpt links, retain their original readers and plain cards.
+- A **snapshot** is immutable conversation content with a cached generated preview. Messages use Responses-style `role` and typed `content`, with explicit omitted-media blocks; see the [message model](docs/MESSAGE_MODEL.md). A **publication** saves that preview's title, highlights, and selected card appearance. The draft token is bound to the reviewed text; card and publish requests accept the token and an allowlisted template choice. They reject edited title/highlight fields and arbitrary style or asset inputs.
+- Identical submissions with the same template and retried publishes reuse the same publication. A different template produces a separate publication without re-extracting the source or generating another summary. Changed content can produce a new snapshot without changing existing publications. Older summary publications without a template retain their plain cards.
 - Preparations reuse captured content for seven days. Only a complete content fetch advances capture freshness; availability checks do not. Identical re-fetched content reuses its snapshot and cached preview.
 - Reader visits check availability in the background when the last definitive check is at least seven days old. All publications of a source share one database lease.
 - “Check original availability” has a source-wide one-hour cooldown and a five-attempt/hour client budget. Timeouts, challenges, 429s, 5xx responses, and parsing changes are inconclusive and back off for at least one hour.
-- Confirmed removal disables **all** publications of the source and their image/metadata endpoints. Saved titles, highlights, excerpts, and transcript text are replaced by a generic unavailable page/card. Old links stay disabled if the source later returns; a new verified creation gets a new link.
+- Confirmed removal disables **all** publications of the source and their image/metadata endpoints. Saved titles, highlights, and transcript text are replaced by a generic unavailable page/card. Old links stay disabled if the source later returns; a new verified creation gets a new link.
 - Reader, metadata, and image responses use `no-store`, so no owned persistent publication cache needs purging. Other platforms can retain previews they fetched earlier; disabling the provider share cannot immediately erase those copies.
 - There is no account, directory, sitemap, private deletion link, or post-publication editor. Remove public access at the original provider to initiate removal here.
 
@@ -154,7 +167,7 @@ An unset `TRUST_PROXY` automatically selects Vercel's trusted header when `VERCE
 - Behind one self-hosted reverse proxy, use `TRUST_PROXY=single` only if it **overwrites** `X-Real-IP` with the connecting client address. For Nginx: `proxy_set_header X-Real-IP $remote_addr;`. Prevent direct public access to the app port and do not append untrusted incoming headers.
 - Serve the hosted app over HTTPS and set `APP_URL` to its exact origin before building. Production builds fail if it is missing. Keep reader/image routes publicly fetchable by social crawlers. Avoid authentication or challenges in front of those routes.
 
-For Vercel, use Node 24, import this single Next.js project, retain `pnpm build`, configure PostgreSQL and environment variables, and apply `pnpm db:migrate` once before serving traffic. Use a pooled `DATABASE_URL` at runtime; migrations prefer `DIRECT_DATABASE_URL` or Neon's `DATABASE_URL_UNPOOLED` when configured. Provider fetching, PostgreSQL, and card rendering use Node.js routes. The connection pool is limited to five connections per instance; prepared statements are disabled for pooler compatibility. Choose database and function regions together. This local setup provisions no hosted database. See the [launch audit](docs/LAUNCH_READINESS.md) and [Postgres recommendation](docs/POSTGRES_HOSTING.md) for the current release gates and setup.
+For Vercel, use Node 24, import this single Next.js project, retain `pnpm build`, configure PostgreSQL and environment variables, and apply `pnpm db:migrate` once before serving traffic. Use a pooled `DATABASE_URL` at runtime; migrations prefer `DIRECT_DATABASE_URL` or Neon's `DATABASE_URL_UNPOOLED` when configured. Provider fetching, PostgreSQL, and card rendering use Node.js routes. The connection pool is limited to five connections per instance; prepared statements are disabled for pooler compatibility. Choose database and function regions together. Neon production is configured; see [production setup](docs/PRODUCTION.md) for explicit local access. See the [launch audit](docs/LAUNCH_READINESS.md) and [Postgres recommendation](docs/POSTGRES_HOSTING.md) for the current release gates and setup.
 
 For self-hosting, `pnpm build && pnpm start` runs the same app. The Dockerfile includes the migration CLI for single-instance startup. Multi-instance deployments should run migrations as a separate release step.
 

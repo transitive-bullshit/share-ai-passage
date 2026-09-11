@@ -34,9 +34,9 @@ Expose the same prepare and publish operations through a small CLI and a portabl
 
 Serve a normal reader page, with metadata available in the initial response to social crawlers. The agreed reader is a product benefit, not a technical requirement imposed by social previews.
 
-Preserve all successfully extracted message text and ordering, speaker labels, Markdown, code blocks, tables, and links on a best-effort basis. Show explicit placeholders for unsupported images, attachments, tools, or interactive artifacts. Offer a prominent “Open in ChatGPT” or “Open in Claude” link.
+Preserve all successfully extracted message text and ordering, role labels, Markdown, code blocks, tables, and links on a best-effort basis. Store ordered content blocks and any source-provided assistant phase; keep known media, tool, and artifact omissions distinct from original text. Show explicit placeholders for those omissions. Offer a prominent “Open in ChatGPT” or “Open in Claude” link.
 
-Offer the five curated card styles: Margin notes, Electric risograph, Maker’s workbench, Midnight observatory, and Friendly lab. Use optimized local artwork, a short title, main highlights labeled as an AI summary, and one provider-aware footer: “A passage from ChatGPT worth sharing” or Claude. Margin notes is the initial default; remember the selected style in the browser and save it with each publication. Picker thumbnails use lightweight HTML with shared artwork and layout definitions. The selected full preview and published image must use the same server renderer, reviewed text, and style. Preserve already-published legacy cards and readers without restoring excerpt selection to the creation flow.
+Offer the five curated card styles: Margin notes, Electric risograph, Maker’s workbench, Midnight observatory, and Friendly lab. Use optimized local artwork, a short title, main highlights labeled as an AI summary, and one provider-aware footer: “A passage from ChatGPT worth sharing” or Claude. Margin notes is the initial default; remember the selected style in the browser and save it with each publication. Picker thumbnails use lightweight HTML with shared artwork and layout definitions. The selected full preview and published image must use the same server renderer, reviewed text, and style.
 
 Publish Open Graph and large-image social-card metadata, absolute public image URLs, appropriate image dimensions/content type, and noindex directives. Keep ordinary reader and image requests publicly accessible to unfurl crawlers. No directory, discovery feed, or sitemap of publications.
 
@@ -71,7 +71,7 @@ Use a few ordinary modules:
 | Presentation | Render the reader, initial HTML metadata, and deterministic card image |
 | Availability | Apply staleness, source-wide concurrency/cooldown, disable publications, invalidate caches |
 
-A provider adapter returns a shared message structure, not vendor HTML. Preserve supported Markdown and a stable plain-text representation for summarization. Store the generated title and highlights server-side. Card and publication requests contain the draft capability and validated card appearance; client-supplied text edits are rejected.
+A provider adapter returns the shared [saved message model](./MESSAGE_MODEL.md), not vendor HTML. Preserve Markdown in typed text blocks and derive plain text for summarization. Store the generated title and highlights server-side. Card and publication requests contain the draft capability and validated card appearance; client-supplied text edits are rejected.
 
 Suggested public routes are /, /chatgpt/[publicationId], /claude/[publicationId], and an image route per publication. Adapt API/action routes to the template. Route provider values must agree with the stored publication; never accept an arbitrary destination URL for an existing publication.
 
@@ -83,7 +83,7 @@ Treat this as a minimal design, not a prescribed set of TypeScript names:
 
 - **Sources:** provider, canonical URL/provider share identifier, latest snapshot reference, availability state, last attempted/definitive check times, retry deadline, and a short check lease/cooldown.
 - **Snapshots:** source reference, normalized messages, content hash, capture time, format/parser version, and cached generated preview.
-- **Publications:** opaque public ID, snapshot reference, final title and highlights, selected card template and format version, creation time, and disabled state/time as needed. Retain nullable legacy excerpt fields solely for previously published links.
+- **Publications:** opaque public ID, snapshot reference, final title and highlights, selected card template and format version, creation time, and disabled state/time as needed. Excerpt publications are unsupported; initial local records need no backward compatibility.
 - **Rate-limit records:** atomic counters/expiry for protected mutations. Expired records can be removed opportunistically.
 
 Index lookups and enforce uniqueness in the database. Reuse a source's saved snapshot during its seven-day freshness window, measured from snapshot capture rather than a later availability check. When a creation needs fresh content after that window, fetch it; reuse an identical snapshot or create a new one by content hash. Existing publications keep their original snapshots.
@@ -107,7 +107,7 @@ These are adjustable implementation defaults, not additional product decisions:
 | Highlights | Usually 2–3; at most 100 Unicode characters each; one for a very short source |
 | Upstream request timeout | 15 seconds, adjusted within the deployment's request budget |
 | Upstream response cap | 5 MiB; enforce while streaming, including decompressed data |
-| Normalized text cap | 1 MiB; reject oversized conversations clearly rather than silently losing turns |
+| Normalized transcript cap | 1 MiB encoded message JSON; reject oversized conversations clearly rather than silently losing turns |
 | Owned public response cache | No-store |
 | Model budget | GPT-5.4 nano, no reasoning or retries, 15 seconds, 700 output tokens, 20,000 encoded input characters |
 

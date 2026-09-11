@@ -31,7 +31,12 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "smoke": "tsx scripts/smoke.ts",
-    "smoke:removal": "tsx scripts/smoke-removal.ts"
+    "smoke:removal": "tsx scripts/smoke-removal.ts",
+    "dev:prod": "node --import tsx scripts/production.ts dev",
+    "build:prod": "node --import tsx scripts/production.ts build",
+    "start:prod": "node --import tsx scripts/production.ts start",
+    "db:migrate:prod": "node --import tsx scripts/production.ts migrate",
+    "db:check:prod": "node --import tsx scripts/production.ts check"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.50",

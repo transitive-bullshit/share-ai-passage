@@ -1,19 +1,29 @@
 {
   "source": {
     "title": "Discussing a small reading group",
-    "parserVersion": "summary-fixture-v1",
+    "parserVersion": "summary-fixture-v2",
     "messages": [
       {
         "id": "question",
-        "speaker": "user",
-        "text": "How could our reading group choose a monthly book without endless polling?",
-        "markdown": "How could our reading group choose a monthly book without endless polling?"
+        "type": "message",
+        "role": "user",
+        "content": [
+          {
+            "type": "input_text",
+            "text": "How could our reading group choose a monthly book without endless polling?"
+          }
+        ]
       },
       {
         "id": "answer",
-        "speaker": "assistant",
-        "text": "Try rotating the person who picks the book. Agree on a page limit first.",
-        "markdown": "Try rotating the person who picks the book. Agree on a page limit first."
+        "type": "message",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "output_text",
+            "text": "Try rotating the person who picks the book. Agree on a page limit first."
+          }
+        ]
       }
     ]
   },

@@ -1,5 +1,5 @@
-import type { Message, ProviderResult } from '../domain'
-import { finishConversation, message, record } from './normalize'
+import type { Message, MessageContent, ProviderResult } from '../domain'
+import { finishConversation, message, record, textContent } from './normalize'
 
 export function parseChatgpt(payload: unknown, status: number): ProviderResult {
   const data = record(payload)
@@ -43,31 +43,37 @@ export function parseChatgpt(payload: unknown, status: number): ProviderResult {
     if (metadata?.is_visually_hidden_from_conversation === true) continue
     if (!entry || !author || typeof entry.id !== 'string')
       throw new Error('ChatGPT returned a malformed message.')
-    const speaker = author.role
+    const role = author.role
     if (
-      speaker !== 'user' &&
-      speaker !== 'assistant' &&
-      speaker !== 'system' &&
-      speaker !== 'tool'
+      role !== 'user' &&
+      role !== 'assistant' &&
+      role !== 'system' &&
+      role !== 'developer' &&
+      role !== 'tool'
     ) {
-      throw new Error('ChatGPT returned an unsupported speaker label.')
+      throw new Error('ChatGPT returned an unsupported message role.')
     }
     const content = record(entry.content)
-    const pieces: string[] = []
-    const excerptPieces: string[] = []
-    const addText = (text: string) => {
-      pieces.push(text)
-      excerptPieces.push(text)
-    }
+    const parts: MessageContent[] = []
+    const addText = (text: string) => parts.push(textContent(role, text))
     if (Array.isArray(content?.parts)) {
       for (const part of content.parts) {
         if (typeof part === 'string') addText(part)
         else {
           const block = record(part)
-          if (block?.content_type === 'image_asset_pointer')
-            pieces.push('[Image omitted]')
-          else if (typeof block?.text === 'string') addText(block.text)
-          else pieces.push('[Unsupported media omitted]')
+          if (block?.content_type === 'image_asset_pointer') {
+            parts.push({
+              type: 'omitted',
+              kind: 'image',
+              reason: 'not_exposed'
+            })
+          } else if (typeof block?.text === 'string') addText(block.text)
+          else
+            parts.push({
+              type: 'omitted',
+              kind: 'unknown',
+              reason: 'unsupported'
+            })
         }
       }
     } else if (typeof content?.text === 'string') {
@@ -77,30 +83,27 @@ export function parseChatgpt(payload: unknown, status: number): ProviderResult {
           : content.text
       )
     } else {
-      pieces.push('[Unsupported content omitted]')
+      parts.push({ type: 'omitted', kind: 'unknown', reason: 'unsupported' })
     }
     if (Array.isArray(metadata?.attachments) && metadata.attachments.length) {
-      pieces.push(
-        `[${metadata.attachments.length} attachment${metadata.attachments.length === 1 ? '' : 's'} omitted]`
-      )
+      parts.push({
+        type: 'omitted',
+        kind: 'file',
+        reason: 'not_exposed',
+        count: metadata.attachments.length
+      })
     }
-    if (speaker === 'tool')
-      pieces.unshift('[Tool output; interactive content omitted]')
-    messages.push(
-      message(
-        entry.id,
-        speaker,
-        pieces.join('\n\n'),
-        excerptPieces.join('\n\n')
-      )
-    )
+    if (role === 'tool') {
+      parts.unshift({ type: 'omitted', kind: 'tool', reason: 'unsupported' })
+    }
+    messages.push(message(entry.id, role, parts))
   }
   return {
     status: 'available',
     conversation: finishConversation(
       data.title,
       messages,
-      'chatgpt-public-json-v1'
+      'chatgpt-public-json-v2'
     )
   }
 }

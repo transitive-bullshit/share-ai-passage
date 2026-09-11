@@ -8,6 +8,8 @@ Audited September 11, 2026 against the initial plan at `5a46c91`, the revised [M
 
 The original plan's central promise remains intact: paste a public AI conversation, review an attractive preview, publish one stable link, and let someone read the saved conversation with its source. Read-only AI highlights, public Codex support, the CLI, and five curated card styles were subsequent approved changes. They are assessed as the current product, rather than treating the original excerpt editor, fallback summary, or single template as missing features.
 
+Production setup update: Neon Free is configured in Ohio on PostgreSQL 18, with the checked-in migrations applied, a fixed 0.25-CU production compute, and five-minute idle suspension. Explicit local production commands are available; see [production setup](PRODUCTION.md). Vercel project creation is intentionally deferred until branding is settled.
+
 ## The main user journeys
 
 | Journey | Readiness | Evidence and practical limit |
@@ -38,7 +40,7 @@ The [GitHub Actions run for `9976991`](https://github.com/transitive-bullshit/ai
 
 ## Remaining launch gates, in order
 
-1. **Create production Postgres and apply migrations.** Recommended: Neon Launch, one small database in the Vercel function region, pooled runtime URL, direct migration URL, and seven-day restore history. Validate an isolated restore. [Hosting recommendation](POSTGRES_HOSTING.md).
+1. **Verify production recovery.** Neon production and migrations are configured. Validate recovery within Free’s six-hour history limit and retain an independent backup. The current local `pg_dump` is 17.4; this server needs an 18+ dump client. Compare quotas and paid alternatives before upgrading. [Production setup](PRODUCTION.md), [hosting comparison](POSTGRES_HOSTING.md).
 2. **Configure the Vercel project and stable public origin.** Use Node 24, install with the frozen pnpm lockfile, and build with `pnpm build`. Set Production `APP_URL`, `DATABASE_URL`, a stable random `APP_SECRET` of at least 32 characters, `OPENAI_API_KEY`, `AI_PROVIDER=openai`, and `AI_MODEL=gpt-5.4-nano`. `TRUST_PROXY=vercel` is an explicit supported setting; an unset value now selects it automatically on Vercel. Give Preview its own origin/database if used. A database region near the functions matters more than adding another service. [Vercel runtime](https://vercel.com/docs/functions/runtimes/node-js/node-js-versions).
 3. **Ensure anonymous access to the actual share domain.** Readers and `/image` routes must work without Vercel login, a bypass token, a password, or a bot challenge. Do not use an authentication-protected deployment URL for `APP_URL`. Vercel can now protect production domains on every plan, so verify the actual project setting. [Deployment protection](https://vercel.com/docs/deployment-protection), [September 2026 change](https://vercel.com/changelog/protect-production-deployments-for-free-on-every-plan).
 4. **Run one real end-to-end creation per source format from production.** Use an ordinary ChatGPT share, a public Codex share, and a Claude share. Confirm extraction, generated title/highlights, loaded card, publication, copy/open, faithful transcript, original-source link, and the same style after reload. Repeat publication once to confirm idempotency. This deliberately exercises live model calls and is separate from free tests.

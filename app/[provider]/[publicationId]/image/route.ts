@@ -17,21 +17,12 @@ export async function GET(
       headers: privateHeaders
     })
   if (record.disabled) return renderCard({ disabled: true })
-  if (record.preview) {
-    return renderCard(
-      {
-        title: record.preview.title,
-        highlights: record.preview.highlights,
-        provider: record.source.provider
-      },
-      record.publication.appearance ?? undefined
-    )
-  }
-  if (!record.excerpt) return renderCard({ disabled: true })
-  return renderCard({
-    title: record.publication.title,
-    excerpt: record.excerpt.text,
-    speaker: record.excerpt.speaker,
-    provider: record.source.provider
-  })
+  return renderCard(
+    {
+      title: record.preview.title,
+      highlights: record.preview.highlights,
+      provider: record.source.provider
+    },
+    record.publication.appearance ?? undefined
+  )
 }

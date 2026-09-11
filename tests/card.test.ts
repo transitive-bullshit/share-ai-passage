@@ -131,32 +131,19 @@ it.each(fullLengthCopyCases)(
   }
 )
 
-it('preserves legacy excerpt cards and uses a generic disabled card', async () => {
+it('uses a generic disabled card', async () => {
   vi.stubGlobal(
     'fetch',
     vi.fn(() => {
       throw new Error('Unexpected network request')
     })
   )
-  const full = await renderCard({
-    title: '你好世界'.repeat(15),
-    excerpt: '这是一个值得分享的对话。'.repeat(20),
-    provider: 'chatgpt',
-    speaker: 'user'
-  })
-  const legacyNodes = layouts.at(-1)!
-  const legacyText = legacyNodes.flatMap((node) => node.textContent ?? [])
-  expect(legacyText).toContain('Human')
-  expect(legacyText).toContain('A passage from ChatGPT worth sharing')
-  expect(legacyText.join(' ')).not.toContain('A conversation with')
-  expect(legacyText).not.toContain('AI SUMMARY')
   const disabled = await renderCard({ disabled: true })
   const disabledText = layouts.at(-1)!.flatMap((node) => node.textContent ?? [])
   expect(disabledText).toContain('This conversation is unavailable')
   expect(disabledText).toContain('Original unavailable')
   expect(disabledText.join(' ')).not.toMatch(/ChatGPT|Claude|A passage from/u)
   expect(disabledText).not.toContain('AI SUMMARY')
-  expect((await full.arrayBuffer()).byteLength).toBeGreaterThan(5000)
   expect(disabled.headers.get('cache-control')).toContain('no-store')
   expect((await disabled.arrayBuffer()).byteLength).toBeGreaterThan(5000)
 })
@@ -246,22 +233,17 @@ it.each(
   expect((await response.arrayBuffer()).byteLength).toBeGreaterThan(20_000)
 })
 
-it('does not apply an appearance to disabled or legacy excerpt cards', async () => {
-  for (const data of [
-    { disabled: true as const },
-    {
-      title: 'An existing conversation',
-      excerpt: 'An unchanged passage.',
-      speaker: 'user' as const,
-      provider: 'chatgpt' as const
-    }
-  ]) {
-    const plain = Buffer.from(await (await renderCard(data)).arrayBuffer())
-    const themed = Buffer.from(
-      await (
-        await renderCard(data, { templateId: 'midnight-observatory' })
-      ).arrayBuffer()
-    )
-    expect(themed.equals(plain)).toBe(true)
-  }
+it('does not apply an appearance to disabled cards', async () => {
+  const plain = Buffer.from(
+    await (await renderCard({ disabled: true })).arrayBuffer()
+  )
+  const themed = Buffer.from(
+    await (
+      await renderCard(
+        { disabled: true },
+        { templateId: 'midnight-observatory' }
+      )
+    ).arrayBuffer()
+  )
+  expect(themed.equals(plain)).toBe(true)
 })

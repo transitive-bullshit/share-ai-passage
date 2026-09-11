@@ -10,13 +10,20 @@ function renderMessage(markdown: string, options: Partial<Message> = {}) {
     createElement(SavedMessage, {
       message: {
         id: 'message-1',
-        speaker: 'assistant',
-        markdown,
-        text: markdown,
+        type: 'message',
+        role: 'assistant',
+        content: [
+          {
+            type:
+              options.role && options.role !== 'assistant'
+                ? 'input_text'
+                : 'output_text',
+            text: markdown
+          }
+        ],
         ...options
       },
-      index: 0,
-      selected: true
+      index: 0
     })
   )
 }
@@ -116,13 +123,37 @@ describe('safe, faithful conversation reader', () => {
     expect(html).not.toContain('<script>')
   })
 
-  it('keeps original speaker labels and explicit unsupported-content markers visible', () => {
-    const html = renderMessage('[Attachment omitted: research.pdf]', {
-      speaker: 'user',
-      text: ''
+  it('keeps input text and omitted content in source order with its original role', () => {
+    const html = renderMessage('', {
+      role: 'user',
+      content: [
+        { type: 'input_text', text: 'Compare these examples.' },
+        { type: 'omitted', kind: 'image', reason: 'not_exposed', count: 2 },
+        { type: 'input_text', text: 'Use the attached reference.' },
+        { type: 'omitted', kind: 'file', reason: 'unsupported' }
+      ]
     })
     expect(html).toContain('aria-label="Human, message 1"')
-    expect(html).toContain('[Attachment omitted: research.pdf]')
-    expect(html).toContain('SELECTED PASSAGE')
+    expect(html).toContain('[2 images omitted]')
+    expect(html).toContain('[Attachment omitted]')
+    expect(html.indexOf('Compare these examples.')).toBeLessThan(
+      html.indexOf('[2 images omitted]')
+    )
+    expect(html.indexOf('[2 images omitted]')).toBeLessThan(
+      html.indexOf('Use the attached reference.')
+    )
+    expect(html.indexOf('Use the attached reference.')).toBeLessThan(
+      html.indexOf('[Attachment omitted]')
+    )
+    expect(html).not.toMatch(/<(?:img|audio|video|iframe)\b/i)
+  })
+
+  it('labels developer messages without treating them as assistant replies', () => {
+    const html = renderMessage('Answer with a short explanation.', {
+      role: 'developer'
+    })
+    expect(html).toContain('aria-label="Developer, message 1"')
+    expect(html).toContain('data-speaker="developer"')
+    expect(html).toContain('Answer with a short explanation.')
   })
 })

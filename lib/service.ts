@@ -18,7 +18,6 @@ import {
 import { limits, type ProviderResult } from './domain'
 import { createDraftToken, previewHash, readDraftToken } from './drafts'
 import { AppError } from './errors'
-import { excerptFor } from './preview'
 import { fetchSource, parseSourceUrl } from './providers'
 import { suggestPreview } from './suggestions'
 import { validateGeneratedPreview } from './summary'
@@ -455,30 +454,11 @@ export async function getPublication(provider: string, id: string) {
   const disabled =
     !!record.publication.disabledAt ||
     record.source.availability !== 'available'
-  const preview = record.publication.highlights
-    ? validateGeneratedPreview({
-        title: record.publication.title,
-        highlights: record.publication.highlights
-      })
-    : null
-  const selection =
-    record.publication.messageId !== null &&
-    record.publication.excerptStart !== null &&
-    record.publication.excerptEnd !== null
-      ? {
-          title: record.publication.title,
-          messageId: record.publication.messageId,
-          start: record.publication.excerptStart,
-          end: record.publication.excerptEnd
-        }
-      : null
-  return {
-    ...record,
-    selection,
-    preview,
-    excerpt: selection ? excerptFor(record.snapshot.messages, selection) : null,
-    disabled
-  }
+  const preview = validateGeneratedPreview({
+    title: record.publication.title,
+    highlights: record.publication.highlights
+  })
+  return { ...record, preview, disabled }
 }
 
 export async function checkAvailability(

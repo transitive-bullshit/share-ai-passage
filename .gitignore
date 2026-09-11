@@ -12,6 +12,7 @@
 
 # next.js
 /.next/
+/.next-prod/
 /out/
 next-env.d.ts
 
@@ -40,6 +41,7 @@ yarn-error.log*
 .env.development.local
 .env.test.local
 .env.production.local
+.env.prod.local
 
 # vercel
 .vercel

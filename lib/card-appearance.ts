@@ -5,6 +5,7 @@ import {
 } from './social-templates'
 
 export type CardAppearance = {
+  /** Curated design used to render the social card. */
   templateId: SocialTemplateId
 }
 

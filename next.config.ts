@@ -11,6 +11,9 @@ const shapingWasm = relative(
 )
 
 const config: NextConfig = {
+  // Explicit local production runs keep their build separate from development.
+  distDir:
+    process.env.PASSAGE_PRODUCTION_LOCAL === '1' ? '.next-prod' : '.next',
   serverExternalPackages: ['@resvg/resvg-js', 'satori'],
   // The renderer reads catalog-selected files at runtime. Keep them in
   // production Node.js route bundles, including Vercel functions.

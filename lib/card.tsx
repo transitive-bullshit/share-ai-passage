@@ -6,7 +6,7 @@ import satori from 'satori'
 
 import type { CardAppearance } from './card-appearance'
 import { cardFonts } from './card-fonts'
-import { providerNames, type Message, type Provider } from './domain'
+import { providerNames, type Provider } from './domain'
 import { privateHeaders } from './http'
 import { getSocialTemplate, type SocialTemplate } from './social-templates'
 
@@ -19,24 +19,6 @@ export type CardData =
       example?: boolean
       disabled?: false
     }
-  | {
-      title: string
-      excerpt: string
-      speaker: Message['speaker']
-      provider: Provider
-      example?: boolean
-      disabled?: false
-    }
-
-function speakerLabel(speaker: Message['speaker'], provider: Provider) {
-  return speaker === 'assistant'
-    ? providerNames[provider]
-    : speaker === 'user'
-      ? 'Human'
-      : speaker === 'tool'
-        ? 'Tool'
-        : 'System'
-}
 
 function footerText(data: CardData) {
   return data.disabled
@@ -47,12 +29,7 @@ function footerText(data: CardData) {
 function Card({ data, scale = 1 }: { data: CardData; scale?: number }) {
   const disabled = data.disabled
   const title = disabled ? 'This conversation is unavailable' : data.title
-  const highlights = !disabled && 'highlights' in data ? data.highlights : null
-  const excerpt = disabled
-    ? 'The original is no longer publicly available. Its saved conversation and preview have been disabled.'
-    : 'excerpt' in data
-      ? data.excerpt
-      : null
+  const highlights = disabled ? null : data.highlights
   return (
     <div
       style={{
@@ -206,25 +183,11 @@ function Card({ data, scale = 1 }: { data: CardData; scale?: number }) {
                 overflowWrap: 'anywhere'
               }}
             >
-              {excerpt}
+              The original is no longer publicly available. Its saved
+              conversation and preview have been disabled.
             </div>
           </div>
         )}
-        {!disabled && 'speaker' in data ? (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              paddingLeft: 26,
-              fontSize: 17,
-              color: '#737373'
-            }}
-          >
-            <span style={{ width: 20, height: 1, background: '#a3a3a3' }} />
-            <span>{speakerLabel(data.speaker, data.provider)}</span>
-          </div>
-        ) : null}
       </div>
       <div
         id='card-footer'
@@ -509,16 +472,15 @@ function cardBackground(template: SocialTemplate) {
 export async function renderCard(data: CardData, appearance?: CardAppearance) {
   const text = data.disabled
     ? 'This conversation is unavailable The original is no longer publicly available. Its saved conversation and preview have been disabled. Saved conversation Original unavailable Passage'
-    : `${data.title} ${'highlights' in data ? `AI SUMMARY ${data.highlights.join(' ')}` : `${data.excerpt} ${speakerLabel(data.speaker, data.provider)}`} ${data.example ? 'Example conversation ' : ''}${footerText(data)} Passage`
-  // An absent appearance is a published legacy card. Disabled and excerpt
-  // cards also retain their original, generic rendering.
+    : `${data.title} AI SUMMARY ${data.highlights.join(' ')} ${data.example ? 'Example conversation ' : ''}${footerText(data)} Passage`
+  // Keep unthemed publications and disabled cards on the original layout.
   const template =
-    appearance && !data.disabled && 'highlights' in data
+    appearance && !data.disabled
       ? getSocialTemplate(appearance.templateId)
       : undefined
   const [fonts, background] = await Promise.all([
     cardFonts(
-      template?.layout.marker === 'number' && 'highlights' in data
+      template?.layout.marker === 'number' && !data.disabled
         ? `${text} ${data.highlights.map((_, index) => String(index + 1).padStart(2, '0')).join(' ')}`
         : text,
       template ? [template.font.title, template.font.body] : undefined
@@ -528,7 +490,7 @@ export async function renderCard(data: CardData, appearance?: CardAppearance) {
   const maxHeight = template?.layout.copy.maxHeight ?? 407
   let scale = 1
   let svg = ''
-  // Fit every summary highlight or legacy passage, including wide glyphs and long words.
+  // Fit every highlight, including wide glyphs and long words.
   // Keep the layout identical for draft previews and public PNGs.
   for (let attempt = 0; attempt < 8; attempt++) {
     let copyHeight = 0

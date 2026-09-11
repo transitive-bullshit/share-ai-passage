@@ -7,6 +7,7 @@ import nextEnv from '@next/env'
 import { and, eq } from 'drizzle-orm'
 
 import { renderCard } from '../lib/card'
+import type { CardAppearance } from '../lib/card-appearance'
 import { closeDatabase, getDb } from '../lib/db'
 import { publications, snapshots, sources } from '../lib/db/schema'
 import { createDraftToken } from '../lib/drafts'
@@ -19,18 +20,15 @@ const sourceId = randomUUID()
 const sourceShareId = randomUUID()
 const snapshotId = randomUUID()
 const publicationIds = [randomUUID(), randomUUID()]
-const titles = [`Removal A ${sourceShareId}`, `Removal B ${sourceShareId}`]
+const appearances: CardAppearance[] = [
+  { templateId: 'margin-notes' },
+  { templateId: 'midnight-observatory' }
+]
 const marker = `REMOVAL_MARKER_${sourceShareId.replaceAll('-', '')}`
 const text = `Synthetic transcript ${marker}. This authored fixture checks removal enforcement only.`
 const canonicalUrl = `https://chatgpt.com/share/${sourceShareId}`
-const selection = {
-  title: titles[0]!,
-  messageId: 'synthetic-1',
-  start: 0,
-  end: Array.from(text).length
-}
 const preview = {
-  title: titles[1]!,
+  title: `Removal ${sourceShareId}`,
   highlights: [
     `This synthetic fixture checks removal for ${marker}.`,
     'Confirmed source removal disables saved readers and social previews.'
@@ -98,7 +96,7 @@ function sharePath(id: string) {
 function assertNoSavedContent(value: string) {
   verify(
     !value.includes(marker) &&
-      titles.every((title) => !value.includes(title)) &&
+      !value.includes(preview.title) &&
       preview.highlights.every((highlight) => !value.includes(highlight)),
     'A disabled response exposed its original title, summary, or transcript marker.'
   )
@@ -219,13 +217,17 @@ try {
     await tx.insert(snapshots).values({
       id: snapshotId,
       sourceId,
-      title: titles[0]!,
+      title: preview.title,
       contentHash: createHash('sha256').update(text).digest('hex'),
       messages: [
-        { id: selection.messageId, speaker: 'assistant', markdown: text, text }
+        {
+          id: 'synthetic-1',
+          type: 'message',
+          role: 'assistant',
+          content: [{ type: 'output_text', text }]
+        }
       ],
       parserVersion: 'synthetic-removal-smoke-v1',
-      suggestion: selection,
       preview,
       capturedAt: now
     })
@@ -239,14 +241,9 @@ try {
         sourceId,
         snapshotId,
         fingerprint: randomUUID(),
-        title: titles[index]!,
-        ...(index === 0
-          ? {
-              messageId: selection.messageId,
-              excerptStart: selection.start,
-              excerptEnd: selection.end
-            }
-          : { highlights: preview.highlights, cardVersion: 2 })
+        ...preview,
+        appearance: appearances[index]!,
+        cardVersion: 3
       }))
     )
   })
@@ -257,54 +254,43 @@ try {
   for (const [index, id] of publicationIds.entries()) {
     const html = await readText(await request(sharePath(id)))
     verify(
-      html.includes(titles[index]!) && html.includes(marker),
+      html.includes(preview.title) && html.includes(marker),
       'The active fixture must expose its authored title and transcript before removal.'
     )
-    if (index === 0) {
-      verify(
-        html.includes('class="reader-excerpt"') &&
-          html.includes('SELECTED PASSAGE') &&
-          !html.includes('class="reader-summary"'),
-        'The legacy publication must preserve its original excerpt presentation.'
-      )
-    } else {
-      verify(
-        html.includes('class="reader-summary"') &&
-          preview.highlights.every((highlight) => html.includes(highlight)) &&
-          !html.includes('class="reader-excerpt"') &&
-          !html.includes('SELECTED PASSAGE'),
-        'The generated publication must display its AI summary without quote attribution.'
-      )
-    }
+    verify(
+      html.includes('class="reader-summary"') &&
+        preview.highlights.every((highlight) => html.includes(highlight)),
+      'The publication must display its saved AI summary.'
+    )
     const componentResponse = await rsc(sharePath(id))
     verify(
       componentResponse.includes(marker),
       'The active RSC fixture must contain the authored transcript before removal.'
     )
     activeDigests.push(await pngDigest(await request(`${sharePath(id)}/image`)))
+    const draftCardDigest = await pngDigest(
+      await request('/api/card', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Origin: appOrigin,
+          'Sec-Fetch-Site': 'same-origin'
+        },
+        body: JSON.stringify({ draftToken, appearance: appearances[index]! })
+      })
+    )
+    verify(
+      draftCardDigest === activeDigests[index],
+      'The styled draft card must match its active publication card.'
+    )
   }
   verify(
     activeDigests[0] !== activeDigests[1],
-    'The active legacy excerpt and generated summary must produce distinct cards.'
-  )
-  const draftCardDigest = await pngDigest(
-    await request('/api/card', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Origin: appOrigin,
-        'Sec-Fetch-Site': 'same-origin'
-      },
-      body: JSON.stringify({ draftToken })
-    })
-  )
-  verify(
-    draftCardDigest === activeDigests[1],
-    'The stored generated preview must match its active publication card.'
+    'The same generated preview must produce distinct cards for different styles.'
   )
   report.checks.activeReaderRscAndDistinctCards = 'passed'
-  report.checks.legacyAndGeneratedPresentation = 'passed'
-  report.checks.generatedDraftMatchesPublication = 'passed'
+  report.checks.generatedSummaryPresentation = 'passed'
+  report.checks.styledDraftsMatchPublications = 'passed'
 
   stage = 'simulate confirmed source unavailability'
   // This tests HTTP presentation enforcement. The provider evidence, source leases,
