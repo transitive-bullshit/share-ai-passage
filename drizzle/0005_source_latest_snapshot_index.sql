@@ -1,0 +1,1 @@
+CREATE INDEX "sources_latest_snapshot_idx" ON "sources" USING btree ("latest_snapshot_id");

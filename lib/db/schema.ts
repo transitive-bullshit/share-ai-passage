@@ -90,6 +90,7 @@ export const sources = pgTable(
       table.providerShareId
     ),
     index('sources_updated_at_idx').on(table.updatedAt),
+    index('sources_latest_snapshot_idx').on(table.latestSnapshotId),
     check(
       'sources_generation_nonnegative',
       sql`${table.publicationGeneration} >= 0`
