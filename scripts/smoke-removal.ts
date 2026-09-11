@@ -12,6 +12,7 @@ import { appUrl } from '../lib/config'
 import { closeDatabase, getDb } from '../lib/db'
 import { publications, snapshots, sources } from '../lib/db/schema'
 import { createDraftToken } from '../lib/drafts'
+import { webpDimensions } from '../lib/webp'
 
 const projectDirectory = fileURLToPath(new URL('..', import.meta.url))
 nextEnv.loadEnvConfig(projectDirectory)
@@ -109,23 +110,18 @@ async function readText(response: Response) {
   return response.text()
 }
 
-async function pngDigest(response: Response) {
+async function webpDigest(response: Response) {
   verify(response.status === 200, `Card returned HTTP ${response.status}.`)
   privateResponse(response)
   verify(
-    response.headers.get('content-type')?.startsWith('image/png'),
-    'The card must be served as image/png.'
+    response.headers.get('content-type')?.startsWith('image/webp'),
+    'The card must be served as image/webp.'
   )
   const bytes = Buffer.from(await response.arrayBuffer())
+  const dimensions = webpDimensions(bytes)
+  verify(dimensions, 'The card has no valid WebP dimension header.')
   verify(
-    bytes.length >= 24 &&
-      bytes
-        .subarray(0, 8)
-        .equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])),
-    'The card must contain PNG bytes.'
-  )
-  verify(
-    bytes.readUInt32BE(16) === 1200 && bytes.readUInt32BE(20) === 630,
+    dimensions.width === 1200 && dimensions.height === 630,
     'The card must be 1200 by 630 pixels.'
   )
   return createHash('sha256').update(bytes).digest('hex')
@@ -167,7 +163,11 @@ async function rsc(route: string) {
   return readText(response)
 }
 
-async function rejectedDraft(route: string, draftToken: string) {
+async function rejectedDraft(
+  route: string,
+  draftToken: string,
+  format?: 'html'
+) {
   const response = await request(route, {
     method: 'POST',
     headers: {
@@ -175,7 +175,7 @@ async function rejectedDraft(route: string, draftToken: string) {
       Origin: appOrigin,
       'Sec-Fetch-Site': 'same-origin'
     },
-    body: JSON.stringify({ draftToken })
+    body: JSON.stringify({ draftToken, format })
   })
   verify(
     response.status === 410,
@@ -268,8 +268,10 @@ try {
       componentResponse.includes(marker),
       'The active RSC fixture must contain the authored transcript before removal.'
     )
-    activeDigests.push(await pngDigest(await request(`${sharePath(id)}/image`)))
-    const draftCardDigest = await pngDigest(
+    activeDigests.push(
+      await webpDigest(await request(`${sharePath(id)}/image`))
+    )
+    const draftCardDigest = await webpDigest(
       await request('/api/card', {
         method: 'POST',
         headers: {
@@ -313,7 +315,7 @@ try {
       .where(eq(publications.sourceId, sourceId))
   })
 
-  const genericDigest = await pngDigest(await renderCard({ disabled: true }))
+  const genericDigest = await webpDigest(await renderCard({ disabled: true }))
   stage = 'disabled reader, HEAD, crawler, RSC, and cache variants'
   for (const [index, id] of publicationIds.entries()) {
     const route = sharePath(id)
@@ -330,7 +332,7 @@ try {
         (await head.text()).length === 0,
         'HEAD must not contain a response body.'
       )
-      const digest = await pngDigest(await request(`${route}/image${suffix}`))
+      const digest = await webpDigest(await request(`${route}/image${suffix}`))
       verify(
         digest === genericDigest && digest !== activeDigests[index],
         'A disabled image must serve only the generic unavailable card.'
@@ -362,6 +364,7 @@ try {
 
   stage = 'disabled draft preview and publish endpoints'
   await rejectedDraft('/api/card', draftToken)
+  await rejectedDraft('/api/card', draftToken, 'html')
   await rejectedDraft('/api/publish', draftToken)
   report.checks.staleDraftPreviewAndPublish410 = 'passed'
 
@@ -378,13 +381,14 @@ try {
   for (const id of publicationIds) {
     await unavailableReader(`${sharePath(id)}?recovered=${randomUUID()}`)
     verify(
-      (await pngDigest(
+      (await webpDigest(
         await request(`${sharePath(id)}/image?recovered=${randomUUID()}`)
       )) === genericDigest,
       'Source recovery must not revive an old publication card.'
     )
   }
   await rejectedDraft('/api/card', draftToken)
+  await rejectedDraft('/api/card', draftToken, 'html')
   await rejectedDraft('/api/publish', draftToken)
   report.checks.recoveredSourceKeepsOldPublicationsDisabled = 'passed'
   report.status = 'passed'

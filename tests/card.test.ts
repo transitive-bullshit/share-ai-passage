@@ -1,60 +1,135 @@
-import { createElement } from 'react'
-import satori, { type SatoriNode } from 'satori'
+import type { ReactElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
+import { render, type MeasuredNode, type Node } from 'takumi-js'
+import { fromJsx } from 'takumi-js/helpers/jsx'
+import { Renderer } from 'takumi-js/node'
 
-import { afterEach, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
-import { renderCard } from '@/lib/card'
+import { renderCard, renderCardPreview } from '@/lib/card'
 import { cardFonts } from '@/lib/card-fonts'
+import { cardFontFamily } from '@/lib/social-card'
 import { socialTemplates } from '@/lib/social-templates'
+import { webpDimensions } from '@/lib/webp'
 
-const layouts = vi.hoisted(() => [] as SatoriNode[][])
+type Layout = {
+  node: Node
+  left: number
+  top: number
+  width: number
+  height: number
+}
+const layouts = new Map<Node, Layout[]>()
+// oxlint-disable-next-line typescript/unbound-method -- call preserves the renderer receiver.
+const measure = Renderer.prototype.measure
 
-vi.mock('satori', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('satori')>()
-  return {
-    ...actual,
-    default: ((element, options) => {
-      const nodes: SatoriNode[] = []
-      layouts.push(nodes)
-      return actual.default(element, {
-        ...options,
-        onNodeDetected(node) {
-          nodes.push(node)
-          options.onNodeDetected?.(node)
-        }
-      })
-    }) satisfies typeof satori
-  }
+function flattenLayout(
+  node: Node,
+  measured: MeasuredNode,
+  left = 0,
+  top = 0
+): Layout[] {
+  left += measured.transform[4]
+  top += measured.transform[5]
+  return [
+    {
+      node,
+      left,
+      top,
+      width: measured.width,
+      height: measured.height
+    },
+    ...('children' in node ? (node.children ?? []) : []).flatMap(
+      (child, index) =>
+        flattenLayout(child, measured.children[index]!, left, top)
+    )
+  ]
+}
+
+function renderedLayout() {
+  const node = vi.mocked(render).mock.lastCall![0] as Node
+  return layouts.get(node)!
+}
+
+function layoutText(nodes = renderedLayout()) {
+  return nodes.flatMap(({ node }) => (node.type === 'text' ? [node.text] : []))
+}
+
+vi.mock('takumi-js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('takumi-js')>()
+  return { ...actual, render: vi.fn<typeof render>(actual.render) }
+})
+
+vi.mock('takumi-js/helpers/jsx', { spy: true })
+
+beforeEach(() => {
+  vi.spyOn(Renderer.prototype, 'measure').mockImplementation(
+    async function (this: Renderer, node, options) {
+      const measured = await measure.call(this, node, options)
+      layouts.set(node, flattenLayout(node, measured))
+      return measured
+    }
+  )
+  vi.mocked(render).mockClear()
+  vi.mocked(fromJsx).mockClear()
 })
 
 afterEach(() => {
+  vi.restoreAllMocks()
   vi.unstubAllGlobals()
-  layouts.length = 0
+  layouts.clear()
 })
 
-it('finds every glyph across bundled Chinese font subsets', async () => {
+const titleFonts = [
+  ...new Map(
+    socialTemplates.map(({ font }) => [font.title.family, font.title])
+  ).values()
+]
+
+it.each(titleFonts)(
+  'keeps mixed-script $family titles within the selected bundled font stack',
+  async (font) => {
+    const text = 'Καλημέρα Привет 你好 🌱'
+    const fonts = await cardFonts(text, [font])
+    const families = Array.from(
+      cardFontFamily(font.family).matchAll(/"([^"]+)"/gu),
+      (match) => match[1]
+    )
+    const missing = Array.from(text).filter((character) => {
+      const point = character.codePointAt(0)!
+      return !fonts.some(
+        ({ subsetOf, ranges }) =>
+          families.includes(subsetOf) &&
+          ranges.some(([start, end]) => point >= start && point <= end)
+      )
+    })
+    expect(missing).toEqual([])
+  }
+)
+
+it('covers Chinese copy with uniquely registered bundled font subsets', async () => {
   const text = 'Python 在容器中的線索：有幾種方法可以在運行時檢測環境。你好世界'
-  const missing: string[] = []
-  await satori(
-    createElement(
-      'div',
-      { style: { fontFamily: 'Inter', fontSize: 30 } },
-      text
-    ),
-    {
-      width: 1200,
-      height: 200,
-      fonts: await cardFonts(text),
-      async loadAdditionalAsset(_language, characters) {
-        missing.push(characters)
-        return []
-      }
-    }
-  )
+  const fonts = await cardFonts(text)
+  expect(new Set(fonts.map(({ name }) => name)).size).toBe(fonts.length)
+  expect(
+    fonts.filter(({ subsetOf }) => subsetOf === 'Noto Sans SC').length
+  ).toBeGreaterThan(1)
+  const missing = Array.from(text).filter((character) => {
+    const point = character.codePointAt(0)!
+    return !fonts.some(({ ranges }) =>
+      ranges.some(([start, end]) => point >= start && point <= end)
+    )
+  })
   expect(missing).toEqual([])
+  await renderCard({
+    title: text,
+    highlights: ['你好世界'],
+    provider: 'chatgpt'
+  })
+  expect(layoutText()).toContain(text)
 })
 
-it('renders the legacy layout as a private 1200 × 630 PNG offline', async () => {
+it('renders the legacy layout as a private 1200 × 630 WebP offline', async () => {
   const fetch = vi.fn<typeof globalThis.fetch>(() => {
     throw new Error('Card rendering must be offline')
   })
@@ -69,13 +144,11 @@ it('renders the legacy layout as a private 1200 × 630 PNG offline', async () =>
   }
   const first = await renderCard(data)
   const bytes = Buffer.from(await first.arrayBuffer())
-  expect(first.headers.get('content-type')).toBe('image/png')
+  expect(first.headers.get('content-type')).toBe('image/webp')
   expect(first.headers.get('cache-control')).toContain('no-store')
-  expect(bytes.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a')
-  expect(bytes.readUInt32BE(16)).toBe(1200)
-  expect(bytes.readUInt32BE(20)).toBe(630)
+  expect(webpDimensions(bytes)).toEqual({ width: 1200, height: 630 })
   expect(fetch).not.toHaveBeenCalled()
-  const text = layouts.at(-1)!.flatMap((node) => node.textContent ?? [])
+  const text = layoutText()
   expect(text).toEqual(
     expect.arrayContaining([
       'AI SUMMARY',
@@ -109,12 +182,16 @@ it.each(fullLengthCopyCases)(
   'fits every summary highlight above the footer with $name',
   async (data) => {
     await renderCard({ ...data, provider: 'chatgpt' })
-    const nodes = layouts.at(-1)!
-    const copy = nodes.find((node) => node.props.id === 'card-copy')!
-    const footer = nodes.find((node) => node.props.id === 'card-footer')!
+    const nodes = renderedLayout()
+    const copy = nodes.find(
+      (node) => node.node.className === 'social-card-copy'
+    )!
+    const footer = nodes.find(
+      (node) => node.node.className === 'social-card-footer'
+    )!
     expect(copy.height).toBeLessThanOrEqual(407)
     expect(copy.top + copy.height).toBeLessThan(footer.top)
-    expect(nodes.flatMap((node) => node.textContent ?? [])).toEqual(
+    expect(layoutText(nodes)).toEqual(
       expect.arrayContaining([
         data.title,
         ...data.highlights,
@@ -132,7 +209,7 @@ it('uses the same generic disabled card regardless of saved appearance', async (
     })
   )
   const disabled = await renderCard({ disabled: true })
-  const disabledText = layouts.at(-1)!.flatMap((node) => node.textContent ?? [])
+  const disabledText = layoutText()
   expect(disabledText).toContain('This conversation is unavailable')
   expect(disabledText).toContain('Original unavailable')
   expect(disabledText.join(' ')).not.toMatch(/ChatGPT|Claude|A passage from/u)
@@ -162,13 +239,11 @@ it.each(socialTemplates)(
     }
     const response = await renderCard(data, { templateId: template.id })
     const bytes = Buffer.from(await response.arrayBuffer())
-    expect(response.headers.get('content-type')).toBe('image/png')
-    expect(bytes.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a')
-    expect(bytes.readUInt32BE(16)).toBe(1200)
-    expect(bytes.readUInt32BE(20)).toBe(630)
+    expect(response.headers.get('content-type')).toBe('image/webp')
+    expect(webpDimensions(bytes)).toEqual({ width: 1200, height: 630 })
     expect(fetch).not.toHaveBeenCalled()
-    const nodes = layouts.at(-1)!
-    expect(nodes.flatMap((node) => node.textContent ?? [])).toEqual(
+    const nodes = renderedLayout()
+    expect(layoutText(nodes)).toEqual(
       expect.arrayContaining([
         data.title,
         ...data.highlights,
@@ -177,13 +252,22 @@ it.each(socialTemplates)(
         'A passage from Claude worth sharing'
       ])
     )
-    const copy = nodes.find((node) => node.props.id === 'card-copy')!
-    const footer = nodes.find((node) => node.props.id === 'card-footer')!
+    const copy = nodes.find(
+      (node) => node.node.className === 'social-card-copy'
+    )!
+    const footer = nodes.find(
+      (node) => node.node.className === 'social-card-footer'
+    )!
     expect(copy.height).toBeLessThanOrEqual(template.layout.copy.maxHeight)
     expect(copy.top + copy.height).toBeLessThan(footer.top)
     expect(copy.left + copy.width).toBeLessThanOrEqual(1200)
-    const artwork = nodes.find((node) => typeof node.props.src === 'string')!
-    expect(artwork.props.src).toMatch(/^data:image\/jpeg;base64,/u)
+    const artwork = nodes.find(
+      ({ node }) =>
+        node.type === 'image' &&
+        typeof node.src === 'string' &&
+        node.src.startsWith('data:image/jpeg;')
+    )!
+    expect(artwork).toBeDefined()
     const fonts = await cardFonts(data.title, [
       template.font.title,
       template.font.body
@@ -191,7 +275,7 @@ it.each(socialTemplates)(
     for (const face of [template.font.title, template.font.body]) {
       expect(
         fonts.some(
-          (font) => font.name === face.family && font.weight === face.weight
+          (font) => font.subsetOf === face.family && font.weight === face.weight
         )
       ).toBe(true)
     }
@@ -199,21 +283,64 @@ it.each(socialTemplates)(
 )
 
 // The numbered layout has the narrowest copy box and smallest height allowance.
-it('fits three maximum-length wide highlights in the tightest template', async () => {
+it('fits three maximum-length wide highlights while using the tightest template’s available space', async () => {
   const template = socialTemplates.find(({ id }) => id === 'makers-workbench')!
   await renderCard(
     { ...wideCharacterCopy, provider: 'chatgpt' },
     { templateId: template.id }
   )
-  const nodes = layouts.at(-1)!
-  const copy = nodes.find((node) => node.props.id === 'card-copy')!
-  const footer = nodes.find((node) => node.props.id === 'card-footer')!
+  const nodes = renderedLayout()
+  const copy = nodes.find((node) => node.node.className === 'social-card-copy')!
+  const footer = nodes.find(
+    (node) => node.node.className === 'social-card-footer'
+  )!
   expect(copy.height).toBeLessThanOrEqual(template.layout.copy.maxHeight)
+  expect(copy.height).toBeGreaterThan(template.layout.copy.maxHeight / 2)
   expect(copy.top + copy.height).toBeLessThan(footer.top)
-  expect(nodes.flatMap((node) => node.textContent ?? [])).toEqual(
+  expect(layoutText(nodes)).toEqual(
     expect.arrayContaining([
       wideCharacterCopy.title,
       ...wideCharacterCopy.highlights
     ])
   )
+})
+
+it('previews the same fitted template as escaped HTML with bundled assets and no image encoding', async () => {
+  const data = {
+    title: '<script>alert("hi")</script> ' + '界'.repeat(40),
+    highlights: ['界'.repeat(100), 'W'.repeat(100), '🌱'.repeat(100)],
+    provider: 'claude' as const
+  }
+  const appearance = { templateId: 'makers-workbench' as const }
+  await renderCard(data, appearance)
+  const imageTree = renderedLayout()[0]!.node
+  const fittedIndex = vi
+    .mocked(fromJsx)
+    .mock.settledResults.findIndex(
+      (result) => result.type === 'fulfilled' && result.value.node === imageTree
+    )
+  const fittedElement = vi.mocked(fromJsx).mock.calls[
+    fittedIndex
+  ]![0] as ReactElement
+  const expectedBody = renderToStaticMarkup(fittedElement)
+  vi.mocked(render).mockClear()
+  const fetch = vi.fn<typeof globalThis.fetch>(() => {
+    throw new Error('Preview assets must be offline')
+  })
+  vi.stubGlobal('fetch', fetch)
+  const response = await renderCardPreview(data, appearance)
+  const html = await response.text()
+  expect(response.headers.get('content-type')).toBe('text/html; charset=utf-8')
+  expect(response.headers.get('cache-control')).toContain('no-store')
+  expect(html.match(/<body>([\s\S]*)<\/body>/u)?.[1]).toBe(expectedBody)
+  expect(html).toContain('&lt;script&gt;alert(&quot;hi&quot;)&lt;/script&gt;')
+  expect(html).not.toContain('<script>')
+  expect(html).toContain('data:image/jpeg;base64,')
+  expect(html).toContain('@font-face')
+  expect(html).toContain('data:font/woff;base64,')
+  expect(html).toContain('unicode-range:')
+  expect(html).toContain('transform:scale(calc(100vw / 1200px))')
+  expect(html).toContain('class="social-card-copy"')
+  expect(render).not.toHaveBeenCalled()
+  expect(fetch).not.toHaveBeenCalled()
 })

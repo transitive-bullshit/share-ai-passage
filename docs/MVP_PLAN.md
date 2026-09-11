@@ -8,19 +8,19 @@ This document owns product scope and remaining work. See the [glossary](CONTEXT.
 
 1. Paste a supported public conversation URL. Fetch or reuse its saved content and normalize the messages.
 2. Generate a concise title and two or three grounded highlights for an uncached snapshot; use one highlight for a very short source. Highlights are paraphrases, not attributed quotations. Successful generation is required; failures return a retryable error.
-3. Review the read-only title and highlights, choose one of five curated card styles, and load the actual rendered card preview. Publish stays disabled until that preview loads.
+3. Review the read-only title and highlights, choose one of five curated card styles, and load the HTML card preview. Publish stays disabled until the preview and its assets load.
 4. Publish the saved preview and chosen style, then copy or open the share URL. Repeated publication of the same presentation reuses its link while available.
 5. Read the saved conversation with its original-source link. Preserve extracted text, ordering, roles, Markdown, code, tables, and safe links. Known unsupported media, tools, and artifacts appear as explicit omissions.
 
 The browser, CLI, and [agent skill](../.agents/skills/passage-share/SKILL.md) use the same prepare/publish operations. A local draft can be saved and published later without regenerating or editing its text. Draft tokens authorize publication for 24 hours and stay private.
 
-Card styles are repository-owned presets in [social-templates.ts](../lib/social-templates.ts). The browser remembers only appearance preferences; the initial default is Margin notes. Picker thumbnails are lightweight HTML; selected previews and published cards share the server renderer. Publications retain their selected style when browser preferences change. Existing publications with no style retain the plain layout.
+Card styles are repository-owned presets in [social-templates.ts](../lib/social-templates.ts). The browser remembers only appearance preferences; the initial default is Margin notes. Picker thumbnails and selected previews use HTML. All preview paths share the template JSX and CSS with the image renderer; selected previews also use the same fitted text sizes, without encoding a bitmap. Publications retain their selected style when browser preferences change. Existing publications with no style retain the plain layout.
 
-Reader and image routes supply crawler-readable initial metadata, absolute image URLs, and noindex directives. Cards are 1200 × 630 PNGs rendered with bundled artwork and fonts, without provider or model requests.
+Reader and image routes supply crawler-readable initial metadata, absolute image URLs, and noindex directives. Takumi renders 1200 × 630 WebP cards at quality 90 with bundled artwork and fonts, without provider or model requests. Social metadata declares `image/webp`. The draft card endpoint returns WebP by default and HTML when requested for the creation preview.
 
 ## Saved content and availability
 
-A source identifies one public provider share. It can have multiple immutable snapshots and publications. A snapshot holds captured conversation content and its cached generated preview; a publication fixes the reviewed text and style selection. Images are rendered from checked-in template definitions and assets; exact historical PNG bytes are not stored.
+A source identifies one public provider share. It can have multiple immutable snapshots and publications. A snapshot holds captured conversation content and its cached generated preview; a publication fixes the reviewed text and style selection. Images are rendered from checked-in template definitions and assets using the current renderer; exact historical image bytes are not stored.
 
 - Preparation reuses content for seven days after the last complete content fetch. An identical re-fetch advances content verification freshness while retaining the original snapshot and capture time. Availability checks do not advance that freshness or replace saved content.
 - Reader visits trigger a background check when the last conclusive availability result is at least seven days old. Manual checks have a source-wide one-hour cooldown and a per-client budget. Preparation and checks share source-level coordination so concurrent requests do not repeat expensive work.

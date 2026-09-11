@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
-import type { Font } from 'satori'
+import type { FontDetails } from 'takumi-js'
 
 import type { SocialTemplateFont } from './social-templates'
 
@@ -11,6 +11,14 @@ type FontSubset = {
   weight?: 400 | 500 | 700
   ranges: [number, number][]
 }
+export type CardFont = FontDetails & {
+  name: string
+  subsetOf: string
+  weight: number
+  data: Buffer
+  ranges: [number, number][]
+}
+
 const root = join(process.cwd(), 'assets/fonts')
 const manifestPromise = readFile(join(root, 'manifest.json'), 'utf8').then(
   (text) => JSON.parse(text) as FontSubset[]
@@ -20,7 +28,7 @@ const fontData = new Map<string, Promise<Buffer>>()
 export async function cardFonts(
   text: string,
   templateFonts?: readonly SocialTemplateFont[]
-): Promise<Font[]> {
+): Promise<CardFont[]> {
   const manifest = await manifestPromise
   const points = [
     ...new Set(Array.from(text, (character) => character.codePointAt(0)!))
@@ -61,13 +69,11 @@ export async function cardFonts(
         fontData.set(subset.file, data)
       }
       return {
-        // Satori selects one face for a family/weight. Give subsets unique
-        // fallback families so glyphs in another subset remain discoverable.
-        name: /^(inter|newsreader|dm-sans)-latin-(400|500|700)-normal\.woff$/u.test(
-          subset.file
-        )
-          ? subset.name
-          : `${subset.name}-${subset.file}`,
+        // Takumi expands the logical family across independently registered subsets.
+        name: `${subset.name}-${subset.file}`,
+        subsetOf: subset.name,
+        subsetRank: manifest.indexOf(subset),
+        ranges: subset.ranges,
         data: await data,
         weight: subset.weight ?? 400,
         style: 'normal' as const

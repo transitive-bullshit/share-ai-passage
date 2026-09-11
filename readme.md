@@ -20,7 +20,7 @@ Set `OPENAI_API_KEY` in `.env.local` before preparing a new conversation. Previe
 
 `pnpm dev` uses [Portless](https://portless.sh/). Open the exact URL printed in the terminal, normally `https://ai-chat-proxy.localhost`; proxy settings can change its scheme or port. Worktrees get their own app subdomain. To run directly at [localhost:3000](http://localhost:3000), use `PORTLESS=0 pnpm dev` (`PORT` overrides 3000).
 
-Paste a public `https://chatgpt.com/share/<uuid>`, `https://chatgpt.com/s/cx_<id>`, or `https://claude.ai/share/<uuid>` URL. Press **Go**, review the generated title and highlights, choose a card style, then **Publish**. Text is read-only; the preview is the actual card renderer. The browser remembers your last style choice.
+Paste a public `https://chatgpt.com/share/<uuid>`, `https://chatgpt.com/s/cx_<id>`, or `https://claude.ai/share/<uuid>` URL. Press **Go**, review the generated title and highlights, choose a card style, then **Publish**. Text is read-only; the HTML preview shares its template JSX and CSS with the published social image. Takumi renders 1200 × 630 WebP cards at quality 90 using bundled artwork and fonts. The browser remembers your last style choice.
 
 ### Local database
 
