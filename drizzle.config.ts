@@ -9,7 +9,9 @@ export default defineConfig({
   dialect: 'postgresql',
   dbCredentials: {
     url:
-      process.env.DATABASE_URL ??
+      process.env.DIRECT_DATABASE_URL?.trim() ||
+      process.env.DATABASE_URL_UNPOOLED?.trim() ||
+      process.env.DATABASE_URL ||
       'postgresql://postgres@127.0.0.1:55432/ai_chat_proxy'
   },
   strict: true

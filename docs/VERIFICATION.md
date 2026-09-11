@@ -1,5 +1,7 @@
 # Local MVP verification
 
+For the current production-readiness assessment and follow-up fixes, see [the September 11 launch audit](LAUNCH_READINESS.md).
+
 Verified on September 10, 2026 with the installed Next.js 16.3.4, Node.js 25.9.0, pnpm 12.3.4, and an isolated native PostgreSQL instance on `127.0.0.1:55432`.
 
 ## Passed

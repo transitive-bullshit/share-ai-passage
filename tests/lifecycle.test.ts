@@ -583,9 +583,8 @@ describe.skipIf(!testUrl)('publication lifecycle with PostgreSQL', () => {
     expect(source.latestSnapshotId).toBeNull()
     expect(source.lastCheckedAt).toBeNull()
     expect(source.preparationLeaseToken).toBeNull()
-    expect(source.preparationRetryAfter!.getTime()).toBe(
-      Date.now() + limits.cooldownMs
-    )
+    expect(source.preparationRetryAfter!.getTime()).toBe(Date.now() + 60_000)
+    expect(source.retryAfter!.getTime()).toBe(Date.now() + limits.cooldownMs)
     expect(
       await getDb()
         .select()
@@ -594,6 +593,20 @@ describe.skipIf(!testUrl)('publication lifecycle with PostgreSQL', () => {
     ).toHaveLength(0)
     expect(upstream.fetchSource).toHaveBeenCalledTimes(1)
     expect(upstream.suggestPreview).not.toHaveBeenCalled()
+
+    advance(59_999)
+    await expect(prepareSource(url)).rejects.toMatchObject({
+      status: 503,
+      retryAfter: 1
+    })
+    expect(upstream.fetchSource).toHaveBeenCalledTimes(1)
+    advance(60_000)
+    upstream.fetchSource.mockResolvedValueOnce({
+      status: 'available',
+      conversation: original
+    })
+    expect((await prepareSource(url)).preview).toEqual(generatedPreview)
+    expect(upstream.fetchSource).toHaveBeenCalledTimes(2)
   })
 
   it('prevents an expired preparation lease from overwriting a newer successful capture', async () => {

@@ -6,6 +6,7 @@ import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
+import { clientErrorMessage, postJson } from '@/lib/client-request'
 
 export function AvailabilityCheck({
   provider,
@@ -23,25 +24,14 @@ export function AvailabilityCheck({
     setPending(true)
     setMessage('')
     try {
-      const response = await fetch('/api/check', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider, publicationId })
-      })
-      const result = await response.json()
-      if (!response.ok)
-        throw new Error(
-          result.error ||
-            'The original could not be checked. Please try again later.'
-        )
+      const result = await postJson<{ message: string; status: string }>(
+        '/api/check',
+        { provider, publicationId }
+      )
       setMessage(result.message)
       if (result.status === 'unavailable') router.refresh()
     } catch (err) {
-      setMessage(
-        err instanceof Error
-          ? err.message
-          : 'The original could not be checked. Please try again later.'
-      )
+      setMessage(clientErrorMessage(err))
     } finally {
       setPending(false)
     }

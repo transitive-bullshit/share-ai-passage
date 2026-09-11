@@ -56,6 +56,7 @@ export async function suggestPreview(
         'Summarize a public AI conversation for a small share card.',
         `Write an informative title of at most ${limits.title} Unicode characters and two or three distinct highlights of at most ${limits.highlight} Unicode characters each. Use one highlight only for a very short source.`,
         'Paraphrase the main ideas in original words. Use plain text without quotation marks, speaker prefixes, Markdown, or a verbatim excerpt.',
+        'Make each highlight useful on its own: state a concrete takeaway, trade-off, or proposed next step. Lead with the topic or conclusion itself.',
         'Ground every claim in the supplied conversation. Preserve uncertainty. Describe proposed work as proposed, without claiming it was completed. Do not invent facts, outcomes, or attribution.',
         'Focus on the initial user question and the final assistant answer. Use other visible messages as context. If the source is marked truncated or a message has middleOmitted, do not infer facts from missing content.',
         'Use the main language of the conversation.',

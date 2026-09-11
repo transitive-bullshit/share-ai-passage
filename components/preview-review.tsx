@@ -12,6 +12,7 @@ import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import type { CardAppearance } from '@/lib/card-appearance'
+import { clientErrorMessage, postBlob, postJson } from '@/lib/client-request'
 import { getSocialTemplate } from '@/lib/social-templates'
 import {
   type GeneratedPreview,
@@ -92,20 +93,14 @@ export function PreviewReview({
 
     async function loadCard() {
       try {
-        const response = await fetch('/api/card', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+        const blob = await postBlob(
+          '/api/card',
+          {
             draftToken: draft.draftToken,
             appearance: activeAppearance
-          }),
-          signal: controller.signal
-        })
-        if (!response.ok) {
-          const result = await response.json()
-          throw new Error(result.error || 'The card preview could not load.')
-        }
-        const blob = await response.blob()
+          },
+          controller.signal
+        )
         if (controller.signal.aborted) return
         objectUrl = URL.createObjectURL(blob)
         setCard({
@@ -119,10 +114,7 @@ export function PreviewReview({
           setCardError({
             appearance: activeAppearance,
             attempt: cardAttempt,
-            message:
-              err instanceof Error
-                ? err.message
-                : 'The card preview could not load.'
+            message: clientErrorMessage(err)
           })
       }
     }
@@ -144,28 +136,14 @@ export function PreviewReview({
     setPending(true)
     setError('')
     try {
-      const response = await fetch('/api/publish', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          draftToken: draft.draftToken,
-          appearance: activeAppearance
-        })
+      const result = await postJson<{ shareUrl: string }>('/api/publish', {
+        draftToken: draft.draftToken,
+        appearance: activeAppearance
       })
-      const result = await response.json()
-      if (!response.ok)
-        throw new Error(
-          result.error ||
-            'Your passage could not be published. Please try again.'
-        )
       setShareUrl(result.shareUrl)
     } catch (err) {
       setLockedAppearance(null)
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'We could not connect. Please try again.'
-      )
+      setError(clientErrorMessage(err))
     } finally {
       setPending(false)
     }

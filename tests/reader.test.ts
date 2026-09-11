@@ -71,6 +71,7 @@ describe('safe, faithful conversation reader', () => {
     expect(html).toContain('href="https://example.com/docs?a=1&amp;b=2"')
     expect(html).toContain('href="mailto:hello@example.com"')
     expect(html).toContain('href="#note"')
+    expect(html).not.toMatch(/href="#note"[^>]*target=/)
     expect(html).toContain('rel="noopener noreferrer nofollow"')
   })
 

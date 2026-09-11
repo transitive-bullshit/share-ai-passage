@@ -3,7 +3,13 @@ export function appUrl() {
     process.env.NODE_ENV === 'development'
       ? process.env.PORTLESS_URL
       : undefined
-  const value = devUrl || process.env.APP_URL || 'http://localhost:3000'
+  const configuredUrl = process.env.APP_URL?.trim()
+  if (process.env.NODE_ENV === 'production' && !configuredUrl) {
+    throw new Error(
+      'Set APP_URL to the public origin before building for production'
+    )
+  }
+  const value = devUrl || configuredUrl || 'http://localhost:3000'
   const url = new URL(value)
   if (
     !['http:', 'https:'].includes(url.protocol) ||

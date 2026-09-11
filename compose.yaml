@@ -16,7 +16,10 @@ services:
       retries: 10
   app:
     profiles: ['app']
-    build: .
+    build:
+      context: .
+      args:
+        APP_URL: ${APP_URL:-http://localhost:3000}
     ports:
       - '127.0.0.1:3000:3000'
     environment:
@@ -25,7 +28,7 @@ services:
       APP_SECRET: ${APP_SECRET:-}
       TRUST_PROXY: ${TRUST_PROXY:-none}
       AI_PROVIDER: ${AI_PROVIDER:-openai}
-      AI_MODEL: ${AI_MODEL:-gpt-4.1-mini}
+      AI_MODEL: ${AI_MODEL:-gpt-5.4-nano}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     depends_on:

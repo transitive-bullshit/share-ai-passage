@@ -24,6 +24,7 @@ import { suggestPreview } from './suggestions'
 import { validateGeneratedPreview } from './summary'
 
 const leaseMs = 60_000
+const preparationRetryMs = 60_000
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -179,6 +180,10 @@ export async function prepareSource(input: string) {
       ? { status: 'available', conversation: claim.snapshotToSummarize }
       : await safelyFetch(claim.source)
     if (result.status !== 'available') {
+      const retryMs =
+        result.status === 'inconclusive'
+          ? preparationRetryMs
+          : limits.cooldownMs
       await db.transaction(async (tx) => {
         const source = await lockSource(tx, claim.source.id)
         if (source.preparationLeaseToken !== token) return
@@ -190,7 +195,7 @@ export async function prepareSource(input: string) {
           .set({
             preparationLeaseToken: null,
             preparationLeaseUntil: null,
-            preparationRetryAfter: new Date(now.getTime() + limits.cooldownMs),
+            preparationRetryAfter: new Date(now.getTime() + retryMs),
             retryAfter:
               result.status === 'inconclusive'
                 ? new Date(now.getTime() + limits.cooldownMs)
@@ -202,7 +207,7 @@ export async function prepareSource(input: string) {
       throw new AppError(
         result.reason,
         result.status === 'unavailable' ? 410 : 422,
-        3600
+        retryMs / 1000
       )
     }
 

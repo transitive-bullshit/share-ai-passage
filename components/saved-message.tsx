@@ -55,10 +55,11 @@ export function SavedMessage({
           remarkPlugins={[remarkGfm]}
           urlTransform={safeLink}
           components={{
-            a: ({ href, children }) => (
+            a: ({ href, children, id }) => (
               <a
+                id={id}
                 href={href || undefined}
-                target='_blank'
+                target={href?.startsWith('#') ? undefined : '_blank'}
                 rel='noopener noreferrer nofollow'
               >
                 {children}

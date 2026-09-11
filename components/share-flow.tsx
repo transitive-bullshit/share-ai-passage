@@ -4,6 +4,7 @@ import { ArrowRight, Link2 } from 'lucide-react'
 import {
   type FormEvent,
   type ReactNode,
+  useEffect,
   useState,
   useSyncExternalStore
 } from 'react'
@@ -23,6 +24,11 @@ import {
   CARD_PREFERENCES_KEY,
   createCardPreferencesStore
 } from '@/lib/card-preferences'
+import {
+  ClientRequestError,
+  clientErrorMessage,
+  postJson
+} from '@/lib/client-request'
 
 const cardPreferences = createCardPreferencesStore(() => window.localStorage)
 
@@ -50,36 +56,52 @@ export function ShareFlow({ children }: { children?: ReactNode }) {
   const [draft, setDraft] = useState<PreparedDraft | null>(null)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
+  const [retry, setRetry] = useState<{
+    at: number
+    url: string
+    allSources: boolean
+  } | null>(null)
+  const [now, setNow] = useState(0)
+  const retryAt =
+    retry && (retry.allSources || retry.url === url.trim()) ? retry.at : 0
+  const retrySeconds = Math.max(0, Math.ceil((retryAt - now) / 1000))
   const preferences = useSyncExternalStore(
     subscribeCardPreferences,
     cardPreferences.getSnapshot,
     cardPreferences.getServerSnapshot
   )
 
+  useEffect(() => {
+    if (!retry) return
+    const interval = window.setInterval(() => {
+      const now = Date.now()
+      setNow(now)
+      if (now >= retry.at) window.clearInterval(interval)
+    }, 1000)
+    return () => window.clearInterval(interval)
+  }, [retry])
+
   async function prepare(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (pending) return
+    if (pending || retrySeconds > 0) return
     setPending(true)
     setError('')
     try {
-      const response = await fetch('/api/prepare', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: url.trim() })
+      const result = await postJson<PreparedDraft>('/api/prepare', {
+        url: url.trim()
       })
-      const result = await response.json()
-      if (!response.ok)
-        throw new Error(
-          result.error ||
-            'We could not open that conversation. Please try again.'
-        )
+      setRetry(null)
       setDraft(result)
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'We could not connect. Please try again.'
-      )
+      setError(clientErrorMessage(err))
+      if (err instanceof ClientRequestError && err.retryAt) {
+        setNow(Date.now())
+        setRetry({
+          at: err.retryAt,
+          url: url.trim(),
+          allSources: err.status === 429
+        })
+      }
     } finally {
       setPending(false)
     }
@@ -133,7 +155,10 @@ export function ShareFlow({ children }: { children?: ReactNode }) {
                     spellCheck={false}
                     required
                     value={url}
-                    onChange={(event) => setUrl(event.target.value)}
+                    onChange={(event) => {
+                      setUrl(event.target.value)
+                      setError('')
+                    }}
                     placeholder='Paste a public link…'
                     disabled={pending}
                     aria-invalid={Boolean(error)}
@@ -142,11 +167,17 @@ export function ShareFlow({ children }: { children?: ReactNode }) {
                   <Button
                     type='submit'
                     size='lg'
-                    disabled={pending || !url.trim()}
+                    disabled={pending || retrySeconds > 0 || !url.trim()}
                   >
                     {pending ? <Spinner data-icon='inline-start' /> : null}
-                    {pending ? 'Preparing…' : 'Go'}
-                    {pending ? null : <ArrowRight data-icon='inline-end' />}
+                    {pending
+                      ? 'Preparing…'
+                      : retrySeconds > 0
+                        ? `Retry in ${retrySeconds < 60 ? `${retrySeconds}s` : `${Math.ceil(retrySeconds / 60)}m`}`
+                        : 'Go'}
+                    {pending || retrySeconds > 0 ? null : (
+                      <ArrowRight data-icon='inline-end' />
+                    )}
                   </Button>
                 </div>
                 <FieldDescription id='source-help'>

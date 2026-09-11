@@ -148,13 +148,13 @@ Inter, DM Sans, and Newsreader provide the template typography. `pnpm fonts:prep
 
 ## Reverse proxies and hosting
 
-With `TRUST_PROXY=none`, all clients share a conservative budget. This is intentional for local testing: arbitrary forwarded headers cannot create new client identities.
+An unset `TRUST_PROXY` automatically selects Vercel's trusted header when `VERCEL=1`; otherwise clients share a conservative local budget. Explicit `TRUST_PROXY=none` keeps that shared budget on any host. Arbitrary forwarded headers cannot create new client identities.
 
 - On Vercel, use `TRUST_PROXY=vercel`. The app also requires `VERCEL=1` and uses the platform-overwritten `x-vercel-forwarded-for` header. [Vercel header documentation](https://vercel.com/docs/headers/request-headers#x-vercel-forwarded-for).
 - Behind one self-hosted reverse proxy, use `TRUST_PROXY=single` only if it **overwrites** `X-Real-IP` with the connecting client address. For Nginx: `proxy_set_header X-Real-IP $remote_addr;`. Prevent direct public access to the app port and do not append untrusted incoming headers.
-- Serve the hosted app over HTTPS and set `APP_URL` to its exact origin. Keep reader/image routes publicly fetchable by social crawlers. Avoid authentication or challenges in front of those routes.
+- Serve the hosted app over HTTPS and set `APP_URL` to its exact origin before building. Production builds fail if it is missing. Keep reader/image routes publicly fetchable by social crawlers. Avoid authentication or challenges in front of those routes.
 
-For Vercel, import this single Next.js project, retain `pnpm build`, configure PostgreSQL and environment variables, and apply `pnpm db:migrate` once before serving traffic. Provider fetching, PostgreSQL, and card rendering use Node.js routes. The connection pool is limited to five connections per instance; prepared statements are disabled for pooler compatibility. Choose database and function regions together. This local setup provisions no hosted database.
+For Vercel, use Node 24, import this single Next.js project, retain `pnpm build`, configure PostgreSQL and environment variables, and apply `pnpm db:migrate` once before serving traffic. Use a pooled `DATABASE_URL` at runtime; migrations prefer `DIRECT_DATABASE_URL` or Neon's `DATABASE_URL_UNPOOLED` when configured. Provider fetching, PostgreSQL, and card rendering use Node.js routes. The connection pool is limited to five connections per instance; prepared statements are disabled for pooler compatibility. Choose database and function regions together. This local setup provisions no hosted database. See the [launch audit](docs/LAUNCH_READINESS.md) and [Postgres recommendation](docs/POSTGRES_HOSTING.md) for the current release gates and setup.
 
 For self-hosting, `pnpm build && pnpm start` runs the same app. The Dockerfile includes the migration CLI for single-instance startup. Multi-instance deployments should run migrations as a separate release step.
 

@@ -89,6 +89,9 @@ export default async function ReaderPage({ params }: Props) {
   }
 
   const { source, snapshot, publication, selection, excerpt, preview } = record
+  const lastReplyIndex = snapshot.messages.findLastIndex(
+    (message) => message.speaker === 'assistant' && message.text.trim()
+  )
   after(async () => {
     try {
       await checkAvailability(source.id, 'automatic')
@@ -161,7 +164,16 @@ export default async function ReaderPage({ params }: Props) {
           <h2>The conversation</h2>
           <p>The complete, unchanged snapshot.</p>
         </div>
-        <ArrowDown size={19} aria-hidden='true' />
+        {lastReplyIndex > 3 ? (
+          <Button asChild variant='ghost' size='sm'>
+            <a href={`#message-${lastReplyIndex + 1}`}>
+              Jump to last reply
+              <ArrowDown data-icon='inline-end' />
+            </a>
+          </Button>
+        ) : (
+          <ArrowDown size={19} aria-hidden='true' />
+        )}
       </div>
       <section className='conversation' aria-label='Saved conversation'>
         {snapshot.messages.map((message, index) => (

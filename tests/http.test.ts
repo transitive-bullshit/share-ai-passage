@@ -41,6 +41,27 @@ describe('mutation boundaries', () => {
       clientKey(request('1.1.1.1'))
     )
   })
+
+  it('automatically separates Vercel clients using only the platform header', () => {
+    vi.stubEnv('TRUST_PROXY', '')
+    vi.stubEnv('VERCEL', '1')
+    const request = (address: string, spoofed = '8.8.8.8') =>
+      new Request('https://passage.example/api/prepare', {
+        headers: {
+          'x-vercel-forwarded-for': address,
+          'x-forwarded-for': spoofed,
+          'x-real-ip': spoofed
+        }
+      })
+    expect(clientKey(request('1.1.1.1'))).not.toBe(
+      clientKey(request('8.8.4.4'))
+    )
+    expect(clientKey(request('1.1.1.1'))).toBe(
+      clientKey(request('1.1.1.1', '9.9.9.9'))
+    )
+    vi.stubEnv('VERCEL', '')
+    expect(clientKey(request('1.1.1.1'))).toBe(clientKey(request('8.8.4.4')))
+  })
 })
 
 describe('private draft capability', () => {

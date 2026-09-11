@@ -14,6 +14,7 @@ Keep agent context documents under `docs/`. Read the relevant document for the t
 - Product behavior and scope: [MVP plan](docs/MVP_PLAN.md).
 - Provider extraction and supported shares: [extraction evidence](docs/EXTRACTION.md).
 - Validation and known gaps: [verification notes](docs/VERIFICATION.md).
+- Production launch and hosting: [readiness audit](docs/LAUNCH_READINESS.md) and [Postgres recommendation](docs/POSTGRES_HOSTING.md).
 
 <!-- BEGIN:nextjs-agent-rules -->
 

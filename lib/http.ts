@@ -54,9 +54,11 @@ export async function readJson(
   }
 }
 
-/** Only enable a proxy mode when that proxy overwrites the specified header. */
+/** Vercel overwrites its own header; self-hosted proxies require explicit trust. */
 export function clientKey(request: Request) {
-  const proxy = process.env.TRUST_PROXY || 'none'
+  const proxy =
+    process.env.TRUST_PROXY?.trim() ||
+    (process.env.VERCEL === '1' ? 'vercel' : 'none')
   let address = 'shared-untrusted-client'
   if (proxy === 'vercel' && process.env.VERCEL === '1') {
     address =
