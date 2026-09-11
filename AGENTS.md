@@ -1,21 +1,22 @@
 ## Conventions
 
-- use `pnpm`
-- use modern typescript
-- no semicolons
-- oxfmt for formatting (`pnpm fix:format`)
-- oxlint for linting (`pnpm fix:lint`)
+- Keep it simple: use the existing architecture, tooling, and workflow; add complexity only for a concrete need.
+- Use `pnpm` and modern TypeScript without semicolons.
+- Format with `pnpm fix:format` (oxfmt); lint with `pnpm fix:lint` (oxlint).
 
 ## Context
 
-Keep agent context documents under `docs/`. Read the relevant document for the task:
+Keep current guidance concise under `docs/`. Read the relevant document for the task:
 
+- Setup and CLI usage: [README](readme.md).
+- Product behavior, scope, and remaining work: [MVP plan](docs/MVP_PLAN.md).
 - Entities and terminology: [domain glossary](docs/CONTEXT.md).
-- Product behavior and scope: [MVP plan](docs/MVP_PLAN.md).
-- Provider extraction and supported shares: [extraction evidence](docs/EXTRACTION.md).
-- Writing, running, or reviewing tests and changing CI: read [testing guidelines](docs/testing.md).
-- Validation and known gaps: [verification notes](docs/VERIFICATION.md).
-- Production launch and hosting: [readiness audit](docs/LAUNCH_READINESS.md) and [Postgres recommendation](docs/POSTGRES_HOSTING.md).
+- Message extraction, storage, or rendering: [message model](docs/MESSAGE_MODEL.md).
+- Provider URLs, fetching, or parsing: [extraction guide](docs/EXTRACTION.md).
+- Writing, running, or reviewing tests and changing CI: [testing guidelines](docs/testing.md).
+- Deployment, production data, or self-hosting: [production guide](docs/PRODUCTION.md).
+
+Update the relevant existing document when behavior changes. `docs/archive/` holds historical reports; `docs/research/` and `docs/brand-exploration/` contain research and proposals, not current requirements.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

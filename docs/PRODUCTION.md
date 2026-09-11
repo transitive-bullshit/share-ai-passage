@@ -1,37 +1,33 @@
-# Production hosting and local testing
+# Production and self-hosting
 
-Neon is configured, and the Vercel project is deployed at [ai-chat-proxy-puce.vercel.app](https://ai-chat-proxy-puce.vercel.app). Branding may choose a future hostname; the app reads Vercel's production hostname automatically after redeployment. Final hosted validation and the public launch checks below remain open.
+Deployment recorded September 11, 2026: Neon is configured and Vercel is deployed at [ai-chat-proxy-puce.vercel.app](https://ai-chat-proxy-puce.vercel.app). See the [MVP plan](MVP_PLAN.md#remaining-work) for remaining launch checks; this setup record does not establish hosted extraction or social-platform validation.
 
-## Current database
+## Recorded database configuration
 
 | Setting | Value |
 | --- | --- |
 | Project | [passage / wild-moon-12089892](https://console.neon.tech/app/projects/wild-moon-12089892) |
-| Plan | Free |
-| Branch | `production` (default) |
+| Plan / branch | Free / `production` (default) |
 | Database / role | `neondb` / `neondb_owner` |
-| Region | AWS `us-east-2` (Ohio) |
-| PostgreSQL | 18 |
-| Production compute | Fixed 0.25 CU, approximately 1 GB RAM |
-| Idle behavior | Sleeps after five idle minutes; wakes on demand |
-| Recovery history | Six hours, subject to the Free plan's history limit |
+| Region / PostgreSQL | AWS `us-east-2` (Ohio) / 18 |
+| Compute / idle behavior | Fixed 0.25 CU; suspends after five idle minutes |
+| Recovery history | Six hours, subject to the plan's limits |
 
-The checked-in migrations have been applied. Runtime connections use the pooled endpoint; migrations use the direct endpoint. Both endpoints point to this same branch/database. Credentials are in ignored `.env.prod.local` with owner-only file permissions. The file has a separate stable production `APP_SECRET` and the configured OpenAI key/model; it is never needed by ordinary development or tests.
+The checked-in migrations were applied during setup. Runtime uses a pooled `DATABASE_URL`; migrations prefer `DIRECT_DATABASE_URL` or `DATABASE_URL_UNPOOLED` when configured. The app's pool is limited to five connections per instance and disables prepared statements for pooler compatibility. Apply subsequent migrations before serving the changed application.
 
-## Commands
+Credentials live in ignored `.env.prod.local` with owner-only file permissions. It contains a separate stable production `APP_SECRET` and the model configuration. Ordinary development and tests do not need this file.
 
-Run these from the repository:
+## Local access to production
 
-| Command | What it does |
+| Command | Effect |
 | --- | --- |
-| `pnpm dev` | Ordinary development with the existing local PostgreSQL configuration and Portless URL. |
-| `pnpm dev:prod` | Development server at `http://localhost:3001`, connected to **real production Neon data**. |
-| `pnpm build:prod` | Builds the production app into `.next-prod` using the explicit production configuration. |
-| `pnpm start:prod` | Serves that build at `http://localhost:3001`, connected to **real production Neon data**. |
-| `pnpm db:check:prod` | Checks the pooled connection and application-table presence without reading conversations. |
-| `pnpm db:migrate:prod` | Applies pending checked-in migrations using the production direct connection. |
+| `pnpm dev:prod` | Development server at `http://localhost:3001` using **real production data** |
+| `pnpm build:prod` | Builds into `.next-prod` using production configuration |
+| `pnpm start:prod` | Serves that build at `http://localhost:3001` using **real production data** |
+| `pnpm db:check:prod` | Checks the pooled connection and table presence without reading conversations |
+| `pnpm db:migrate:prod` | Applies pending migrations through the production direct connection |
 
-For the closest local match to the deployed application:
+For a local production build:
 
 ```sh
 pnpm db:check:prod
@@ -39,24 +35,40 @@ pnpm build:prod
 pnpm start:prod
 ```
 
-Then open [localhost:3001](http://localhost:3001). Stop that server before using `dev:prod` on the same port. To use another port, pass `--port 3101` to the app commands; use the same port for build and start.
+Stop the server before starting another on port 3001. For another port, pass `--port 3101` to the app commands, using the same port for build and start. Ordinary `pnpm dev` retains the local development database.
 
-The `:prod` commands print the database host and a production-data notice. Creating, publishing, or checking a conversation through that local server changes the real production database. Local links correctly use localhost; these records use the deployed app's public origin when served there. Publications store IDs and content rather than a permanently fixed host.
+The wrapper prints a production-data notice and database host. Creating, publishing, or checking a conversation through this local server changes production data. URLs use localhost here and the hosted origin when the same records are served from Vercel; publications store IDs and content, not a permanent hostname.
 
-The wrapper sets the local port, clears hosted-origin inputs, and disables forwarded-header trust. The app therefore derives its local origin automatically. Production app output is separate from `.next`, so normal development/build artifacts remain independent. Next may still list `.env.local` in its startup banner; the explicit production values are already in the child process environment and take precedence. `.env.prod.local` itself is not one of Next's automatically loaded filenames.
+The wrapper clears hosted-origin inputs, disables forwarded-header trust, and separates `.next-prod` from ordinary build output. Explicit production values take precedence even if Next lists `.env.local` in its startup banner. `.env.prod.local` is not automatically loaded by Next.
 
-## On another machine
+On another machine, copy [.env.prod.example](../.env.prod.example) to `.env.prod.local`, use matching pooled/direct URLs, and preserve the production `APP_SECRET`. Values are literal; shell-style variable references are not expanded. Keep the file private and out of Git. Production URLs never belong in `TEST_DATABASE_URL`; the production wrapper refuses CI/test environments.
 
-Copy `.env.prod.example` to `.env.prod.local` and fill its values from the Neon connection panel and the production application configuration. Use the pooled URL for `DATABASE_URL`, the matching direct URL for `DIRECT_DATABASE_URL`, and preserve the existing production `APP_SECRET`. Values are literal; shell-style variable references are not expanded. Keep the file private and out of Git.
+## Hosting configuration
 
-Do not put the production URL in `TEST_DATABASE_URL`. The test suite uses a disposable local database, and the explicit production wrapper refuses to execute in CI/test environments. Unit tests do not load `.env.prod.local` or call the model.
+Use Node 24, a frozen-lockfile pnpm installation, `pnpm build`, and the [example environment](../.env.example). New preview generation requires `OPENAI_API_KEY`; `AI_PROVIDER` currently supports `openai`, with `AI_MODEL` selecting the model. `APP_SECRET` must be stable and at least 32 characters; rotating it expires prepared drafts, while published links remain valid.
 
-## Before public launch
+Keep database and function regions together. Use separate data for preview deployments unless deliberately testing production. Reader and image routes must be anonymously accessible over HTTPS for social crawlers.
 
-- Keep Vercel's system environment variables enabled. Outside development, `VERCEL=1` selects the HTTPS production hostname from `VERCEL_PROJECT_PRODUCTION_URL` or `VERCEL_URL`; Preview and custom environments use `VERCEL_BRANCH_URL` or `VERCEL_URL`. `VERCEL_TARGET_ENV` takes precedence over `VERCEL_ENV`. A future production-domain change requires redeployment to refresh the app's origin.
-- Verify the deployed app uses the pooled `DATABASE_URL`, stable `APP_SECRET`, and OpenAI settings. Keep the direct migration credential in the release environment.
-- Place Vercel's Node.js functions near the Ohio database. Keep preview deployments on separate data unless an explicit production test is intended.
-- Free's six-hour restore history is limited. Arrange an independent backup and verify restoration before inviting a public audience. Logical dumps of this PostgreSQL 18 server need `pg_dump` 18 or newer; the current local Postgres.app client is 17.4. No scheduled backup or off-site restore is configured yet.
-- Run the remaining hosted extraction and real social-unfurl checks in [the launch audit](LAUNCH_READINESS.md). A local production build with a remote database does not exercise Vercel's runtime or network.
+[Origin resolution](../lib/config.ts) is automatic:
 
-For quotas and paid alternatives, see [the hosting comparison](POSTGRES_HOSTING.md).
+- Development prefers `PORTLESS_URL`.
+- Outside development, `VERCEL=1` selects an HTTPS hostname. Production prefers `VERCEL_PROJECT_PRODUCTION_URL`; Preview/custom environments prefer `VERCEL_BRANCH_URL`. Both fall back to `VERCEL_URL`. `VERCEL_TARGET_ENV` takes precedence over `VERCEL_ENV`.
+- Other runs use `http://localhost:${PORT || 3000}`. `APP_URL` is not read.
+
+Keep Vercel's system environment variables enabled. Redeploy after changing the production domain. Mutation origin validation compares the submitted origin to the actual request host, so alternate deployment URLs can accept their own same-origin requests.
+
+[Client-address trust](../lib/http.ts) depends on the actual proxy:
+
+- An unset `TRUST_PROXY` uses Vercel's overwritten `x-vercel-forwarded-for` header when `VERCEL=1`; elsewhere it shares a conservative client budget.
+- `none` explicitly uses that shared budget on any host. `vercel` requires `VERCEL=1` and the Vercel header.
+- `single` trusts `X-Real-IP` only behind a proxy that overwrites it with the connecting address. For Nginx, use `proxy_set_header X-Real-IP $remote_addr;` and prevent direct public access to the app port.
+
+Self-hosting runs the same app with `pnpm build` and `pnpm start`, or the [Docker setup](../readme.md#docker-alternative). Public proxy hostnames are not inferred from forwarded headers; the current non-Vercel production fallback remains localhost. Arbitrary self-hosted public-origin configuration is a known limitation.
+
+The Dockerfile migrates before single-instance startup. Multi-instance deployments should migrate in a separate release step. Standalone packaging must include public/static files and the dynamic font, artwork, and shaping assets traced in [next.config.ts](../next.config.ts).
+
+## Recovery
+
+An independent backup and verified restore remain launch work. Logical dumps of this PostgreSQL 18 server require `pg_dump` 18 or newer. The last setup record did not establish a scheduled backup or off-site restore; verify actual recovery settings before relying on them.
+
+The [September 11 hosting comparison](research/POSTGRES_HOSTING.md) records the rationale for Neon Free. Recheck provider limits and pricing when making a hosting decision; that comparison is historical research.

@@ -1,12 +1,12 @@
 # Passage
 
-Turn a public ChatGPT, Codex, or Claude conversation into an immutable share link with a generated title and highlights, a typeset social card, and a readable saved conversation.
+Turn a public ChatGPT, Codex, or Claude conversation into a share link with a generated title and highlights, a typeset social card, and a readable saved conversation.
 
-One Next.js app, PostgreSQL, and Drizzle. No accounts, worker, Redis, object storage, or browser extraction service. [MIT licensed](./license). Product scope and terminology live in the [MVP plan](docs/MVP_PLAN.md) and [domain glossary](docs/CONTEXT.md).
+One Next.js app, PostgreSQL, and Drizzle. [MIT licensed](./license). Product scope and remaining work live in the [MVP plan](docs/MVP_PLAN.md); terminology lives in the [glossary](docs/CONTEXT.md).
 
 ## Run locally
 
-Requires Node.js 24+ and pnpm. The template currently uses pnpm 12.3.4.
+Requires Node.js 24+ and pnpm; the pinned version is in [package.json](package.json).
 
 ```sh
 pnpm install --frozen-lockfile
@@ -16,32 +16,25 @@ pnpm db:migrate
 pnpm dev
 ```
 
-`pnpm dev` runs Next.js through [Portless](https://portless.sh/). Open the named URL printed in the terminal, normally `https://ai-chat-proxy.localhost`. Portless reuses your existing proxy settings, so the scheme or proxy port may differ. Git worktrees get their own subdomain automatically. The app uses the assigned URL for metadata and share links during development.
+Set `OPENAI_API_KEY` in `.env.local` before preparing a new conversation. Preview generation sends bounded public conversation text to OpenAI; missing credentials or generation failures return a retryable error. The default model is `gpt-5.4-nano`; `AI_MODEL` changes it and `AI_PROVIDER` currently supports `openai`.
 
-Paste a public `https://chatgpt.com/share/<uuid>`, `https://chatgpt.com/s/cx_<id>` (Codex), or `https://claude.ai/share/<uuid>` link and press **Go**. Review the automatically generated title and highlights, choose a social-card template, then **Publish**. The title and highlights stay unchanged; the preview is the actual PNG served by the published link. Your last template choice becomes the default for your next share in this browser.
+`pnpm dev` uses [Portless](https://portless.sh/). Open the exact URL printed in the terminal, normally `https://ai-chat-proxy.localhost`; proxy settings can change its scheme or port. Worktrees get their own app subdomain. To run directly at [localhost:3000](http://localhost:3000), use `PORTLESS=0 pnpm dev` (`PORT` overrides 3000).
 
-To run Next.js directly at [localhost:3000](http://localhost:3000), use `PORTLESS=0 pnpm dev`. The origin follows `PORT` when set and otherwise uses port 3000.
+Paste a public `https://chatgpt.com/share/<uuid>`, `https://chatgpt.com/s/cx_<id>`, or `https://claude.ai/share/<uuid>` URL. Press **Go**, review the generated title and highlights, choose a card style, then **Publish**. Text is read-only; the preview is the actual card renderer. The browser remembers your last style choice.
 
-`db:local` uses installed PostgreSQL binaries (Postgres.app, Homebrew, or `PG_BIN`). It creates an isolated database in ignored `work/postgres-data`, listening only on `127.0.0.1:55432`. It never replaces an existing database. Data survives app restarts and `pnpm db:local stop`. Use `pnpm db:local status` to inspect it.
+### Local database
 
-The native local connection is `postgresql://postgres@127.0.0.1:55432/ai_chat_proxy`. Set `DATABASE_URL` to use any other PostgreSQL instance. After schema changes, run `pnpm db:generate` and commit the migration. Apply checked-in migrations with `pnpm db:migrate`.
+`db:local` uses installed PostgreSQL binaries (Postgres.app, Homebrew, or `PG_BIN`). It stores persistent data in ignored `work/postgres-data` and listens at `127.0.0.1:55432`. It refuses an occupied port or an unrecognized data directory. Use `pnpm db:local status` to inspect it and `pnpm db:local stop` to stop it without erasing data.
 
-### Test against production locally
+The native connection is `postgresql://postgres@127.0.0.1:55432/ai_chat_proxy`. Set `DATABASE_URL` for another PostgreSQL instance. After schema changes, run `pnpm db:generate` and commit the migration; apply checked-in migrations with `pnpm db:migrate`.
 
-Neon production is available through explicit commands; ordinary `pnpm dev` keeps its local database.
+### Production data
 
-```sh
-pnpm dev:prod
-# Or run the production build locally:
-pnpm build:prod
-pnpm start:prod
-```
-
-Open `http://localhost:3001`. These commands use **real production data** from ignored `.env.prod.local`; the production build is isolated in `.next-prod`. Use `pnpm db:check:prod` to verify the connection and `pnpm db:migrate:prod` for pending migrations. See [production setup](docs/PRODUCTION.md). The Vercel project is deployed at [ai-chat-proxy-puce.vercel.app](https://ai-chat-proxy-puce.vercel.app); final hosted validation and public launch checks remain open.
+The explicit `pnpm dev:prod`, `pnpm build:prod`, and `pnpm start:prod` commands use **real production Neon data** from ignored `.env.prod.local`. See the [production guide](docs/PRODUCTION.md) for setup, migrations, hosting, and proxy configuration.
 
 ### Docker alternative
 
-Stop the native helper first if it occupies port 55432:
+Stop the native helper if it occupies port 55432, then run:
 
 ```sh
 docker compose up -d db
@@ -49,166 +42,47 @@ docker compose up -d db
 
 Set `DATABASE_URL=postgresql://postgres:passage-local@127.0.0.1:55432/ai_chat_proxy` in `.env.local`, then migrate and run Next.js as above. The Compose password is for local development only.
 
-To run both services in containers, copy `.env.example` to `.env` (Compose reads `.env`, not `.env.local`), set a random `APP_SECRET`, and run:
-
-```sh
-docker compose --profile app up --build
-```
-
-The app container migrates before starting. PostgreSQL uses a persistent named volume. `docker compose down -v` erases that volume; an ordinary `down` preserves it.
+To run both services, copy `.env.example` to `.env` (Compose reads `.env`, not `.env.local`), set a random `APP_SECRET`, and run `docker compose --profile app up --build`. The app migrates before starting. An ordinary `docker compose down` preserves database data; `down -v` erases it. Container execution remains unverified.
 
 ## Configuration
 
-| Variable | Purpose |
-| --- | --- |
-| `DATABASE_URL` | PostgreSQL connection; use provider-supported TLS when hosted. |
-| `APP_SECRET` | Stable random secret, at least 32 characters, for signed draft tokens and hashed client budgets. Required in production. |
-| `TRUST_PROXY` | `none` by default; `vercel` or `single` only with the matching proxy configuration below. |
-| `AI_PROVIDER`, `AI_MODEL` | `openai` and `gpt-5.4-nano` by default. The model can be changed in configuration. |
-| `OPENAI_API_KEY` | Required for new preview generation; never exposed to the browser. |
-| `PASSAGE_URL` | Service origin for the CLI and HTTP smoke scripts. The CLI also accepts `--base-url`. |
-| `PG_BIN` | Optional PostgreSQL executable directory for the native helper. |
-| `TEST_DATABASE_URL` | Enables integration tests against a migrated, disposable database. |
+Start with [.env.example](.env.example). `APP_SECRET` must be stable and at least 32 characters in production; changing it expires drafts but leaves published links valid. Keep secrets outside Git.
 
-Metadata and share links use an automatically selected origin:
-
-- Development uses `PORTLESS_URL` when available.
-- Outside development, `VERCEL=1` uses Vercel's HTTPS hostname. Production uses `VERCEL_PROJECT_PRODUCTION_URL`, falling back to `VERCEL_URL`; Preview and custom environments use `VERCEL_BRANCH_URL`, falling back to `VERCEL_URL`. `VERCEL_TARGET_ENV` takes precedence over `VERCEL_ENV` when selecting the environment. Keep Vercel's system environment variables enabled.
-- Other runs use `http://localhost:${PORT || 3000}`.
-
-A future brand/domain change is picked up from Vercel's production hostname after redeployment. POST validation compares the submitted origin with the actual request host, so alternate deployment URLs can accept their own same-origin requests.
-
-Generate an app secret with:
-
-```sh
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-```
-
-Keep it in the environment, never in Git. Changing it expires prepared drafts; published links remain valid.
-
-### Preview generation
-
-Preview generation uses OpenAI [GPT-5.4 nano](https://developers.openai.com/api/docs/models/gpt-5.4-nano) with reasoning disabled. It sends a bounded source title and conversation text to the OpenAI API. There is no excerpt fallback: missing credentials, invalid output, or a failed request produces a retryable error.
-
-Model input is capped at 20,000 encoded characters. Short conversations are kept whole. Longer ones prioritize the first nonempty user message and the last nonempty assistant message, then add context from the edges in original order. If those two messages alone are too large, their budgets are shared and their middles are cut. Omitted content is marked; the saved reader always retains the full transcript.
-
-The call has no tools or retries, a 15-second timeout, a 700-token output limit, and response storage disabled. The server validates and caches the generated title/highlights. Rendering, reviewing, and publishing a saved preview require no further model calls.
-
-The model's JSON Schema and server validation both limit titles to 60 Unicode characters and each highlight to 100. Generation failures produce a structured `preview_generation_failed` log with an allowlisted category, elapsed time, and available safe HTTP status, request ID, and finish reason. Diagnostics exclude error messages, source URLs, transcript text, model output, request/response bodies, and credentials.
+The app derives its public origin from Portless in development, Vercel system variables when hosted there, or localhost and `PORT` elsewhere. The [production guide](docs/PRODUCTION.md) explains the exact origin and proxy behavior. Set `PASSAGE_URL` to the actual service origin when using the CLI or smoke scripts.
 
 ## CLI and agent skill
 
-The CLI uses the same service API as the web app. It requires Node.js 24+ and a running Passage service; it has no npm dependencies. Set `PASSAGE_URL` to the service's exact origin. Its local default is `http://ai-chat-proxy.localhost:1355`.
+The standalone CLI requires Node.js 24+ and a running Passage service. It uses the same service operations as the web app and has no npm dependencies. Its default origin is `http://ai-chat-proxy.localhost:1355`; set `PASSAGE_URL` or `--base-url` to match your server.
 
 ```sh
 pnpm share prepare 'https://chatgpt.com/s/cx_<id>' --out work/draft.json
 pnpm share publish work/draft.json
 ```
 
-For one interactive command, use `pnpm share '<public-url>'`; it displays the preview before asking to publish. Noninteractive use prepares only unless `--yes` is supplied. `--json` provides structured output for agents:
+`prepare` never publishes. `publish` uses the saved draft and its original server, rejects altered preview text, and reuses the link when retried. Keep draft files private: their tokens can publish the preview until they expire.
 
-```sh
-pnpm share '<public-url>' --yes --json --base-url https://your-passage.example
-```
+`pnpm share '<public-url>'` displays the preview and asks before publishing in a terminal. Noninteractive use prepares only unless `--yes` is supplied. Use `--json` for structured output and `pnpm share --help` for options.
 
-`prepare` never publishes. `publish` uses the token and service origin saved in the draft file, and rejects altered preview text. Keep draft files local: their tokens can publish that preview until they expire. Publishing the same draft again returns the same link. Run `pnpm share --help` for all options.
+The portable [passage-share skill](.agents/skills/passage-share/SKILL.md) includes the CLI. To use it elsewhere, copy the whole skill folder into your agent's skill directory and set `PASSAGE_URL`. It consumes an existing public provider URL; it does not create that URL or post links to other services.
 
-The portable [passage-share skill](.agents/skills/passage-share/SKILL.md) includes the CLI. It is available to agents that discover this repository's `.agents/skills` directory. To use it elsewhere, copy the entire `passage-share` folder into the agent's skill directory (for example, `~/.codex/skills` or `~/.claude/skills`) and set `PASSAGE_URL`. The skill prepares a public provider URL, presents the returned preview, and publishes the saved draft when authorized. It does not create the provider's public share URL or post links to other services.
+## Saved conversations
 
-## Saved conversations and removal
+- Publications retain their saved conversation, generated title/highlights, and chosen style. Identical presentations reuse a link; changed source content can produce a new snapshot.
+- The reader preserves extracted text, Markdown, code, tables, and safe links. Unsupported media, tools, and artifacts have explicit omission markers. Provider HTML is not executed and remote media is not loaded.
+- Removing public access at the provider initiates removal here. Availability checks run lazily after seven days or through the rate-limited manual check. Confirmed removal disables all existing publications and cards from that source; temporary failures leave them available.
+- External platforms may retain previews they already fetched. Disabled content remains stored but is not served. Old links stay disabled if the source returns.
+- There are no accounts, post-publication editors, private deletion links, or public discovery directory.
 
-- A **snapshot** is immutable conversation content with a cached generated preview. Messages use Responses-style `role` and typed `content`, with explicit omitted-media blocks; see the [message model](docs/MESSAGE_MODEL.md). A **publication** saves that preview's title, highlights, and selected card appearance. The draft token is bound to the reviewed text; card and publish requests accept the token and an allowlisted template choice. They reject edited title/highlight fields and arbitrary style or asset inputs.
-- Identical submissions with the same template and retried publishes reuse the same publication. A different template produces a separate publication without re-extracting the source or generating another summary. Changed content can produce a new snapshot without changing existing publications. Older summary publications without a template retain their plain cards.
-- Preparations reuse captured content for seven days. Only a complete content fetch advances capture freshness; availability checks do not. Identical re-fetched content reuses its snapshot and cached preview.
-- Reader visits check availability in the background when the last definitive check is at least seven days old. All publications of a source share one database lease.
-- “Check original availability” has a source-wide one-hour cooldown and a five-attempt/hour client budget. Timeouts, challenges, 429s, 5xx responses, and parsing changes are inconclusive and back off for at least one hour.
-- Confirmed removal disables **all** publications of the source and their image/metadata endpoints. Saved titles, highlights, and transcript text are replaced by a generic unavailable page/card. Old links stay disabled if the source later returns; a new verified creation gets a new link.
-- Reader, metadata, and image responses use `no-store`, so no owned persistent publication cache needs purging. Other platforms can retain previews they fetched earlier; disabling the provider share cannot immediately erase those copies.
-- There is no account, directory, sitemap, private deletion link, or post-publication editor. Remove public access at the original provider to initiate removal here.
+See [product behavior and limits](docs/MVP_PLAN.md), [supported extraction](docs/EXTRACTION.md), and the [message model](docs/MESSAGE_MODEL.md).
 
-Draft capabilities expire after 24 hours. Successful preparations opportunistically run cleanup at most hourly, removing unpublished snapshots older than seven days in bounded batches, empty old sources, and expired rate-limit records. Published snapshots are retained. Disabled content remains stored but is not served.
+## Maintaining cards
 
-## Supported content and limits
+Templates and layout definitions live in [social-templates.ts](lib/social-templates.ts), with optimized backgrounds and [asset provenance](public/social-templates/README.md) under `public/social-templates/`. The public interface accepts known styles only.
 
-The reader preserves extracted text, ordering, Markdown, code, tables, and safe links. Unsupported images, attachments, tool activity, and interactive artifacts appear as explicit omission markers. Provider HTML is never executed and remote media is never loaded.
-
-| Limit | Default |
-| --- | --- |
-| Title / highlight | 60 / 100 Unicode code points; 1–3 highlights |
-| Provider fetch | 15 seconds total, at most 2 redirects, 5 MiB decompressed body |
-| Normalized conversation | 1 MiB; reject larger conversations instead of silently truncating |
-| Mutation JSON body | 16 KiB |
-| Preparation / manual check | 10 / 5 attempts per client per hour |
-| Publish / card preview | 60 / 120 attempts per client per hour |
-| Draft lifetime / lease | 24 hours / 60 seconds |
-| Manual check / transient retry cooldown | At least one hour |
-| Summary generation retry | 30 seconds |
-
-Public `/share/` links and ChatGPT `/s/cx_` Codex shares are supported on the exact HTTPS provider hosts. Copied query parameters and fragments are ignored when building the canonical source and upstream URL. Codex downloads can use different paths, signature formats, and redirect chains within OpenAI's content-download domain. A valid JSON conversation is accepted even when labeled as plain text or a generic download. Private routes, credentials, unusual ports, and redirects outside supported provider domains remain blocked; every upstream connection resolves and pins a public IP.
-
-Cards use Satori/Resvg to render 1200 × 630 PNGs with the same typography and fitting logic for generated examples, selected private previews, and publications. Rendering makes no provider, model, font-CDN, emoji-CDN, or remote artwork requests. Glyph coverage and complex-script typography are bounded by the bundled fonts; unsupported glyphs do not alter saved reader text.
-
-See [extraction evidence](docs/EXTRACTION.md) for verified payloads, public samples, and provider limitations. These undocumented first-party endpoints can change. Browser challenges are inconclusive failures, never a reason to bypass provider protections.
-
-## Social-card templates and personal defaults
-
-Five repository-owned presets are available during review: **Margin notes**, **Electric risograph**, **Maker’s workbench**, **Midnight observatory**, and **Friendly lab**. Margin notes is the initial default. Choosing another template refreshes the real card preview and remembers the choice automatically; the generated title and highlights stay the same.
-
-Picker thumbnails use lightweight browser-rendered HTML with sample text, sharing the templates' optimized JPEG assets, typography, colors, and layout definitions. They do not request generated PNGs. The selected preview and published image remain full-fidelity server-rendered PNGs containing the reviewed title and highlights.
-
-The browser saves only versioned appearance preferences in `localStorage` under `passage:card-preferences:v1`. It does not save the conversation, draft token, source URL, or generated summary there. Preferences apply to later creations in the same browser and origin, and update across open tabs. Invalid or outdated preferences fall back to Margin notes. If browser storage is unavailable, the selected template still works for the current visit. CLI/API requests without an appearance use Margin notes independently of browser preferences.
-
-Publishing stores the selected template with the publication. Later preference changes do not restyle existing links. Migration `drizzle/0002_social_card_appearance.sql` adds a nullable `publications.appearance` column; apply it with `pnpm db:migrate` before running the updated app. Existing rows remain null and retain the legacy plain card. Unavailable conversations always use the generic disabled card.
-
-Template definitions live in [`lib/social-templates.ts`](lib/social-templates.ts): each includes its background path, layout and text bounds, title/body font families and weights, colors, and version. Backgrounds are optimized JPEG files in `public/social-templates/<template-id>/background.jpg`. Edit these checked-in definitions and assets to maintain designs; the public API only accepts known template IDs.
-
-Inter, DM Sans, and Newsreader provide the template typography. `pnpm fonts:prepare` copies licensed WOFF subsets from the installed Fontsource packages into `assets/fonts`, together with a Unicode manifest and license files; it runs before development, builds, and unit tests. Noto Sans, Noto Sans SC, and Noto Emoji provide local fallback coverage. The renderer embeds the selected font bytes and JPEG bytes directly and shrinks text to fit its reserved area without dropping highlights.
-
-[`next.config.ts`](next.config.ts) explicitly includes `assets/fonts/**/*`, `public/social-templates/*/background.jpg`, and Satori's HarfBuzz WASM in Node.js output traces. This keeps dynamically selected artwork and fonts available in production bundles and Vercel functions. Keep these tracing entries when adding or reorganizing templates, and regenerate fonts before building. A standalone deployment must also serve the app's public/static files as described in the installed Next.js output guide.
-
-## Reverse proxies and hosting
-
-An unset `TRUST_PROXY` automatically selects Vercel's trusted header when `VERCEL=1`; otherwise clients share a conservative local budget. Explicit `TRUST_PROXY=none` keeps that shared budget on any host. Arbitrary forwarded headers cannot create new client identities.
-
-- On Vercel, use `TRUST_PROXY=vercel`. The app also requires `VERCEL=1` and uses the platform-overwritten `x-vercel-forwarded-for` header. [Vercel header documentation](https://vercel.com/docs/headers/request-headers#x-vercel-forwarded-for).
-- Behind one self-hosted reverse proxy, use `TRUST_PROXY=single` only if it **overwrites** `X-Real-IP` with the connecting client address. For Nginx: `proxy_set_header X-Real-IP $remote_addr;`. Prevent direct public access to the app port and do not append untrusted incoming headers.
-- Serve the hosted app over HTTPS. Vercel supplies the public origin through its system environment variables. Keep reader/image routes publicly fetchable by social crawlers. Avoid authentication or challenges in front of those routes.
-
-The existing Vercel project uses this single Next.js app. Retain Node 24 and `pnpm build`, configure PostgreSQL and environment variables, and apply pending migrations with `pnpm db:migrate` before serving traffic. Use a pooled `DATABASE_URL` at runtime; migrations prefer `DIRECT_DATABASE_URL` or Neon's `DATABASE_URL_UNPOOLED` when configured. Provider fetching, PostgreSQL, and card rendering use Node.js routes. The connection pool is limited to five connections per instance; prepared statements are disabled for pooler compatibility. Choose database and function regions together. Neon production is configured; see [production setup](docs/PRODUCTION.md) for explicit local access. See the [launch audit](docs/LAUNCH_READINESS.md) and [Postgres recommendation](docs/POSTGRES_HOSTING.md) for the current release gates and setup.
-
-For self-hosting, `pnpm build && pnpm start` runs the same app. A public proxy hostname is not inferred from forwarded headers; generated absolute URLs use the localhost fallback described above. The Dockerfile includes the migration CLI for single-instance startup. Multi-instance deployments should run migrations as a separate release step.
+`pnpm fonts:prepare` builds the local font bundle before development, builds, and unit tests. Keep the artwork, font, and HarfBuzz tracing entries in [next.config.ts](next.config.ts) when changing rendering assets. The renderer fits text without dropping highlights; glyph coverage is limited by the bundled fonts.
 
 ## Verification
 
-```sh
-pnpm fix:format
-pnpm fix:lint
-TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55432/ai_chat_proxy pnpm test
-pnpm build
-```
+Run `pnpm test` for repository checks and `pnpm build` for a production build. PostgreSQL tests require `TEST_DATABASE_URL` pointing to a migrated, disposable database; without it, those suites skip. Tests use mocked or fixture-backed provider/model responses and block external requests.
 
-Tests cover provider fixtures, URL/redirect/DNS safety, decompression limits, summary validation, legacy quote integrity, offline rendering and Unicode fitting across five templates, browser preference persistence, same-origin requests, preview-bound signed drafts, rejected text/style edits, template-aware publishing, CLI behavior, database constraints, concurrent limits, preparation reuse, idempotency, lease expiry, backoff, removal, recreation, and cleanup. PostgreSQL tests skip without `TEST_DATABASE_URL`. CI provisions PostgreSQL, migrates, runs the checks, and builds.
-
-**Unit tests never make paid API calls, locally or in CI.** Vitest disables `.env` loading, clears inherited model credentials, and blocks external fetch/HTTP(S) connections. Generator tests replay the checked-in summary fixture through a mock model. Local PostgreSQL and CLI fixture servers remain available.
-
-Fixture regeneration is a separate, explicit paid operation:
-
-```sh
-pnpm fixtures:summary --regenerate
-```
-
-This makes one OpenAI request using the small authored conversation in `tests/fixtures/summary.json` and saves the result for subsequent offline runs. It refuses to run without the flag or in CI/test environments. A missing fixture is never regenerated automatically.
-
-With a production build running (`pnpm build`, then `pnpm start`), use real shares for the HTTP smoke test. Next.js development mode uses different cache headers, so this test deliberately targets production behavior:
-
-```sh
-pnpm smoke 'https://chatgpt.com/share/<uuid>' 'https://claude.ai/share/<uuid>'
-```
-
-The HTTP smoke scripts default to the app's automatically selected origin. Set `PASSAGE_URL` to an exact origin for another local target, for example `PASSAGE_URL=http://localhost:3100 pnpm smoke ...` with a server started using `PORT=3100 pnpm start`. Keep the local database configuration matched to that server.
-
-This manual live check prepares each source twice, rejects attempted preview edits, verifies idempotent publishing, checks initial-response metadata and provider routing, and compares preview/public PNG bytes and dimensions. It also compares the full reader against the saved local snapshot, so it must run with the matching local database configuration. Only check results, local publication URLs, and PNGs are saved to ignored `work/smoke`. It creates local publications and consumes four preparation attempts. Uncached real sources can incur a model charge; cached summaries are reused. This command is outside the unit suite and CI.
-
-Run `pnpm smoke:removal` against the same local app/database (set `PASSAGE_URL` for a nondefault origin) to verify disabled HTML, RSC responses, metadata, and direct images. It creates and cleans up uniquely identified synthetic publications, simulates removal only for those records, and never alters the real sample sources. Provider-checker behavior is tested separately in the lifecycle integration suite.
-
-See [verification notes](docs/VERIFICATION.md). Hosted extraction and actual social-platform unfurls are separate checks; local HTTP metadata validation does not establish platform cache behavior.
+See [testing guidelines](docs/testing.md) for focused checks, database prerequisites, and separate HTTP/browser/live checks. The [remaining work](docs/MVP_PLAN.md#remaining-work) distinguishes local verification from hosted extraction, recovery, and actual social unfurls.

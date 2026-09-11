@@ -1,6 +1,8 @@
 # Postgres hosting cheat sheet
 
-Verified September 11, 2026 against current first-party documentation. Prices are USD/month before tax; Vercel, model calls, and optional extras are separate. Neon Free is now configured for this project; see [production setup](PRODUCTION.md). Vercel creation remains deferred.
+> Hosting research as of September 11, 2026. Prices, provider terms, and setup observations below are dated evidence. Current scope and remaining gates live in [MVP_PLAN.md](../MVP_PLAN.md); operational setup lives in [PRODUCTION.md](../PRODUCTION.md).
+
+Verified September 11, 2026 against current first-party documentation. Prices are USD/month before tax; Vercel, model calls, and optional extras are separate. Neon Free is now configured for this project; see [production setup](../PRODUCTION.md). Vercel creation remains deferred.
 
 ## Recommendation
 
@@ -52,4 +54,4 @@ On Launch, compute is $0.106/CU-hour, data $0.35/GB-month, and restore history $
 2. Put the TLS-enabled pooled URL in Production `DATABASE_URL`. Keep the existing bounded pool and `prepare: false`. [Pooling](https://neon.com/docs/connect/connection-pooling).
 3. Apply checked-in migrations using the direct URL. The config accepts `DIRECT_DATABASE_URL`, then `DATABASE_URL_UNPOOLED`, then `DATABASE_URL`. Run migrations explicitly, not from requests.
 4. Verify backup/restore appropriate to Free's six-hour window and retain an independent dump. If longer managed recovery is required, include that in the paid comparison.
-5. Run [the production journey and social checks](LAUNCH_READINESS.md), including the first visit after idle. Watch actual usage before changing plans.
+5. Run [the production journey and social checks](../archive/LAUNCH_READINESS.md), including the first visit after idle. Watch actual usage before changing plans.

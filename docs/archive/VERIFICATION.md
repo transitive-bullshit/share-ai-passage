@@ -1,10 +1,12 @@
 # Local MVP verification
 
+> Historical verification records from September 10–11, 2026. Results and environment state apply to the dated runs below. Current scope and remaining gates live in [MVP_PLAN.md](../MVP_PLAN.md); operational setup lives in [PRODUCTION.md](../PRODUCTION.md).
+
 For the current production-readiness assessment and follow-up fixes, see [the September 11 launch audit](LAUNCH_READINESS.md).
 
 ## Testing guidance and suite pruning — September 11, 2026
 
-[Testing guidelines](testing.md) now define how this project chooses permanent tests, runs integration checks, budgets CI, and retires investigation-only tests. `AGENTS.md` links to them for test and CI work. The audit retained inexpensive parser, security, Unicode, reader, preference, and configuration regressions, plus real PostgreSQL constraints/concurrency and both process shutdown signals.
+[Testing guidelines](../testing.md) now define how this project chooses permanent tests, runs integration checks, budgets CI, and retires investigation-only tests. `AGENTS.md` links to them for test and CI work. The audit retained inexpensive parser, security, Unicode, reader, preference, and configuration regressions, plus real PostgreSQL constraints/concurrency and both process shutdown signals.
 
 Repeated card rasterization fell from **54 PNGs to 14**. All five templates still render with their assets, fonts, and full-length text; the tightest layout also retains an all-wide-character maximum-length case. One real preview/public PNG comparison verifies the selected appearance, while route-policy cases mock the renderer. The four-file card/reader/preferences group changed from 86 tests in 21.02 seconds to 67 in 8.50 seconds. These are single local runs, not a controlled benchmark.
 
@@ -30,7 +32,7 @@ An explicit local production build passed on Node 24.5.0 and served at `http://l
 
 Production contains exactly one source, one snapshot, and one publication from this check: `c98aa772-8ce0-458e-ae61-da617c3b4670`. The repeat check created no duplicate records. Its report and card are under ignored `work/production-check/`. This live verification was separate from the offline suite and included one fresh model generation; subsequent preparation reused the saved preview.
 
-Production credentials are in ignored, owner-readable `.env.prod.local`; `.next-prod` is excluded from Git and Docker context. A scan found no configured database URLs, app secret, or OpenAI key in the production client bundles. Ordinary local configuration was preserved. See [production commands](PRODUCTION.md).
+Production credentials are in ignored, owner-readable `.env.prod.local`; `.next-prod` is excluded from Git and Docker context. A scan found no configured database URLs, app secret, or OpenAI key in the production client bundles. Ordinary local configuration was preserved. See [production commands](../PRODUCTION.md).
 
 Final validation passed **395 tests across 21 files** on Node 24.5.0, including the disposable local PostgreSQL suite, formatting, lint, generated route types, and TypeScript. The final `build:prod` passed. Both `start:prod` and `dev:prod` served the saved 37-message reader and accepted same-origin cached preparation at `http://localhost:3001`; stopping each released port 3001. Separate offline lifecycle tests sent SIGINT and SIGTERM to wrapper processes and verified child shutdown and port reuse. Both live check servers were stopped afterward.
 
@@ -42,7 +44,7 @@ Publication excerpt fields, cached excerpt suggestions, and their rendering path
 
 Messages now use Responses-style `type`, `role`, and ordered `content`, with provider-supplied assistant phases and explicit media omissions. The local migration preserved all 140 saved message IDs, roles, ordering, and Markdown. Required publication highlights and migration idempotency have PostgreSQL regression coverage.
 
-All **368 tests across 20 files passed on Node 24.5.0**, including real local PostgreSQL tests; formatting, lint, generated route types, TypeScript, and the production build passed. The migrated 37-message reader loaded successfully in the local browser. These checks made no live model or provider extraction requests. Actual media payload retrieval/rendering remains outside this schema change; see [the message model](MESSAGE_MODEL.md).
+All **368 tests across 20 files passed on Node 24.5.0**, including real local PostgreSQL tests; formatting, lint, generated route types, TypeScript, and the production build passed. The migrated 37-message reader loaded successfully in the local browser. These checks made no live model or provider extraction requests. Actual media payload retrieval/rendering remains outside this schema change; see [the message model](../MESSAGE_MODEL.md).
 
 Historical excerpt checks below describe earlier revisions. The removal smoke now uses two generated-summary publications with different card styles; this cleanup has not rerun that HTTP smoke.
 
@@ -54,7 +56,7 @@ Verified on September 10, 2026 with the installed Next.js 16.3.4, Node.js 25.9.0
 
 - Repository formatting, oxlint, generated route types, TypeScript, and production build.
 - 261 automated tests in 15 files across provider extraction, Unicode summary validation, message-aware compaction, legacy quote integrity, rendering and reader safety, request boundaries, preview-bound signed drafts, rejected client edits, CLI behavior, PostgreSQL constraints/concurrency, and source lifecycle. Integration tests used real PostgreSQL. Unit model responses always come from fixtures and mocks.
-- Anonymous extraction of real ChatGPT and Claude sources, including code, long conversations, and omitted attachments/tools. [Extraction evidence](./EXTRACTION.md) distinguishes real observations from sanitized and synthetic fixtures.
+- Anonymous extraction of real ChatGPT and Claude sources, including code, long conversations, and omitted attachments/tools. [Extraction evidence](../EXTRACTION.md) distinguishes real observations from sanitized and synthetic fixtures.
 - The current summary flow passed full production HTTP smoke for two authored cached fixtures, one for each provider. Repeat preparations, rejected preview edits, duplicate and repeated-draft idempotency, complete Markdown/Unicode readers, unchanged snapshots, source links, and provider mismatch 404s passed. This intentionally made no provider/model calls and does not establish live LLM generation. Earlier versions passed live-source publication smoke for a 16-message ChatGPT conversation and a two-message Claude conversation using legacy excerpts.
 - Private preview and public image bytes were identical, with PNG content type and 1200 × 630 dimensions. Normal requests, Twitterbot, and Facebook crawler user agents received the generated summary fields in Open Graph / large-image metadata in the initial HTML, together with `noindex` directives.
 - Production reader, metadata, and image responses prohibit storage. The reader returns `private, no-cache, no-store, max-age=0, must-revalidate`; image and mutation responses use `private, no-store`. Development-mode Next.js reader headers differ, which is why the HTTP smoke runs against a production build.

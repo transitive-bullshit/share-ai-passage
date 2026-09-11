@@ -16,7 +16,7 @@ When reviewing expensive tests, consider the unique failures they catch alongsid
 
 The repository check is `pnpm test`; its commands are defined in [package.json](../package.json), and test discovery and isolation live in [vitest.config.ts](../vitest.config.ts). Despite its name, `test:unit` currently includes native card rendering, CLI subprocesses, and PostgreSQL integration tests. Keep DOM-free tests in the Node environment.
 
-PostgreSQL suites require `TEST_DATABASE_URL` pointing to a migrated, disposable local database. A run without it skips those suites and is not a complete repository validation. Keep model and provider responses mocked or fixture-backed in the committed suite; retain the credential and external-network guards. Production credentials and live model calls belong outside routine tests.
+PostgreSQL suites require `TEST_DATABASE_URL` pointing to a migrated, disposable local database. The native development helper does not create a separate test database; select the test target explicitly. A run without it skips those suites and is not a complete repository validation. Keep model and provider responses mocked or fixture-backed in the committed suite; retain the credential and external-network guards. Production credentials and live model calls belong outside routine tests.
 
 ## GitHub Actions budget
 
@@ -24,8 +24,25 @@ Keep routine GitHub Actions usage limited to the [core test job](../.github/work
 
 Before proposing more automation, identify the gap and estimate run frequency, total runner time, and artifact storage. Count setup, builds, every matrix entry, and reruns; a shorter wall-clock duration does not necessarily mean lower cost. Avoid duplicate push/PR runs and repeated runs on unchanged code. Bound retries, job timeouts, and artifact retention, and cancel superseded runs where appropriate.
 
-Run relevant production HTTP smoke, removal, packaging, and browser checks separately when changes or releases need them. Record commands, tested revision, results, and remaining gaps in [verification notes](VERIFICATION.md). Live extraction and paid fixture generation are explicit checks outside `pnpm test`; use saved fixtures when they establish the behavior under test. Reduced automatic CI does not waive relevant release checks.
+Run relevant production HTTP smoke, removal, packaging, and browser checks separately when changes or releases need them. Record the command, tested revision, environment, result, and remaining gaps when closing a check in the [MVP plan](MVP_PLAN.md#remaining-work). Prior results are [archived evidence](archive/VERIFICATION.md), not validation of the current checkout. Reduced automatic CI does not waive relevant release checks.
 
 ## Temporary tests
 
 Temporary tests may break these guidelines when they help validate an implementation or reproduce an issue. Before finishing, review tests added for the investigation for inclusion in the long-term, committed suite. Apply the relaxed bar to useful isolated unit tests and the higher bar to heavyweight tests; remove tests that only served the investigation.
+
+## Manual checks
+
+`pnpm build` verifies the production build separately from `pnpm test`. HTTP smoke checks need that build running with `pnpm start`; development mode has different cache headers.
+
+```sh
+pnpm smoke 'https://chatgpt.com/share/<uuid>' 'https://claude.ai/share/<uuid>'
+pnpm smoke:removal
+```
+
+Use a local app and matching local database configuration. `PASSAGE_URL` overrides the automatically selected app origin, for example `http://localhost:3100` for a server started with `PORT=3100`. Smoke checks compare the reader with the saved database snapshot, so an unrelated remote target is insufficient.
+
+`smoke` checks preparation, rejected preview edits, idempotent publication, reader/metadata, and matching preview/public PNGs. It creates publications and consumes two preparation attempts per source. Uncached sources can incur model charges; saved previews are reused. `smoke:removal` creates and cleans up synthetic records to check disabled HTML, RSC, metadata, and images. Provider-check behavior is covered separately by lifecycle tests.
+
+Reports and PNGs go to ignored `work/smoke`, excluding transcript bodies, draft tokens, credentials, and model inputs. Live provider checks, browser interaction, packaging, and actual social unfurls establish different behavior; HTTP crawler-user-agent checks do not prove a platform displayed the card.
+
+`pnpm fixtures:summary --regenerate` is the separate paid fixture command. It makes one model request for the authored fixture in [summary.json](../tests/fixtures/summary.json) and refuses missing flags or CI/test environments. Neither fixture generation nor live smoke runs in `pnpm test` or CI.

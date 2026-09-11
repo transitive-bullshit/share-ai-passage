@@ -1,6 +1,8 @@
 # Soft-launch readiness audit
 
-Audited September 11, 2026 against the initial plan at `5a46c91`, the revised [MVP plan](MVP_PLAN.md), the application at `9976991`, and current local/remote evidence.
+> Historical audit from September 11, 2026. Findings and launch gates below describe that audit. Current scope and remaining gates live in [MVP_PLAN.md](../MVP_PLAN.md); operational setup lives in [PRODUCTION.md](../PRODUCTION.md).
+
+Audited September 11, 2026 against the initial plan at `5a46c91`, the revised [MVP plan](../MVP_PLAN.md), the application at `9976991`, and current local/remote evidence.
 
 ## Verdict
 
@@ -8,7 +10,7 @@ Audited September 11, 2026 against the initial plan at `5a46c91`, the revised [M
 
 The original plan's central promise remains intact: paste a public AI conversation, review an attractive preview, publish one stable link, and let someone read the saved conversation with its source. Read-only AI highlights, public Codex support, the CLI, and five curated card styles were subsequent approved changes. They are assessed as the current product, rather than treating the original excerpt editor, fallback summary, or single template as missing features.
 
-Production setup update: Neon Free is configured in Ohio on PostgreSQL 18, with the checked-in migrations applied, a fixed 0.25-CU production compute, and five-minute idle suspension. Explicit local production commands are available; see [production setup](PRODUCTION.md). The Vercel project is deployed at [ai-chat-proxy-puce.vercel.app](https://ai-chat-proxy-puce.vercel.app). A future brand/domain choice can be applied to the existing project and picked up automatically after redeployment. Deployment checks should cover production and preview metadata, share links, and request-host validation.
+Production setup update: Neon Free is configured in Ohio on PostgreSQL 18, with the checked-in migrations applied, a fixed 0.25-CU production compute, and five-minute idle suspension. Explicit local production commands are available; see [production setup](../PRODUCTION.md). The Vercel project is deployed at [ai-chat-proxy-puce.vercel.app](https://ai-chat-proxy-puce.vercel.app). A future brand/domain choice can be applied to the existing project and picked up automatically after redeployment. Deployment checks should cover production and preview metadata, share links, and request-host validation.
 
 ## The main user journeys
 
@@ -22,7 +24,7 @@ Production setup update: Neon Free is configured in Ohio on PostgreSQL 18, with 
 | Look good in a social feed | Rendering ready; platform gate open | Five readable 1200 × 630 designs, initial HTML OG/large-image metadata, absolute image URLs, no authentication in application routes, and bundled local rendering assets. Actual external platform unfurls remain untested. |
 | Keep published links useful over time | Implemented locally; operations open | Durable Postgres snapshots, immutable publications, bounded availability checks, inconclusive-failure preservation, confirmed-removal handling, and no-store responses. Production backup/restore and hosted DB behavior still need verification. |
 
-The initial plan explicitly required hosted extraction and real social unfurls. Successful local tests do not close either gate. See [extraction evidence](EXTRACTION.md) and [prior verification](VERIFICATION.md).
+The initial plan explicitly required hosted extraction and real social unfurls. Successful local tests do not close either gate. See [extraction evidence](../EXTRACTION.md) and [prior verification](VERIFICATION.md).
 
 ## High-priority fixes completed during the audit
 
@@ -40,7 +42,7 @@ The [GitHub Actions run for `9976991`](https://github.com/transitive-bullshit/ai
 
 ## Remaining launch gates, in order
 
-1. **Verify production recovery.** Neon production and migrations are configured. Validate recovery within Free’s six-hour history limit and retain an independent backup. The current local `pg_dump` is 17.4; this server needs an 18+ dump client. Compare quotas and paid alternatives before upgrading. [Production setup](PRODUCTION.md), [hosting comparison](POSTGRES_HOSTING.md).
+1. **Verify production recovery.** Neon production and migrations are configured. Validate recovery within Free’s six-hour history limit and retain an independent backup. The current local `pg_dump` is 17.4; this server needs an 18+ dump client. Compare quotas and paid alternatives before upgrading. [Production setup](../PRODUCTION.md), [hosting comparison](../research/POSTGRES_HOSTING.md).
 2. **Verify the deployed Vercel configuration and automatic public origin.** The project already exists. Confirm Node 24, frozen-lockfile installation, and `pnpm build`; Production needs `DATABASE_URL`, a stable random `APP_SECRET` of at least 32 characters, `OPENAI_API_KEY`, `AI_PROVIDER=openai`, and `AI_MODEL=gpt-5.4-nano`. Keep Vercel's system environment variables enabled and verify metadata and published links use the deployed origin after redeployment. Confirm POST requests validate against the actual request host, including when using an alternate deployment URL. Environment selection uses `VERCEL_TARGET_ENV` before `VERCEL_ENV`; production resolves `VERCEL_PROJECT_PRODUCTION_URL` or `VERCEL_URL`, while Preview/custom resolves `VERCEL_BRANCH_URL` or `VERCEL_URL`. `TRUST_PROXY=vercel` is an explicit supported setting; an unset value selects it automatically on Vercel. Give Preview its own database if used. Keep functions near the database. [Vercel runtime](https://vercel.com/docs/functions/runtimes/node-js/node-js-versions).
 3. **Ensure anonymous access to the actual share domain.** Readers and `/image` routes must work without Vercel login, a bypass token, a password, or a bot challenge. Verify the automatically selected origin resolves to a publicly accessible domain. Vercel can now protect production domains on every plan, so verify the actual project setting. [Deployment protection](https://vercel.com/docs/deployment-protection), [September 2026 change](https://vercel.com/changelog/protect-production-deployments-for-free-on-every-plan).
 4. **Run one real end-to-end creation per source format from production.** Use an ordinary ChatGPT share, a public Codex share, and a Claude share. Confirm extraction, generated title/highlights, loaded card, publication, copy/open, faithful transcript, original-source link, and the same style after reload. Repeat publication once to confirm idempotency. This deliberately exercises live model calls and is separate from free tests.
