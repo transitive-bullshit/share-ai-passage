@@ -626,6 +626,7 @@
   color: var(--muted-foreground);
 }
 .live-card {
+  position: relative;
   min-height: 120px;
   aspect-ratio: 1200 / 630;
   width: 100%;
@@ -635,9 +636,13 @@
   border-radius: 10px;
   box-shadow: 0 10px 24px -12px #17171712;
 }
-.live-card img {
+.social-card-preview {
+  position: absolute;
+  inset: 0;
+  display: block;
   width: 100%;
-  height: auto;
+  height: 100%;
+  border: 0;
 }
 .review-preview > [data-slot='alert'] {
   margin-top: 15px;
@@ -719,15 +724,14 @@
   margin: 0 auto;
 }
 .published-preview {
+  position: relative;
+  aspect-ratio: 1200 / 630;
   max-width: 540px;
   margin: 32px auto;
   border: 1px solid var(--border);
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 12px 30px -15px #17171712;
-}
-.published-preview img {
-  height: auto;
 }
 .published-state [data-slot='field-group'] {
   max-width: 540px;
@@ -1455,59 +1459,13 @@
   pointer-events: none;
   user-select: none;
 }
-.social-template-background,
-.social-template-scrim {
-  position: absolute;
-  inset: 0;
+/* Scale the same fixed canvas used by the renderer without changing its layout. */
+.social-template-card {
+  all: initial;
   display: block;
-  width: 100%;
-  height: 100%;
-}
-.social-template-background {
-  object-fit: cover;
-}
-.social-template-mini-brand {
-  position: absolute;
-  display: flex;
-  align-items: center;
-  gap: 0.65cqw;
-  font-family: 'Inter', sans-serif;
-  font-size: 1.9cqw;
-  font-weight: 500;
-  line-height: 1;
-}
-.social-template-mini-brand svg {
-  width: 2.5cqw;
-  height: 2.5cqw;
-}
-.social-template-mini-copy,
-.social-template-mini-highlights {
-  display: flex;
-  flex-direction: column;
-}
-.social-template-mini-copy {
-  position: absolute;
-  overflow: hidden;
-}
-.social-template-mini-title {
-  display: block;
-  text-wrap: balance;
-}
-.social-template-mini-highlight {
-  display: flex;
-  align-items: baseline;
-  gap: 0.7cqw;
-}
-.social-template-mini-marker {
-  flex-shrink: 0;
-}
-.social-template-mini-footer {
-  position: absolute;
-  display: block;
-  border-top: 0.1cqw solid;
-  padding-top: 1.1cqw;
-  font-size: 1.1cqw;
-  line-height: 1;
+  width: 1200px;
+  height: 630px;
+  zoom: calc(100cqw / 1200px);
 }
 .social-template-check {
   position: absolute;

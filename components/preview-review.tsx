@@ -49,7 +49,7 @@ export function PreviewReview({
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
   const [card, setCard] = useState<{
-    url: string
+    html: string
     appearance: CardAppearance
     attempt: number
     loaded: boolean
@@ -83,7 +83,7 @@ export function PreviewReview({
   const cardReady = Boolean(
     preferencesReady && currentCard?.loaded && !currentCardError
   )
-  const cardAlt = `${draft.preview.title}: ${draft.preview.highlights.join(' ')}`
+  const cardTitle = `${draft.preview.title}: ${draft.preview.highlights.join(' ')}`
 
   useEffect(() => {
     headingRef.current?.focus({ preventScroll: true })
@@ -93,7 +93,6 @@ export function PreviewReview({
   useEffect(() => {
     if (!preferencesReady) return
     const controller = new AbortController()
-    let objectUrl: string | undefined
 
     async function loadCard() {
       try {
@@ -101,14 +100,15 @@ export function PreviewReview({
           '/api/card',
           {
             draftToken: draft.draftToken,
-            appearance: activeAppearance
+            appearance: activeAppearance,
+            format: 'html'
           },
           controller.signal
         )
+        const html = await blob.text()
         if (controller.signal.aborted) return
-        objectUrl = URL.createObjectURL(blob)
         setCard({
-          url: objectUrl,
+          html,
           appearance: activeAppearance,
           attempt: cardAttempt,
           loaded: false
@@ -124,10 +124,7 @@ export function PreviewReview({
     }
 
     void loadCard()
-    return () => {
-      controller.abort()
-      if (objectUrl) URL.revokeObjectURL(objectUrl)
-    }
+    return () => controller.abort()
   }, [draft.draftToken, cardAttempt, activeAppearance, preferencesReady])
 
   function retryCard() {
@@ -168,11 +165,12 @@ export function PreviewReview({
         </p>
         <div className='published-preview'>
           {currentCard ? (
-            <img
-              src={currentCard.url}
-              width={1200}
-              height={630}
-              alt={cardAlt}
+            <iframe
+              className='social-card-preview'
+              srcDoc={currentCard.html}
+              title={cardTitle}
+              sandbox=''
+              tabIndex={-1}
             />
           ) : null}
         </div>
@@ -287,15 +285,16 @@ export function PreviewReview({
             aria-busy={!cardReady && !currentCardError}
           >
             {currentCard ? (
-              <img
-                key={currentCard.url}
-                src={currentCard.url}
-                width={1200}
-                height={630}
-                alt={cardAlt}
+              <iframe
+                key={`${templateId}:${cardAttempt}`}
+                className='social-card-preview'
+                srcDoc={currentCard.html}
+                title={cardTitle}
+                sandbox=''
+                tabIndex={-1}
                 onLoad={() =>
                   setCard((latest) =>
-                    latest?.url === currentCard.url &&
+                    latest?.html === currentCard.html &&
                     latest.appearance === activeAppearance &&
                     latest.attempt === cardAttempt
                       ? { ...latest, loaded: true }
@@ -304,7 +303,7 @@ export function PreviewReview({
                 }
                 onError={() =>
                   setCard((latest) =>
-                    latest?.url === currentCard.url &&
+                    latest?.html === currentCard.html &&
                     latest.appearance === activeAppearance &&
                     latest.attempt === cardAttempt
                       ? {

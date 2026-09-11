@@ -90,11 +90,13 @@ describe('browser request recovery', () => {
     fetch.mockResolvedValueOnce(Response.json(result))
     expect(await postJson('/api/publish', {})).toEqual(result)
     fetch.mockResolvedValueOnce(
-      new Response('png fixture', { headers: { 'Content-Type': 'image/png' } })
+      new Response('webp fixture', {
+        headers: { 'Content-Type': 'image/webp' }
+      })
     )
     const image = await postBlob('/api/card', {})
-    expect(image.type).toBe('image/png')
-    expect(await image.text()).toBe('png fixture')
+    expect(image.type).toBe('image/webp')
+    expect(await image.text()).toBe('webp fixture')
   })
 
   it('accepts future Retry-After seconds and dates, ignoring invalid or expired values', () => {

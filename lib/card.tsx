@@ -1,456 +1,21 @@
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-
-import { Resvg } from '@resvg/resvg-js'
-import satori from 'satori'
+import { renderToReadableStream } from 'react-dom/server.edge'
+import { render, type MeasuredNode, type Node } from 'takumi-js'
+import { fromJsx } from 'takumi-js/helpers/jsx'
+import { Renderer } from 'takumi-js/node'
 
 import type { CardAppearance } from './card-appearance'
-import { cardFonts } from './card-fonts'
-import { providerNames, type Provider } from './domain'
+import { cardFonts, type CardFont } from './card-fonts'
 import { privateHeaders } from './http'
+import { SocialCard, footerText, type CardData } from './social-card'
 import { getSocialTemplate, type SocialTemplate } from './social-templates'
 
-export type CardData =
-  | { disabled: true }
-  | {
-      title: string
-      highlights: string[]
-      provider: Provider
-      example?: boolean
-      disabled?: false
-    }
+export type { CardData } from './social-card'
 
-function footerText(data: CardData) {
-  return data.disabled
-    ? 'Original unavailable'
-    : `A passage from ${providerNames[data.provider]} worth sharing`
-}
-
-function Card({ data, scale = 1 }: { data: CardData; scale?: number }) {
-  const disabled = data.disabled
-  const title = disabled ? 'This conversation is unavailable' : data.title
-  const highlights = disabled ? null : data.highlights
-  return (
-    <div
-      style={{
-        display: 'flex',
-        width: 1200,
-        height: 630,
-        background: '#ffffff',
-        color: '#171717',
-        padding: '46px 64px 38px',
-        fontFamily: 'Inter',
-        flexDirection: 'column'
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          height: 32,
-          fontSize: 18,
-          color: '#737373'
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 11,
-            fontSize: 23,
-            fontWeight: 500,
-            letterSpacing: '-0.8px',
-            color: '#171717'
-          }}
-        >
-          <svg width='30' height='30' viewBox='0 0 32 32' fill='none'>
-            <rect
-              x='3'
-              y='8'
-              width='15'
-              height='20'
-              rx='3'
-              stroke='#171717'
-              strokeWidth='1.8'
-            />
-            <rect
-              x='12'
-              y='3'
-              width='15'
-              height='20'
-              rx='3'
-              stroke='#171717'
-              strokeWidth='1.8'
-            />
-          </svg>
-          <span>Passage</span>
-        </div>
-        {disabled ? (
-          <span>Saved conversation</span>
-        ) : data.example ? (
-          <span>Example conversation</span>
-        ) : null}
-      </div>
-      <div
-        id='card-copy'
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          marginTop: 38,
-          gap: 28 * scale,
-          flexShrink: 0
-        }}
-      >
-        <div
-          style={{
-            fontSize: 60 * scale,
-            fontWeight: 500,
-            lineHeight: 1.08,
-            letterSpacing: '-2.5px',
-            overflowWrap: 'anywhere'
-          }}
-        >
-          {title}
-        </div>
-        {highlights ? (
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 15 * scale
-            }}
-          >
-            <span
-              style={{
-                fontSize: 14,
-                fontWeight: 500,
-                letterSpacing: '1.4px',
-                color: '#737373',
-                marginBottom: 1
-              }}
-            >
-              AI SUMMARY
-            </span>
-            {highlights.map((highlight, index) => (
-              <div
-                key={index}
-                style={{
-                  display: 'flex',
-                  gap: 15,
-                  alignItems: 'flex-start'
-                }}
-              >
-                <span
-                  style={{
-                    width: 5,
-                    height: 5,
-                    flexShrink: 0,
-                    borderRadius: 1,
-                    marginTop: 15 * scale,
-                    background: '#a3a3a3'
-                  }}
-                />
-                <span
-                  style={{
-                    fontSize: 28 * scale,
-                    lineHeight: 1.4,
-                    color: '#525252',
-                    whiteSpace: 'normal',
-                    overflowWrap: 'anywhere',
-                    flex: 1
-                  }}
-                >
-                  {highlight}
-                </span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div
-            style={{
-              display: 'flex',
-              borderLeft: '2px solid #e5e5e5',
-              paddingLeft: 24
-            }}
-          >
-            <div
-              style={{
-                fontSize: 28 * scale,
-                lineHeight: 1.4,
-                color: '#525252',
-                whiteSpace: 'normal',
-                overflowWrap: 'anywhere'
-              }}
-            >
-              The original is no longer publicly available. Its saved
-              conversation and preview have been disabled.
-            </div>
-          </div>
-        )}
-      </div>
-      <div
-        id='card-footer'
-        style={{
-          position: 'absolute',
-          display: 'flex',
-          bottom: 36,
-          left: 64,
-          right: 64,
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          paddingTop: 20,
-          borderTop: '1px solid #e5e5e5',
-          color: '#737373',
-          fontSize: 16
-        }}
-      >
-        <span>{footerText(data)}</span>
-      </div>
-    </div>
-  )
-}
-
-type SummaryCardData = Extract<CardData, { highlights: string[] }>
-
-function HighlightMarker({
-  template,
-  index,
-  scale
-}: {
-  template: SocialTemplate
-  index: number
-  scale: number
-}) {
-  const { marker } = template.layout
-  const color = template.colors.accent
-  return (
-    <div
-      style={{
-        display: 'flex',
-        width: marker === 'number' ? 25 : 13,
-        height:
-          template.layout.highlightSize *
-          scale *
-          template.layout.highlightLineHeight,
-        flexShrink: 0,
-        alignItems: 'center',
-        justifyContent: 'center',
-        color,
-        fontFamily: 'Inter',
-        fontSize: 15 * scale,
-        fontWeight: 500
-      }}
-    >
-      {marker === 'number' ? (
-        <span>{String(index + 1).padStart(2, '0')}</span>
-      ) : marker === 'star' ? (
-        <svg width='12' height='12' viewBox='0 0 12 12'>
-          <path
-            d='M6 0L7.4 4.6 12 6 7.4 7.4 6 12 4.6 7.4 0 6 4.6 4.6Z'
-            fill={color}
-          />
-        </svg>
-      ) : (
-        <span
-          style={{
-            width: marker === 'dash' ? 13 : 6,
-            height: marker === 'dash' ? 2 : 6,
-            borderRadius: marker === 'circle' ? 10 : 0,
-            background: color
-          }}
-        />
-      )}
-    </div>
-  )
-}
-
-function TemplateCard({
-  data,
-  template,
-  background,
-  scale
-}: {
-  data: SummaryCardData
-  template: SocialTemplate
-  background: string
-  scale: number
-}) {
-  const { layout, colors, font } = template
-  return (
-    <div
-      style={{
-        position: 'relative',
-        display: 'flex',
-        width: 1200,
-        height: 630,
-        overflow: 'hidden',
-        background: colors.background,
-        color: colors.text,
-        fontFamily: 'Inter'
-      }}
-    >
-      <img
-        src={background}
-        alt=''
-        width={1200}
-        height={630}
-        style={{ position: 'absolute', top: 0, left: 0, objectFit: 'cover' }}
-      />
-      <div
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: 1200,
-          height: 630,
-          background: layout.scrim
-        }}
-      />
-      <div
-        style={{
-          display: 'flex',
-          position: 'absolute',
-          top: layout.headerTop,
-          left: layout.copy.left,
-          width: layout.copy.width,
-          height: 31,
-          alignItems: 'center',
-          justifyContent: 'space-between'
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            fontSize: 24,
-            fontWeight: 500,
-            letterSpacing: '-0.8px'
-          }}
-        >
-          <svg width='30' height='30' viewBox='0 0 32 32' fill='none'>
-            <rect
-              x='3'
-              y='8'
-              width='15'
-              height='20'
-              rx='3'
-              stroke={colors.text}
-              strokeWidth='1.8'
-            />
-            <rect
-              x='12'
-              y='3'
-              width='15'
-              height='20'
-              rx='3'
-              stroke={colors.text}
-              strokeWidth='1.8'
-            />
-          </svg>
-          <span>Passage</span>
-        </div>
-        {data.example ? (
-          <span style={{ fontSize: 17, color: colors.muted }}>
-            Example conversation
-          </span>
-        ) : null}
-      </div>
-      <div
-        id='card-copy'
-        style={{
-          display: 'flex',
-          position: 'absolute',
-          left: layout.copy.left,
-          top: layout.copy.top,
-          width: layout.copy.width,
-          flexDirection: 'column',
-          gap: layout.gap * scale,
-          flexShrink: 0
-        }}
-      >
-        <div
-          style={{
-            fontFamily: font.title.family,
-            fontWeight: font.title.weight,
-            fontSize: layout.titleSize * scale,
-            lineHeight: layout.titleLineHeight,
-            letterSpacing: layout.titleLetterSpacing * scale,
-            overflowWrap: 'anywhere'
-          }}
-        >
-          {data.title}
-        </div>
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: layout.highlightGap * scale
-          }}
-        >
-          <span
-            style={{
-              fontFamily: 'Inter',
-              fontSize: 12,
-              fontWeight: 500,
-              letterSpacing: '1.6px',
-              color: colors.accent,
-              marginBottom: 2
-            }}
-          >
-            AI SUMMARY
-          </span>
-          {data.highlights.map((highlight, index) => (
-            <div
-              key={index}
-              style={{ display: 'flex', gap: 13, alignItems: 'flex-start' }}
-            >
-              <HighlightMarker
-                template={template}
-                index={index}
-                scale={scale}
-              />
-              <span
-                style={{
-                  fontFamily: font.body.family,
-                  fontWeight: font.body.weight,
-                  fontSize: layout.highlightSize * scale,
-                  lineHeight: layout.highlightLineHeight,
-                  color: colors.muted,
-                  whiteSpace: 'normal',
-                  overflowWrap: 'anywhere',
-                  flex: 1
-                }}
-              >
-                {highlight}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-      <div
-        id='card-footer'
-        style={{
-          position: 'absolute',
-          display: 'flex',
-          top: layout.footerTop,
-          left: layout.copy.left,
-          width: layout.footerWidth,
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          paddingTop: 17,
-          borderTop: `1px solid ${colors.rule}`,
-          color: colors.muted,
-          fontSize: 14
-        }}
-      >
-        <span>{footerText(data)}</span>
-      </div>
-    </div>
-  )
-}
-
+// Native caches contain only bundled fonts/artwork, never request-specific layout.
+const renderer = new Renderer()
+const registeredFonts = new Map<string, Promise<unknown>>()
 const backgroundImages = new Map<string, Promise<string>>()
 
 function cardBackground(template: SocialTemplate) {
@@ -469,57 +34,144 @@ function cardBackground(template: SocialTemplate) {
   return background
 }
 
-export async function renderCard(data: CardData, appearance?: CardAppearance) {
+async function registerFonts(fonts: CardFont[]) {
+  await Promise.all(
+    fonts.map((font) => {
+      let registered = registeredFonts.get(font.name)
+      if (!registered) {
+        registered = renderer.registerFont(font).catch((err: unknown) => {
+          registeredFonts.delete(font.name)
+          throw err
+        })
+        registeredFonts.set(font.name, registered)
+      }
+      return registered
+    })
+  )
+}
+
+function copyLayout(
+  node: Node,
+  measured: MeasuredNode
+): MeasuredNode | undefined {
+  if (node.className === 'social-card-copy') return measured
+  if ('children' in node) {
+    for (const [index, child] of (node.children ?? []).entries()) {
+      const found = copyLayout(child, measured.children[index]!)
+      if (found) return found
+    }
+  }
+}
+
+async function prepareCard(data: CardData, appearance?: CardAppearance) {
   const text = data.disabled
     ? 'This conversation is unavailable The original is no longer publicly available. Its saved conversation and preview have been disabled. Saved conversation Original unavailable Passage'
-    : `${data.title} AI SUMMARY ${data.highlights.join(' ')} ${data.example ? 'Example conversation ' : ''}${footerText(data)} Passage`
-  // Keep unthemed publications and disabled cards on the original layout.
+    : `${data.title} AI SUMMARY ${data.highlights.join(' ')} ${data.example ? 'Example conversation ' : ''}${footerText(data)} Passage 01 02 03`
   const template =
     appearance && !data.disabled
       ? getSocialTemplate(appearance.templateId)
       : undefined
   const [fonts, background] = await Promise.all([
     cardFonts(
-      template?.layout.marker === 'number' && !data.disabled
-        ? `${text} ${data.highlights.map((_, index) => String(index + 1).padStart(2, '0')).join(' ')}`
-        : text,
+      text,
       template ? [template.font.title, template.font.body] : undefined
     ),
     template ? cardBackground(template) : Promise.resolve('')
   ])
+  await registerFonts(fonts)
+  // Pin fallbacks per render so earlier requests cannot change glyph selection.
+  const options = {
+    width: 1200,
+    height: 630,
+    fontFamilies: [...new Set(fonts.map((font) => font.subsetOf))]
+  }
   const maxHeight = template?.layout.copy.maxHeight ?? 407
   let scale = 1
-  let svg = ''
-  // Fit every highlight, including wide glyphs and long words.
-  // Keep the layout identical for draft previews and public PNGs.
+  let lower = 0
+  let upper = 1
+  let fitted:
+    | {
+        element: ReturnType<typeof SocialCard>
+        node: Node
+        css: string[]
+        fonts: CardFont[]
+        options: typeof options
+      }
+    | undefined
+  // Measure without encoding. Search for the largest fitting text size; a single
+  // height ratio over-shrinks wrapped copy because line counts also change.
   for (let attempt = 0; attempt < 8; attempt++) {
-    let copyHeight = 0
-    const card = template ? (
-      <TemplateCard
-        data={data as SummaryCardData}
-        template={template}
+    const element = (
+      <SocialCard
+        data={data}
+        appearance={appearance}
         background={background}
         scale={scale}
       />
-    ) : (
-      <Card data={data} scale={scale} />
     )
-    svg = await satori(card, {
-      width: 1200,
-      height: 630,
-      fonts,
-      onNodeDetected(node) {
-        if (node.props.id === 'card-copy') copyHeight = node.height
-      }
-      // Deliberately no loadAdditionalAsset: fonts and emoji remain local.
-    })
-    if (copyHeight <= maxHeight) break
-    scale *= Math.min(0.92, (maxHeight - 17) / copyHeight)
+    const { node, css } = await fromJsx(element)
+    const measured = await renderer.measure(node, { ...options, css })
+    const copy = copyLayout(node, measured)
+    if (!copy) throw new Error('Social card is missing its copy layout')
+    if (copy.height <= maxHeight) {
+      fitted = { element, node, css, fonts, options }
+      if (scale === 1) return fitted
+      lower = scale
+    } else {
+      upper = scale
+    }
+    scale = (lower + upper) / 2
   }
-  const png = new Resvg(svg, { fitTo: { mode: 'width', value: 1200 } })
-    .render()
-    .asPng()
-  return new Response(new Uint8Array(png), {
-    headers: { ...privateHeaders, 'Content-Type': 'image/png' }
+  if (fitted) return fitted
+  throw new Error('Social card text could not fit within its template')
+}
+
+export async function renderCard(data: CardData, appearance?: CardAppearance) {
+  const { node, css, options } = await prepareCard(data, appearance)
+  const webp = await render(node, {
+    ...options,
+    css,
+    renderer,
+    emoji: 'from-font',
+    format: 'webp',
+    quality: 90,
+    lossless: false
+  })
+  return new Response(new Uint8Array(webp), {
+    headers: { ...privateHeaders, 'Content-Type': 'image/webp' }
+  })
+}
+
+function fontCss(font: CardFont) {
+  const ranges = font.ranges
+    .map(([start, end]) => `U+${start.toString(16)}-${end.toString(16)}`)
+    .join(',')
+  return `@font-face{font-family:"${font.subsetOf}";font-style:normal;font-weight:${font.weight};src:url(data:font/woff;base64,${font.data.toString('base64')}) format("woff");unicode-range:${ranges}}`
+}
+
+/** Same fitted JSX and bundled assets, with browser layout and no image encoding. */
+export async function renderCardPreview(
+  data: CardData,
+  appearance?: CardAppearance
+) {
+  const { element, fonts } = await prepareCard(data, appearance)
+  const html = await renderToReadableStream(
+    <html lang='en'>
+      <head>
+        <meta charSet='utf-8' />
+        <meta name='viewport' content='width=device-width, initial-scale=1' />
+        <meta
+          httpEquiv='Content-Security-Policy'
+          content="default-src 'none'; img-src data:; font-src data:; style-src 'unsafe-inline'"
+        />
+        <title>Social card preview</title>
+        <style>{`${fonts.map(fontCss).join('\n')}*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden}body>div{transform-origin:top left;transform:scale(calc(100vw / 1200px))}`}</style>
+      </head>
+      <body>{element}</body>
+    </html>
+  )
+  await html.allReady
+  return new Response(html, {
+    headers: { ...privateHeaders, 'Content-Type': 'text/html; charset=utf-8' }
   })
 }

@@ -3,12 +3,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { GET as publicImage } from '@/app/[provider]/[publicationId]/image/route'
 import { POST as previewImage } from '@/app/api/card/route'
 import { GET as exampleImage } from '@/app/api/example-card/route'
-import { renderCard } from '@/lib/card'
+import { renderCard, renderCardPreview } from '@/lib/card'
 import {
   DEFAULT_CARD_APPEARANCE,
   type CardAppearance
 } from '@/lib/card-appearance'
 import { socialTemplateIds } from '@/lib/social-templates'
+import { webpDimensions } from '@/lib/webp'
 
 const savedPreview = {
   title: 'Small habits create steady progress',
@@ -40,7 +41,10 @@ const service = vi.hoisted(() => ({
   getPublication: vi.fn<() => Promise<ReturnType<typeof publication> | null>>()
 }))
 vi.mock('@/lib/service', () => service)
-vi.mock('@/lib/card', () => ({ renderCard: vi.fn<typeof renderCard>() }))
+vi.mock('@/lib/card', () => ({
+  renderCard: vi.fn<typeof renderCard>(),
+  renderCardPreview: vi.fn<typeof renderCardPreview>()
+}))
 
 function request(body: unknown) {
   return new Request('http://localhost:3000/api/card', {
@@ -67,10 +71,10 @@ function publicRequest(query = '') {
 
 async function bytes(response: Response) {
   expect(response.status).toBe(200)
-  expect(response.headers.get('content-type')).toBe('image/png')
+  expect(response.headers.get('content-type')).toBe('image/webp')
   expect(response.headers.get('cache-control')).toContain('no-store')
   const buffer = Buffer.from(await response.arrayBuffer())
-  expect(buffer.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a')
+  expect(webpDimensions(buffer)).toEqual({ width: 1200, height: 630 })
   return buffer
 }
 
@@ -79,6 +83,9 @@ describe('saved social-card appearance routes', () => {
     vi.mocked(renderCard)
       .mockReset()
       .mockImplementation(async () => new Response('rendered card'))
+    vi.mocked(renderCardPreview)
+      .mockReset()
+      .mockImplementation(async () => new Response('HTML preview'))
     service.enforceBudget.mockReset().mockResolvedValue(undefined)
     service.getDraft.mockReset().mockResolvedValue({
       preview: savedPreview,
@@ -87,7 +94,7 @@ describe('saved social-card appearance routes', () => {
     service.getPublication.mockReset().mockResolvedValue(publication())
   })
 
-  // Keep one composed PNG comparison; other route cases test the renderer boundary.
+  // Keep one composed WebP comparison; other route cases test the renderer boundary.
   it('shows the exact reviewed preview after publication and ignores query overrides', async () => {
     const actual =
       await vi.importActual<typeof import('@/lib/card')>('@/lib/card')
@@ -126,7 +133,24 @@ describe('saved social-card appearance routes', () => {
     )
   })
 
+  it('uses the HTML renderer for a creation-page preview with the saved draft copy', async () => {
+    const appearance = { templateId: 'friendly-lab' as const }
+    const response = await previewImage(
+      request({ draftToken: 'signed-preview', appearance, format: 'html' })
+    )
+    expect(response.status).toBe(200)
+    expect(renderCardPreview).toHaveBeenCalledExactlyOnceWith(
+      { ...savedPreview, provider: 'claude' },
+      appearance
+    )
+    expect(renderCard).not.toHaveBeenCalled()
+    expect(service.getDraft).toHaveBeenCalledExactlyOnceWith('signed-preview')
+  })
+
   it.each([
+    { format: 'png' },
+    { format: 'svg' },
+    { format: null },
     { appearance: null },
     { appearance: {} },
     { appearance: { templateId: 'unknown' } },
@@ -135,7 +159,7 @@ describe('saved social-card appearance routes', () => {
     { highlights: ['A client-authored highlight'] },
     { selection: 'A client-selected excerpt' }
   ])(
-    'rejects appearance injection and preview text edits: %j',
+    'rejects unsupported formats, appearance injection and preview text edits: %j',
     async (input) => {
       const response = await previewImage(
         request({ draftToken: 'signed-preview', ...input })

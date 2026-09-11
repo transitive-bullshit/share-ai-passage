@@ -65,7 +65,7 @@ Keep Vercel's system environment variables enabled. Redeploy after changing the 
 
 Self-hosting runs the same app with `pnpm build` and `pnpm start`, or the [Docker setup](../readme.md#docker-alternative). Public proxy hostnames are not inferred from forwarded headers; the current non-Vercel production fallback remains localhost. Arbitrary self-hosted public-origin configuration is a known limitation.
 
-The Dockerfile migrates before single-instance startup. Multi-instance deployments should migrate in a separate release step. Standalone packaging must include public/static files and the dynamic font, artwork, and shaping assets traced in [next.config.ts](../next.config.ts).
+The Dockerfile migrates before single-instance startup. Multi-instance deployments should migrate in a separate release step. Card rendering uses Takumi's native Node.js backend for WebP output at quality 90. [next.config.ts](../next.config.ts) externalizes `@takumi-rs/core` and traces the bundled fonts and artwork. Standalone packaging must include those assets, public/static files, and Takumi's native binary for the deployment platform. Verify a card request from the production build after changing renderer dependencies.
 
 ## Recovery
 

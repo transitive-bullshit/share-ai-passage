@@ -13,6 +13,7 @@ import { closeDatabase } from '../lib/db'
 import type { Message } from '../lib/domain'
 import { getDraft } from '../lib/service'
 import { generatedPreviewSchema } from '../lib/summary'
+import { webpDimensions } from '../lib/webp'
 
 const projectDirectory = fileURLToPath(new URL('..', import.meta.url))
 nextEnv.loadEnvConfig(projectDirectory)
@@ -38,7 +39,7 @@ type Result = {
   status: 'running' | 'passed' | 'failed'
   messageCount: number
   shareUrl: string
-  previewPngBytes?: number
+  previewWebpBytes?: number
   imageWidth?: number
   imageHeight?: number
   checks: Record<string, 'passed'>
@@ -116,28 +117,19 @@ async function readJson<T extends z.ZodType>(
   return result.data
 }
 
-async function png(response: Response) {
-  verify(response.ok, `PNG returned HTTP ${response.status}.`)
+async function webp(response: Response) {
+  verify(response.ok, `WebP returned HTTP ${response.status}.`)
   privateResponse(response)
   verify(
-    response.headers.get('content-type')?.startsWith('image/png'),
-    'The card must use image/png.'
+    response.headers.get('content-type')?.startsWith('image/webp'),
+    'The card must use image/webp.'
   )
   const bytes = Buffer.from(await response.arrayBuffer())
+  const dimensions = webpDimensions(bytes)
+  verify(dimensions, 'The card has no valid WebP dimension header.')
   verify(
-    bytes.length >= 24 &&
-      bytes
-        .subarray(0, 8)
-        .equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])),
-    'The card does not have a PNG signature.'
-  )
-  verify(
-    bytes.toString('ascii', 12, 16) === 'IHDR',
-    'The PNG has no valid dimension header.'
-  )
-  verify(
-    bytes.readUInt32BE(16) === 1200 && bytes.readUInt32BE(20) === 630,
-    'The PNG must be 1200 by 630 pixels.'
+    dimensions.width === 1200 && dimensions.height === 630,
+    'The WebP must be 1200 by 630 pixels.'
   )
   return bytes
 }
@@ -213,8 +205,8 @@ function validateReader(
     'Open Graph must declare card dimensions.'
   )
   verify(
-    meta.get('og:image:type') === 'image/png',
-    'Open Graph must declare the PNG content type.'
+    meta.get('og:image:type') === 'image/webp',
+    'Open Graph must declare the WebP content type.'
   )
   verify(
     meta.get('twitter:card') === 'summary_large_image',
@@ -379,25 +371,61 @@ async function smokeSource(sourceUrl: string, index: number) {
   report.results.push(result)
   await saveReport()
 
-  stage = `${prepared.provider}: deterministic PNGs`
-  const preview = await png(await post('/api/card', publishBody))
-  const publicCard = await png(await request(`${published.shareUrl}/image`))
+  stage = `${prepared.provider}: HTML card preview`
+  const htmlPreviewResponse = await post('/api/card', {
+    ...publishBody,
+    format: 'html'
+  })
+  verify(
+    htmlPreviewResponse.ok &&
+      htmlPreviewResponse.headers.get('content-type')?.startsWith('text/html'),
+    'The creation preview must return HTML.'
+  )
+  privateResponse(htmlPreviewResponse)
+  const htmlPreview = await htmlPreviewResponse.text()
+  const previewText = decodeAttribute(htmlPreview)
+  const previewStyles = [
+    ...htmlPreview.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gu)
+  ]
+    .map((match) => match[1])
+    .join('\n')
+  verify(
+    [prepared.preview.title, ...prepared.preview.highlights].every((text) =>
+      previewText.includes(text)
+    ),
+    'The HTML card preview must include the reviewed title and every highlight.'
+  )
+  verify(
+    htmlPreview.includes('data:font/woff;base64,') &&
+      htmlPreview.includes('data:image/jpeg;base64,') &&
+      !/(?:src|href)=["'](?!data:)/iu.test(htmlPreview) &&
+      !/url\(\s*["']?(?:https?:|\/)/iu.test(previewStyles),
+    'The HTML card preview must embed its bundled fonts and artwork.'
+  )
+  result.checks.htmlCardPreview = 'passed'
+
+  stage = `${prepared.provider}: deterministic WebP images`
+  const preview = await webp(await post('/api/card', publishBody))
+  const publicCard = await webp(await request(`${published.shareUrl}/image`))
   verify(
     preview.equals(publicCard),
-    'The draft preview and published PNG must be byte-identical.'
+    'The draft image endpoint and published WebP must be byte-identical.'
   )
   await writeFile(
-    path.join(outputDirectory, `${index + 1}-${prepared.provider}-preview.png`),
+    path.join(
+      outputDirectory,
+      `${index + 1}-${prepared.provider}-preview.webp`
+    ),
     preview
   )
   await writeFile(
-    path.join(outputDirectory, `${index + 1}-${prepared.provider}-public.png`),
+    path.join(outputDirectory, `${index + 1}-${prepared.provider}-public.webp`),
     publicCard
   )
-  result.previewPngBytes = preview.length
+  result.previewWebpBytes = preview.length
   result.imageWidth = 1200
   result.imageHeight = 630
-  result.checks.previewMatchesPublicPng = 'passed'
+  result.checks.draftImageMatchesPublicWebp = 'passed'
   await saveReport()
 
   stage = `${prepared.provider}: initial reader and crawler metadata`
@@ -472,7 +500,9 @@ try {
     await smokeSource(sourceUrl, index)
   report.status = 'passed'
   await saveReport()
-  console.log(`Smoke checks passed. Summary and PNGs: ${outputDirectory}`)
+  console.log(
+    `Smoke checks passed. Summary and WebP images: ${outputDirectory}`
+  )
 } catch (err) {
   const status =
     err instanceof SmokeFailure
