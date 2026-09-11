@@ -1,0 +1,30 @@
+{
+  "snapshot_name": "Sanitized Claude conversation",
+  "is_public": true,
+  "chat_messages": [
+    {
+      "sender": "human",
+      "index": 0,
+      "truncated": false,
+      "image_count": 0,
+      "file_count": 0,
+      "uuid": "message-0",
+      "text": "Sanitized message 0.",
+      "attachments": [],
+      "files": [],
+      "content": null
+    },
+    {
+      "sender": "assistant",
+      "index": 1,
+      "truncated": false,
+      "image_count": 0,
+      "file_count": 0,
+      "uuid": "message-1",
+      "text": "Sanitized message 1.\n\n```python\n# Code content redacted\n```",
+      "attachments": [],
+      "files": [],
+      "content": null
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "source": {
+    "title": "Discussing a small reading group",
+    "parserVersion": "summary-fixture-v1",
+    "messages": [
+      {
+        "id": "question",
+        "speaker": "user",
+        "text": "How could our reading group choose a monthly book without endless polling?",
+        "markdown": "How could our reading group choose a monthly book without endless polling?"
+      },
+      {
+        "id": "answer",
+        "speaker": "assistant",
+        "text": "Try rotating the person who picks the book. Agree on a page limit first.",
+        "markdown": "Try rotating the person who picks the book. Agree on a page limit first."
+      }
+    ]
+  },
+  "preview": {
+    "title": "Choosing a monthly book for a reading group",
+    "highlights": [
+      "Avoid endless polling by rotating who selects the book",
+      "Set a page limit first to guide everyone’s choice",
+      "Only one person picks each month, so decisions stay simple"
+    ]
+  },
+  "model": "gpt-5.4-nano",
+  "provenance": {
+    "kind": "openai",
+    "generatedAt": "2026-09-10T14:20:41.395Z"
+  }
+}

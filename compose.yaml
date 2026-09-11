@@ -1,0 +1,36 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: passage-local
+      POSTGRES_DB: ai_chat_proxy
+    ports:
+      - '127.0.0.1:55432:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d ai_chat_proxy']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  app:
+    profiles: ['app']
+    build: .
+    ports:
+      - '127.0.0.1:3000:3000'
+    environment:
+      APP_URL: ${APP_URL:-http://localhost:3000}
+      DATABASE_URL: postgresql://postgres:passage-local@db:5432/ai_chat_proxy
+      APP_SECRET: ${APP_SECRET:-}
+      TRUST_PROXY: ${TRUST_PROXY:-none}
+      AI_PROVIDER: ${AI_PROVIDER:-openai}
+      AI_MODEL: ${AI_MODEL:-gpt-4.1-mini}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres-data:

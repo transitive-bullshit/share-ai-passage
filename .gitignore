@@ -46,3 +46,6 @@ yarn-error.log*
 
 # local experiments, source masters, and temporary artifacts
 /work/
+
+# Generated from pinned local font packages before dev/build.
+/assets/fonts/

@@ -1,0 +1,60 @@
+{
+  "snapshot_name": "Sanitized Claude conversation",
+  "is_public": true,
+  "chat_messages": [
+    {
+      "sender": "human",
+      "index": 0,
+      "truncated": false,
+      "image_count": 0,
+      "file_count": 1,
+      "uuid": "message-0",
+      "text": "Sanitized message 0.",
+      "attachments": [],
+      "files": [],
+      "content": [
+        {
+          "type": "text",
+          "text": "Sanitized text block 0."
+        }
+      ]
+    },
+    {
+      "sender": "assistant",
+      "index": 1,
+      "truncated": false,
+      "image_count": 0,
+      "file_count": 0,
+      "uuid": "message-1",
+      "text": "Sanitized message 1.",
+      "attachments": [],
+      "files": [],
+      "content": [
+        {
+          "type": "text",
+          "text": "Sanitized text block 0."
+        },
+        {
+          "type": "text",
+          "text": "Sanitized text block 1."
+        },
+        {
+          "type": "tool_use"
+        },
+        {
+          "type": "tool_result"
+        },
+        {
+          "type": "tool_use"
+        },
+        {
+          "type": "tool_result"
+        },
+        {
+          "type": "text",
+          "text": "Sanitized text block 6."
+        }
+      ]
+    }
+  ]
+}

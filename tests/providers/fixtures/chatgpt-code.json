@@ -1,0 +1,309 @@
+{
+  "title": "Sanitized code conversation",
+  "is_public": true,
+  "linear_conversation": [
+    {
+      "id": "node-0",
+      "children": []
+    },
+    {
+      "id": "node-1",
+      "children": [],
+      "message": {
+        "id": "message-1",
+        "author": {
+          "role": "system"
+        },
+        "content": {
+          "content_type": "text",
+          "parts": ["Sanitized message 1."]
+        },
+        "metadata": {
+          "is_visually_hidden_from_conversation": true
+        }
+      }
+    },
+    {
+      "id": "node-2",
+      "children": [],
+      "message": {
+        "id": "message-2",
+        "author": {
+          "role": "user"
+        },
+        "content": {
+          "content_type": "text",
+          "parts": ["Sanitized message 2."]
+        },
+        "metadata": {}
+      }
+    },
+    {
+      "id": "node-3",
+      "children": [],
+      "message": {
+        "id": "message-3",
+        "author": {
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "model_editable_context",
+          "parts": []
+        },
+        "metadata": {}
+      }
+    },
+    {
+      "id": "node-4",
+      "children": [],
+      "message": {
+        "id": "message-4",
+        "author": {
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "text",
+          "parts": ["Sanitized message 4."]
+        },
+        "metadata": {}
+      }
+    },
+    {
+      "id": "node-5",
+      "children": [],
+      "message": {
+        "id": "message-5",
+        "author": {
+          "role": "user"
+        },
+        "content": {
+          "content_type": "text",
+          "parts": ["Sanitized message 5."]
+        },
+        "metadata": {}
+      }
+    },
+    {
+      "id": "node-6",
+      "children": [],
+      "message": {
+        "id": "message-6",
+        "author": {
+          "role": "system"
+        },
+        "content": {
+          "content_type": "text",
+          "parts": ["Sanitized message 6."]
+        },
+        "metadata": {
+          "is_visually_hidden_from_conversation": true
+        }
+      }
+    },
+    {
+      "id": "node-7",
+      "children": [],
+      "message": {
+        "id": "message-7",
+        "author": {
+          "role": "tool"
+        },
+        "content": {
+          "content_type": "text",
+          "parts": ["Sanitized message 7."]
+        },
+        "metadata": {
+          "is_visually_hidden_from_conversation": true
+        }
+      }
+    },
+    {
+      "id": "node-8",
+      "children": [],
+      "message": {
+        "id": "message-8",
+        "author": {
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "text",
+          "parts": [
+            "Sanitized message 8.\n\n```python\n# Code content redacted\n```"
+          ]
+        },
+        "metadata": {}
+      }
+    },
+    {
+      "id": "node-9",
+      "children": [],
+      "message": {
+        "id": "message-9",
+        "author": {
+          "role": "user"
+        },
+        "content": {
+          "content_type": "text",
+          "parts": ["Sanitized message 9."]
+        },
+        "metadata": {}
+      }
+    },
+    {
+      "id": "node-10",
+      "children": [],
+      "message": {
+        "id": "message-10",
+        "author": {
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "text",
+          "parts": [
+            "Sanitized message 10.\n\n```python\n# Code content redacted\n```"
+          ]
+        },
+        "metadata": {}
+      }
+    },
+    {
+      "id": "node-11",
+      "children": [],
+      "message": {
+        "id": "message-11",
+        "author": {
+          "role": "user"
+        },
+        "content": {
+          "content_type": "text",
+          "parts": ["Sanitized message 11."]
+        },
+        "metadata": {}
+      }
+    },
+    {
+      "id": "node-12",
+      "children": [],
+      "message": {
+        "id": "message-12",
+        "author": {
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "text",
+          "parts": ["Sanitized message 12."]
+        },
+        "metadata": {}
+      }
+    },
+    {
+      "id": "node-13",
+      "children": [],
+      "message": {
+        "id": "message-13",
+        "author": {
+          "role": "tool"
+        },
+        "content": {
+          "content_type": "text",
+          "parts": ["Sanitized message 13."]
+        },
+        "metadata": {}
+      }
+    },
+    {
+      "id": "node-14",
+      "children": [],
+      "message": {
+        "id": "message-14",
+        "author": {
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "text",
+          "parts": ["Sanitized message 14."]
+        },
+        "metadata": {}
+      }
+    },
+    {
+      "id": "node-15",
+      "children": [],
+      "message": {
+        "id": "message-15",
+        "author": {
+          "role": "user"
+        },
+        "content": {
+          "content_type": "text",
+          "parts": ["Sanitized message 15."]
+        },
+        "metadata": {}
+      }
+    },
+    {
+      "id": "node-16",
+      "children": [],
+      "message": {
+        "id": "message-16",
+        "author": {
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "model_editable_context",
+          "parts": []
+        },
+        "metadata": {}
+      }
+    },
+    {
+      "id": "node-17",
+      "children": [],
+      "message": {
+        "id": "message-17",
+        "author": {
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "text",
+          "parts": [
+            "Sanitized message 17.\n\n```python\n# Code content redacted\n```"
+          ]
+        },
+        "metadata": {}
+      }
+    },
+    {
+      "id": "node-18",
+      "children": [],
+      "message": {
+        "id": "message-18",
+        "author": {
+          "role": "user"
+        },
+        "content": {
+          "content_type": "text",
+          "parts": ["Sanitized message 18."]
+        },
+        "metadata": {}
+      }
+    },
+    {
+      "id": "node-19",
+      "children": [],
+      "message": {
+        "id": "message-19",
+        "author": {
+          "role": "assistant"
+        },
+        "content": {
+          "content_type": "text",
+          "parts": [
+            "Sanitized message 19.\n\n```python\n# Code content redacted\n```"
+          ]
+        },
+        "metadata": {}
+      }
+    }
+  ]
+}

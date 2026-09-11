@@ -6,6 +6,15 @@
 - oxfmt for formatting (`pnpm fix:format`)
 - oxlint for linting (`pnpm fix:lint`)
 
+## Context
+
+Keep agent context documents under `docs/`. Read the relevant document for the task:
+
+- Entities and terminology: [domain glossary](docs/CONTEXT.md).
+- Product behavior and scope: [MVP plan](docs/MVP_PLAN.md).
+- Provider extraction and supported shares: [extraction evidence](docs/EXTRACTION.md).
+- Validation and known gaps: [verification notes](docs/VERIFICATION.md).
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 # This is NOT the Next.js you know

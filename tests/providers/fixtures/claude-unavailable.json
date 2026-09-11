@@ -1,0 +1,10 @@
+{
+  "type": "error",
+  "error": {
+    "type": "not_found_error",
+    "message": "The requested snapshot was not found.",
+    "details": {
+      "error_visibility": "user_facing"
+    }
+  }
+}

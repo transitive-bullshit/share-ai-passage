@@ -1,0 +1,4 @@
+interface:
+  display_name: "Passage sharing"
+  short_description: "Turn public AI chats into polished share links"
+  default_prompt: "Use $passage-share to create a Passage link for this public conversation."

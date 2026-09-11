@@ -1,0 +1,8 @@
+{
+  "detail": {
+    "description": "Conversation has been deleted. Start a new chat.",
+    "message": "Conversation has been deleted. Start a new chat.",
+    "reason": "not_found",
+    "code": "shared_conversation_deleted"
+  }
+}

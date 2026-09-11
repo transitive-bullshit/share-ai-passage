@@ -1,0 +1,7 @@
+ALTER TABLE "publications" DROP CONSTRAINT "publications_excerpt_range";--> statement-breakpoint
+ALTER TABLE "publications" ALTER COLUMN "message_id" DROP NOT NULL;--> statement-breakpoint
+ALTER TABLE "publications" ALTER COLUMN "excerpt_start" DROP NOT NULL;--> statement-breakpoint
+ALTER TABLE "publications" ALTER COLUMN "excerpt_end" DROP NOT NULL;--> statement-breakpoint
+ALTER TABLE "publications" ADD COLUMN "highlights" jsonb;--> statement-breakpoint
+ALTER TABLE "snapshots" ADD COLUMN "preview" jsonb;--> statement-breakpoint
+ALTER TABLE "publications" ADD CONSTRAINT "publications_excerpt_range" CHECK (("publications"."highlights" is not null and jsonb_typeof("publications"."highlights") = 'array' and jsonb_array_length("publications"."highlights") between 1 and 3 and "publications"."message_id" is null and "publications"."excerpt_start" is null and "publications"."excerpt_end" is null) or ("publications"."highlights" is null and "publications"."message_id" is not null and "publications"."excerpt_start" is not null and "publications"."excerpt_end" is not null and "publications"."excerpt_start" >= 0 and "publications"."excerpt_end" > "publications"."excerpt_start" and "publications"."excerpt_end" - "publications"."excerpt_start" <= 240));
