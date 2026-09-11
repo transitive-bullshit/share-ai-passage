@@ -1,7 +1,7 @@
 import { createHmac } from 'node:crypto'
 import { isIP } from 'node:net'
 
-import { appSecret, appUrl } from './config'
+import { appSecret } from './config'
 import { AppError } from './errors'
 
 export const privateHeaders = {
@@ -12,7 +12,20 @@ export const privateHeaders = {
 
 export function requireSameOrigin(request: Request) {
   const origin = request.headers.get('origin')
-  if (origin !== appUrl()) {
+  let parsedOrigin: URL | undefined
+  try {
+    if (origin) parsedOrigin = new URL(origin)
+  } catch {
+    // Malformed origins follow the same rejection path as missing origins.
+  }
+  // Match Next's Origin/Host CSRF check without trusting forwarded headers.
+  const host = request.headers.get('host') || new URL(request.url).host
+  if (
+    !parsedOrigin ||
+    !['http:', 'https:'].includes(parsedOrigin.protocol) ||
+    parsedOrigin.origin !== origin ||
+    parsedOrigin.host !== host.toLowerCase()
+  ) {
     throw new AppError('Please submit this request from the app.', 403)
   }
   const site = request.headers.get('sec-fetch-site')

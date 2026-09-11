@@ -8,6 +8,7 @@ import nextEnv from '@next/env'
 import { z } from 'zod'
 
 import { SavedMessage } from '../components/saved-message'
+import { appUrl } from '../lib/config'
 import { closeDatabase } from '../lib/db'
 import type { Message } from '../lib/domain'
 import { getDraft } from '../lib/service'
@@ -16,7 +17,7 @@ import { generatedPreviewSchema } from '../lib/summary'
 const projectDirectory = fileURLToPath(new URL('..', import.meta.url))
 nextEnv.loadEnvConfig(projectDirectory)
 
-const appOrigin = new URL(process.env.APP_URL || 'http://localhost:3000').origin
+const appOrigin = new URL(process.env.PASSAGE_URL || appUrl()).origin
 const sourceUrls = process.argv.slice(2)
 const outputDirectory = path.join(projectDirectory, 'work', 'smoke')
 let stage = 'configuration'

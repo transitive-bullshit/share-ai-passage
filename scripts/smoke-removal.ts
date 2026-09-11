@@ -8,6 +8,7 @@ import { and, eq } from 'drizzle-orm'
 
 import { renderCard } from '../lib/card'
 import type { CardAppearance } from '../lib/card-appearance'
+import { appUrl } from '../lib/config'
 import { closeDatabase, getDb } from '../lib/db'
 import { publications, snapshots, sources } from '../lib/db/schema'
 import { createDraftToken } from '../lib/drafts'
@@ -15,7 +16,7 @@ import { createDraftToken } from '../lib/drafts'
 const projectDirectory = fileURLToPath(new URL('..', import.meta.url))
 nextEnv.loadEnvConfig(projectDirectory)
 
-const appOrigin = new URL(process.env.APP_URL || 'http://localhost:3000').origin
+const appOrigin = new URL(process.env.PASSAGE_URL || appUrl()).origin
 const sourceId = randomUUID()
 const sourceShareId = randomUUID()
 const snapshotId = randomUUID()

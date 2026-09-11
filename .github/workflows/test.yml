@@ -22,7 +22,6 @@ jobs:
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ai_chat_proxy_test
       TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ai_chat_proxy_test
-      APP_URL: http://localhost:3000
       APP_SECRET: ci-only-random-test-secret-not-for-deployment
 
     strategy:

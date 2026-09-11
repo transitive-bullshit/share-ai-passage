@@ -32,7 +32,6 @@ function request(body: unknown) {
 
 describe('read-only preview publication API', () => {
   beforeEach(() => {
-    vi.stubEnv('APP_URL', 'http://localhost:3000')
     service.enforceBudget.mockReset().mockResolvedValue(undefined)
     service.publishPreview.mockReset().mockResolvedValue({
       publicationId: 'id',

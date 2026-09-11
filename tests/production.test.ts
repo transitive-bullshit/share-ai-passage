@@ -4,6 +4,7 @@ import { createInterface } from 'node:readline'
 import { fileURLToPath } from 'node:url'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { appUrl } from '../lib/config'
 import {
   parseProductionArgs,
   productionNotice,
@@ -63,6 +64,23 @@ const configuration = (overrides: Record<string, string> = {}) =>
     .map(([name, value]) => `${name}=${value}`)
     .join('\n')
 
+function productionAppUrl(env: NodeJS.ProcessEnv) {
+  for (const name of [
+    'NODE_ENV',
+    'PORT',
+    'PORTLESS_URL',
+    'VERCEL',
+    'VERCEL_ENV',
+    'VERCEL_TARGET_ENV',
+    'VERCEL_URL',
+    'VERCEL_BRANCH_URL',
+    'VERCEL_PROJECT_PRODUCTION_URL'
+  ]) {
+    vi.stubEnv(name, env[name] ?? '')
+  }
+  return appUrl()
+}
+
 function allowExplicitCommands() {
   vi.stubEnv('CI', '')
   vi.stubEnv('VITEST', '')
@@ -106,6 +124,11 @@ describe('explicit production configuration', () => {
       PORTLESS_URL: 'https://dev.example',
       APP_URL: 'https://hosted.example',
       VERCEL: '1',
+      VERCEL_ENV: 'production',
+      VERCEL_TARGET_ENV: 'production',
+      VERCEL_URL: 'deployment.vercel.app',
+      VERCEL_BRANCH_URL: 'branch.vercel.app',
+      VERCEL_PROJECT_PRODUCTION_URL: 'production.example',
       TRUST_PROXY: 'vercel',
       TEST_DATABASE_URL: runtime,
       NODE_OPTIONS: '--require unwanted.js',
@@ -119,16 +142,24 @@ describe('explicit production configuration', () => {
     expect(plan.env).toMatchObject({
       ...credentials,
       DATABASE_URL_UNPOOLED: direct,
-      APP_URL: 'http://localhost:3001',
+      PORT: '3001',
       NODE_ENV: 'development',
       PASSAGE_PRODUCTION_LOCAL: '1',
       PORTLESS_URL: '',
       TRUST_PROXY: 'none',
       VERCEL: '0',
+      VERCEL_ENV: '',
+      VERCEL_TARGET_ENV: '',
+      VERCEL_URL: '',
+      VERCEL_BRANCH_URL: '',
+      VERCEL_PROJECT_PRODUCTION_URL: '',
       TEST_DATABASE_URL: '',
       PATH: '/tools',
       HOME: '/user'
     })
+    expect(plan.env.APP_URL).toBeUndefined()
+    vi.stubEnv('APP_URL', inherited.APP_URL)
+    expect(productionAppUrl(plan.env)).toBe('http://localhost:3001')
     expect(plan.env.NODE_OPTIONS).toBeUndefined()
     expect(plan.env.NEXT_PUBLIC_UNRELATED).toBeUndefined()
     expect(inherited.DATABASE_URL).toBe('inherited-database')
@@ -232,7 +263,8 @@ describe('explicit production configuration', () => {
         configuration(),
         {}
       )
-      expect(plan.env.APP_URL).toBe('http://localhost:3101')
+      expect(plan.env.APP_URL).toBeUndefined()
+      expect(productionAppUrl(plan.env)).toBe('http://localhost:3101')
       expect(plan.env.PORT).toBe('3101')
       expect(plan.env.NODE_ENV).toBe(mode)
       expect(plan.steps.at(-1)?.args).toEqual(command)
@@ -305,7 +337,8 @@ describe('production command dispatch without live services', () => {
     ])
     for (const [, , options] of dependencies.spawn.mock.calls) {
       expect(options.env.DATABASE_URL).toBe(runtime)
-      expect(options.env.APP_URL).toBe('http://localhost:3001')
+      expect(options.env.APP_URL).toBeUndefined()
+      expect(productionAppUrl(options.env)).toBe('http://localhost:3001')
       expect(options.env.NODE_ENV).toBe('production')
       expect(options.env.PASSAGE_PRODUCTION_LOCAL).toBe('1')
     }

@@ -2,6 +2,14 @@
 
 For the current production-readiness assessment and follow-up fixes, see [the September 11 launch audit](LAUNCH_READINESS.md).
 
+## Automatic application origins — September 11, 2026
+
+The app no longer reads `APP_URL`. It uses Portless's injected public URL for development, Vercel's production or branch/deployment hostname when hosted, and Next's `PORT` for direct localhost runs. Request validation follows Next's Origin/Host pattern, so visiting an alternate deployment hostname does not require an origin allowlist. Forged forwarded-host headers are ignored.
+
+All **419 tests across 21 files passed on Node 24.5.0**, including local PostgreSQL integration tests, formatting, lint, route type generation, and TypeScript. Ten focused regressions failed before the fix, covering stale manual settings, preview/canonical mismatches, nondefault local ports, and legitimate request hosts.
+
+The existing Portless server served the saved reader with the automatically assigned public metadata URL and accepted cached preparation after the obsolete local setting was removed. A production build also passed with no manual origin, then served the existing Neon reader and accepted cached preparation at `http://localhost:3101`. That temporary server was stopped afterward. These checks reused saved previews without new model generation.
+
 ## Neon and local production — September 11, 2026
 
 The user-created Neon Free project `wild-moon-12089892` is configured on its `production` branch in AWS Ohio, PostgreSQL 18.6. The database was verified empty before all five checked-in migrations were applied. Direct and pooled connections passed. The production compute was reduced to fixed 0.25 CU; five-minute idle suspension and six-hour recovery history remain enabled.

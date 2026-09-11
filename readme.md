@@ -16,11 +16,11 @@ pnpm db:migrate
 pnpm dev
 ```
 
-`pnpm dev` runs Next.js through [Portless](https://portless.sh/). Open the named URL printed in the terminal, normally `https://ai-chat-proxy.localhost`. Portless reuses your existing proxy settings, so the scheme or proxy port may differ. Git worktrees get their own subdomain automatically. The app uses the assigned URL for metadata, share links, and same-origin requests during development.
+`pnpm dev` runs Next.js through [Portless](https://portless.sh/). Open the named URL printed in the terminal, normally `https://ai-chat-proxy.localhost`. Portless reuses your existing proxy settings, so the scheme or proxy port may differ. Git worktrees get their own subdomain automatically. The app uses the assigned URL for metadata and share links during development.
 
 Paste a public `https://chatgpt.com/share/<uuid>`, `https://chatgpt.com/s/cx_<id>` (Codex), or `https://claude.ai/share/<uuid>` link and press **Go**. Review the automatically generated title and highlights, choose a social-card template, then **Publish**. The title and highlights stay unchanged; the preview is the actual PNG served by the published link. Your last template choice becomes the default for your next share in this browser.
 
-To run Next.js directly at [localhost:3000](http://localhost:3000), use `PORTLESS=0 pnpm dev` with `APP_URL=http://localhost:3000`.
+To run Next.js directly at [localhost:3000](http://localhost:3000), use `PORTLESS=0 pnpm dev`. The origin follows `PORT` when set and otherwise uses port 3000.
 
 `db:local` uses installed PostgreSQL binaries (Postgres.app, Homebrew, or `PG_BIN`). It creates an isolated database in ignored `work/postgres-data`, listening only on `127.0.0.1:55432`. It never replaces an existing database. Data survives app restarts and `pnpm db:local stop`. Use `pnpm db:local status` to inspect it.
 
@@ -37,7 +37,7 @@ pnpm build:prod
 pnpm start:prod
 ```
 
-Open `http://localhost:3001`. These commands use **real production data** from ignored `.env.prod.local`; the production build is isolated in `.next-prod`. Use `pnpm db:check:prod` to verify the connection and `pnpm db:migrate:prod` for pending migrations. See [production setup](docs/PRODUCTION.md). Vercel creation is deferred until branding is settled.
+Open `http://localhost:3001`. These commands use **real production data** from ignored `.env.prod.local`; the production build is isolated in `.next-prod`. Use `pnpm db:check:prod` to verify the connection and `pnpm db:migrate:prod` for pending migrations. See [production setup](docs/PRODUCTION.md). The Vercel project is deployed at [ai-chat-proxy-puce.vercel.app](https://ai-chat-proxy-puce.vercel.app); final hosted validation and public launch checks remain open.
 
 ### Docker alternative
 
@@ -61,15 +61,22 @@ The app container migrates before starting. PostgreSQL uses a persistent named v
 
 | Variable | Purpose |
 | --- | --- |
-| `APP_URL` | Exact public origin, including any port. Used for metadata, share links, and same-origin POST validation. During development, Portless's injected `PORTLESS_URL` takes precedence. |
 | `DATABASE_URL` | PostgreSQL connection; use provider-supported TLS when hosted. |
 | `APP_SECRET` | Stable random secret, at least 32 characters, for signed draft tokens and hashed client budgets. Required in production. |
 | `TRUST_PROXY` | `none` by default; `vercel` or `single` only with the matching proxy configuration below. |
 | `AI_PROVIDER`, `AI_MODEL` | `openai` and `gpt-5.4-nano` by default. The model can be changed in configuration. |
 | `OPENAI_API_KEY` | Required for new preview generation; never exposed to the browser. |
-| `PASSAGE_URL` | CLI service origin; can also be set with `--base-url`. |
+| `PASSAGE_URL` | Service origin for the CLI and HTTP smoke scripts. The CLI also accepts `--base-url`. |
 | `PG_BIN` | Optional PostgreSQL executable directory for the native helper. |
 | `TEST_DATABASE_URL` | Enables integration tests against a migrated, disposable database. |
+
+Metadata and share links use an automatically selected origin:
+
+- Development uses `PORTLESS_URL` when available.
+- Outside development, `VERCEL=1` uses Vercel's HTTPS hostname. Production uses `VERCEL_PROJECT_PRODUCTION_URL`, falling back to `VERCEL_URL`; Preview and custom environments use `VERCEL_BRANCH_URL`, falling back to `VERCEL_URL`. `VERCEL_TARGET_ENV` takes precedence over `VERCEL_ENV` when selecting the environment. Keep Vercel's system environment variables enabled.
+- Other runs use `http://localhost:${PORT || 3000}`.
+
+A future brand/domain change is picked up from Vercel's production hostname after redeployment. POST validation compares the submitted origin with the actual request host, so alternate deployment URLs can accept their own same-origin requests.
 
 Generate an app secret with:
 
@@ -165,11 +172,11 @@ An unset `TRUST_PROXY` automatically selects Vercel's trusted header when `VERCE
 
 - On Vercel, use `TRUST_PROXY=vercel`. The app also requires `VERCEL=1` and uses the platform-overwritten `x-vercel-forwarded-for` header. [Vercel header documentation](https://vercel.com/docs/headers/request-headers#x-vercel-forwarded-for).
 - Behind one self-hosted reverse proxy, use `TRUST_PROXY=single` only if it **overwrites** `X-Real-IP` with the connecting client address. For Nginx: `proxy_set_header X-Real-IP $remote_addr;`. Prevent direct public access to the app port and do not append untrusted incoming headers.
-- Serve the hosted app over HTTPS and set `APP_URL` to its exact origin before building. Production builds fail if it is missing. Keep reader/image routes publicly fetchable by social crawlers. Avoid authentication or challenges in front of those routes.
+- Serve the hosted app over HTTPS. Vercel supplies the public origin through its system environment variables. Keep reader/image routes publicly fetchable by social crawlers. Avoid authentication or challenges in front of those routes.
 
-For Vercel, use Node 24, import this single Next.js project, retain `pnpm build`, configure PostgreSQL and environment variables, and apply `pnpm db:migrate` once before serving traffic. Use a pooled `DATABASE_URL` at runtime; migrations prefer `DIRECT_DATABASE_URL` or Neon's `DATABASE_URL_UNPOOLED` when configured. Provider fetching, PostgreSQL, and card rendering use Node.js routes. The connection pool is limited to five connections per instance; prepared statements are disabled for pooler compatibility. Choose database and function regions together. Neon production is configured; see [production setup](docs/PRODUCTION.md) for explicit local access. See the [launch audit](docs/LAUNCH_READINESS.md) and [Postgres recommendation](docs/POSTGRES_HOSTING.md) for the current release gates and setup.
+The existing Vercel project uses this single Next.js app. Retain Node 24 and `pnpm build`, configure PostgreSQL and environment variables, and apply pending migrations with `pnpm db:migrate` before serving traffic. Use a pooled `DATABASE_URL` at runtime; migrations prefer `DIRECT_DATABASE_URL` or Neon's `DATABASE_URL_UNPOOLED` when configured. Provider fetching, PostgreSQL, and card rendering use Node.js routes. The connection pool is limited to five connections per instance; prepared statements are disabled for pooler compatibility. Choose database and function regions together. Neon production is configured; see [production setup](docs/PRODUCTION.md) for explicit local access. See the [launch audit](docs/LAUNCH_READINESS.md) and [Postgres recommendation](docs/POSTGRES_HOSTING.md) for the current release gates and setup.
 
-For self-hosting, `pnpm build && pnpm start` runs the same app. The Dockerfile includes the migration CLI for single-instance startup. Multi-instance deployments should run migrations as a separate release step.
+For self-hosting, `pnpm build && pnpm start` runs the same app. A public proxy hostname is not inferred from forwarded headers; generated absolute URLs use the localhost fallback described above. The Dockerfile includes the migration CLI for single-instance startup. Multi-instance deployments should run migrations as a separate release step.
 
 ## Verification
 
@@ -198,8 +205,10 @@ With a production build running (`pnpm build`, then `pnpm start`), use real shar
 pnpm smoke 'https://chatgpt.com/share/<uuid>' 'https://claude.ai/share/<uuid>'
 ```
 
+The HTTP smoke scripts default to the app's automatically selected origin. Set `PASSAGE_URL` to an exact origin for another local target, for example `PASSAGE_URL=http://localhost:3100 pnpm smoke ...` with a server started using `PORT=3100 pnpm start`. Keep the local database configuration matched to that server.
+
 This manual live check prepares each source twice, rejects attempted preview edits, verifies idempotent publishing, checks initial-response metadata and provider routing, and compares preview/public PNG bytes and dimensions. It also compares the full reader against the saved local snapshot, so it must run with the matching local database configuration. Only check results, local publication URLs, and PNGs are saved to ignored `work/smoke`. It creates local publications and consumes four preparation attempts. Uncached real sources can incur a model charge; cached summaries are reused. This command is outside the unit suite and CI.
 
-Run `pnpm smoke:removal` against the same local app/database to verify disabled HTML, RSC responses, metadata, and direct images. It creates and cleans up uniquely identified synthetic publications, simulates removal only for those records, and never alters the real sample sources. Provider-checker behavior is tested separately in the lifecycle integration suite.
+Run `pnpm smoke:removal` against the same local app/database (set `PASSAGE_URL` for a nondefault origin) to verify disabled HTML, RSC responses, metadata, and direct images. It creates and cleans up uniquely identified synthetic publications, simulates removal only for those records, and never alters the real sample sources. Provider-checker behavior is tested separately in the lifecycle integration suite.
 
 See [verification notes](docs/VERIFICATION.md). Hosted extraction and actual social-platform unfurls are separate checks; local HTTP metadata validation does not establish platform cache behavior.

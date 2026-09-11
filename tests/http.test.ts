@@ -6,8 +6,7 @@ import { clientKey, readJson, requireSameOrigin } from '@/lib/http'
 afterEach(() => vi.unstubAllEnvs())
 
 describe('mutation boundaries', () => {
-  it('requires the configured origin and JSON', () => {
-    vi.stubEnv('APP_URL', 'http://localhost:3000')
+  it('requires the request origin and JSON', () => {
     const request = (origin: string) =>
       new Request('http://localhost:3000/api/prepare', {
         method: 'POST',
@@ -19,6 +18,86 @@ describe('mutation boundaries', () => {
     expect(() =>
       requireSameOrigin(request('http://localhost:3000'))
     ).not.toThrow()
+  })
+
+  it.each([
+    'passage-git-feature.vercel.app',
+    'passage-deployment.vercel.app',
+    'new-brand.example',
+    'feature.passage.localhost:1355'
+  ])(
+    'accepts the accessed host independently of the canonical URL: %s',
+    (host) => {
+      vi.stubEnv('APP_URL', 'https://different-canonical.example')
+      const request = new Request('http://127.0.0.1:4321/api/prepare', {
+        method: 'POST',
+        headers: {
+          host,
+          origin: `https://${host}`,
+          'sec-fetch-site': 'same-origin',
+          'content-type': 'application/json'
+        }
+      })
+      expect(() => requireSameOrigin(request)).not.toThrow()
+    }
+  )
+
+  it('never accepts a forged forwarded host as the request origin', () => {
+    const request = new Request('http://127.0.0.1:4321/api/prepare', {
+      method: 'POST',
+      headers: {
+        host: 'passage.example',
+        origin: 'https://attacker.example',
+        'x-forwarded-host': 'attacker.example',
+        'x-forwarded-proto': 'https',
+        'content-type': 'application/json'
+      }
+    })
+    expect(() => requireSameOrigin(request)).toThrow()
+  })
+
+  it.each([
+    null,
+    'null',
+    'not-a-url',
+    'https://passage.example/path',
+    'https://user:password@passage.example',
+    'https://passage.example?query=1',
+    'https://passage.example#fragment',
+    'ftp://passage.example'
+  ])('rejects an absent or malformed Origin: %s', (origin) => {
+    const headers = new Headers({
+      host: 'passage.example',
+      'content-type': 'application/json'
+    })
+    if (origin !== null) headers.set('origin', origin)
+    expect(() =>
+      requireSameOrigin(
+        new Request('https://passage.example/api/prepare', {
+          method: 'POST',
+          headers
+        })
+      )
+    ).toThrow()
+  })
+
+  it('retains Fetch Metadata and JSON checks after host validation', () => {
+    const request = (headers: Record<string, string>) =>
+      new Request('https://passage.example/api/prepare', {
+        method: 'POST',
+        headers: { origin: 'https://passage.example', ...headers }
+      })
+    expect(() =>
+      requireSameOrigin(
+        request({
+          'sec-fetch-site': 'cross-site',
+          'content-type': 'application/json'
+        })
+      )
+    ).toThrow()
+    expect(() =>
+      requireSameOrigin(request({ 'content-type': 'text/plain' }))
+    ).toThrow()
   })
 
   it('enforces the streamed body limit when Content-Length is absent', async () => {

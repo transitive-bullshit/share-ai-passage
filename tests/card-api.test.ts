@@ -75,7 +75,6 @@ async function bytes(response: Response) {
 
 describe('saved social-card appearance routes', () => {
   beforeEach(() => {
-    vi.stubEnv('APP_URL', 'http://localhost:3000')
     service.enforceBudget.mockReset().mockResolvedValue(undefined)
     service.getDraft.mockReset().mockResolvedValue({
       preview: savedPreview,

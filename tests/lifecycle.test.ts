@@ -118,7 +118,6 @@ async function preparedPublication(url = sourceUrl()) {
 describe.skipIf(!testUrl)('publication lifecycle with PostgreSQL', () => {
   beforeAll(() => {
     process.env.DATABASE_URL = testUrl!
-    process.env.APP_URL = 'http://localhost:3000'
   })
 
   beforeEach(() => {
