@@ -1,6 +1,6 @@
 # Soft-launch readiness audit
 
-Audited September 11, 2026 against the initial plan at `5a46c91`, the revised [MVP plan](MVP_PLAN.md), the application at `8292dcd` plus the fixes below, and current local/remote evidence.
+Audited September 11, 2026 against the initial plan at `5a46c91`, the revised [MVP plan](MVP_PLAN.md), the application at `9976991`, and current local/remote evidence.
 
 ## Verdict
 
@@ -34,6 +34,8 @@ The initial plan explicitly required hosted extraction and real social unfurls. 
 
 Verification after these changes: **381 tests across 20 files passed on Node 24.5.0**, including real local PostgreSQL integration tests; formatting, lint, generated route types, TypeScript, and the production build passed. Browser checks covered cached creation/publication, the mobile reader, the jump target, a synthetic retry countdown, and changing to another source during a source cooldown. The synthetic cooldown record was removed. No model or upstream provider request was made by those browser checks.
 
+The [GitHub Actions run for `9976991`](https://github.com/transitive-bullshit/ai-chat-proxy/actions/runs/34578105827) also passed on Ubuntu with Node 24 and PostgreSQL 17, including the frozen-lockfile install, font preparation, migrations, complete test command, and production build. The earlier account billing failure did not recur; CI is no longer an open gate for this code revision.
+
 ## Remaining launch gates, in order
 
 1. **Create production Postgres and apply migrations.** Recommended: Neon Launch, one small database in the Vercel function region, pooled runtime URL, direct migration URL, and seven-day restore history. Validate an isolated restore. [Hosting recommendation](POSTGRES_HOSTING.md).
@@ -41,7 +43,6 @@ Verification after these changes: **381 tests across 20 files passed on Node 24.
 3. **Ensure anonymous access to the actual share domain.** Readers and `/image` routes must work without Vercel login, a bypass token, a password, or a bot challenge. Do not use an authentication-protected deployment URL for `APP_URL`. Vercel can now protect production domains on every plan, so verify the actual project setting. [Deployment protection](https://vercel.com/docs/deployment-protection), [September 2026 change](https://vercel.com/changelog/protect-production-deployments-for-free-on-every-plan).
 4. **Run one real end-to-end creation per source format from production.** Use an ordinary ChatGPT share, a public Codex share, and a Claude share. Confirm extraction, generated title/highlights, loaded card, publication, copy/open, faithful transcript, original-source link, and the same style after reload. Repeat publication once to confirm idempotency. This deliberately exercises live model calls and is separate from free tests.
 5. **Check real unfurls on two target sharing surfaces.** Paste a published production link into unsent composers/preview tools for X and at least one other intended platform. Confirm title, readable artwork/text at feed size, image crop, and a useful click-through reader. Check an idle/cold image request as well as a warm one. HTTP crawler-user-agent checks are useful diagnostics, but do not prove a platform fetched and displayed the card. No external posts are needed.
-6. **Restore a usable CI signal.** The current [GitHub Actions run](https://github.com/transitive-bullshit/ai-chat-proxy/actions/runs/34571402018) failed before starting any steps because GitHub reported failed recent account payments or an insufficient spending limit. Resolve the account billing/spending setting, then run the workflow on the final launch commit. This is distinct from the passing local checks.
 
 If these checks pass, invite a small audience. Watch preparation failures, publication failures, card-render failures, and actual Vercel/Neon/model spending during the first few days. The new summary diagnostics preserve categories and safe request metadata without logging transcripts.
 
