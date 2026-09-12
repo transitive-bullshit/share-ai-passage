@@ -10,7 +10,7 @@ import { messageText } from './messages'
 
 const invalidUnicode = /[\uD800-\uDFFF]/u
 
-function normalizeText(text: string) {
+export function normalizeSummaryText(text: string) {
   return text.normalize('NFC').replace(/\s+/gu, ' ').trim()
 }
 
@@ -22,7 +22,7 @@ function summaryText(limit: number, label: string) {
       // Zod counts UTF-16 units; the refinement applies the Unicode limit.
       .max(limit * 2, `Keep your ${label} within ${limit} characters.`)
       .refine((text) => {
-        const normalized = normalizeText(text)
+        const normalized = normalizeSummaryText(text)
         return (
           normalized.length > 0 &&
           !invalidUnicode.test(normalized) &&
@@ -33,7 +33,7 @@ function summaryText(limit: number, label: string) {
         )
       }, `Enter a ${label} containing valid text.`)
       .refine(
-        (text) => Array.from(normalizeText(text)).length <= limit,
+        (text) => Array.from(normalizeSummaryText(text)).length <= limit,
         `Keep your ${label} within ${limit} characters.`
       )
       // JSON Schema counts Unicode characters, unlike Zod's UTF-16 bound
@@ -64,12 +64,12 @@ export const generatedPreviewSchema = z
   })
   .refine(({ highlights }) => {
     const normalized = highlights.map((text) =>
-      normalizeText(text).toLowerCase()
+      normalizeSummaryText(text).toLowerCase()
     )
     return new Set(normalized).size === normalized.length
   }, 'Use distinct highlights.')
 
-export function validateGeneratedPreview(input: unknown): GeneratedPreview {
+export function parseGeneratedPreview(input: unknown) {
   let candidate = input
   if (input && typeof input === 'object' && !Array.isArray(input)) {
     const value = input as Record<string, unknown>
@@ -77,17 +77,21 @@ export function validateGeneratedPreview(input: unknown): GeneratedPreview {
       ...value,
       title:
         typeof value.title === 'string'
-          ? normalizeText(value.title)
+          ? normalizeSummaryText(value.title)
           : value.title,
       highlights: Array.isArray(value.highlights)
         ? value.highlights.map((text: unknown) =>
-            typeof text === 'string' ? normalizeText(text) : text
+            typeof text === 'string' ? normalizeSummaryText(text) : text
           )
         : value.highlights
     }
   }
 
-  const parsed = generatedPreviewSchema.safeParse(candidate)
+  return generatedPreviewSchema.safeParse(candidate)
+}
+
+export function validateGeneratedPreview(input: unknown): GeneratedPreview {
+  const parsed = parseGeneratedPreview(input)
   if (!parsed.success) {
     throw new Error(
       parsed.error.issues[0]?.message ?? 'Enter a valid preview summary.'

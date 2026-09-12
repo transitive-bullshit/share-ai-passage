@@ -20,7 +20,7 @@ Set `OPENAI_API_KEY` in `.env.local` before preparing a new conversation. Previe
 
 `pnpm dev` uses [Portless](https://portless.sh/). Open the exact URL printed in the terminal, normally `https://ai-chat-proxy.localhost`; proxy settings can change its scheme or port. Worktrees get their own app subdomain. To run directly at [localhost:3000](http://localhost:3000), use `PORTLESS=0 pnpm dev` (`PORT` overrides 3000).
 
-Paste a public `https://chatgpt.com/share/<uuid>`, `https://chatgpt.com/s/cx_<id>`, or `https://claude.ai/share/<uuid>` URL. Choose **Create a passage**, review the generated title and highlights, choose a card style, then **Publish passage**. Text is read-only; style changes update the preview directly in the page without a `/api/card` request. Publishing becomes available after artwork, fonts, and text fitting are ready. The browser remembers your last style choice.
+Paste a public `https://chatgpt.com/share/<uuid>`, `https://chatgpt.com/s/cx_<id>`, or `https://claude.ai/share/<uuid>` URL. Choose **Create a passage**, review or edit the generated title and existing highlights, choose a card style, then **Publish passage**. Text and style changes update the preview directly in the page without a `/api/card` request. Publishing becomes available when the text is valid and artwork, fonts, and text fitting are ready. The browser remembers your last style choice.
 
 ### Local database
 
@@ -59,7 +59,9 @@ pnpm share prepare 'https://chatgpt.com/s/cx_<id>' --out work/draft.json
 pnpm share publish work/draft.json
 ```
 
-`prepare` never publishes. `publish` uses the saved draft and its original server, rejects altered preview text, and reuses the link when retried. Keep draft files private: their tokens can publish the preview until they expire.
+`prepare` never publishes. The standalone CLI's `publish` uses the original saved draft and its server, rejects changes to that local draft's preview, and reuses the link when retried. Browser draft editing is separate from this CLI flow. Keep draft files private: their tokens authorize publication until they expire.
+
+API clients can send an optional `preview: { title, highlights }` with the existing draft token to `POST /api/publish` or `POST /api/card`. Omitting it uses the cached generated preview. The server normalizes Unicode and whitespace and applies the same [summary limits](docs/MVP_PLAN.md#implementation-and-limits), including distinct highlights. Publishing stores the reviewed text in the publication; it does not replace the snapshot's cached generation.
 
 `pnpm share '<public-url>'` displays the preview and asks before publishing in a terminal. Noninteractive use prepares only unless `--yes` is supplied. Use `--json` for structured output and `pnpm share --help` for options.
 
@@ -67,11 +69,11 @@ The portable [passage-share skill](.agents/skills/passage-share/SKILL.md) includ
 
 ## Saved conversations
 
-- Passages retain their saved conversation, generated title/highlights, and chosen style. Identical presentations reuse a link; changed source content can produce a new snapshot.
+- Passages retain their saved conversation, reviewed title/highlights, and chosen style. Draft edits leave the cached generated preview unchanged. Published wording is fixed; identical presentations reuse a link, while different wording or style creates a separate presentation.
 - The reader preserves extracted text, Markdown, code, tables, and safe links. Unsupported media, tools, and artifacts have explicit omission markers. Provider HTML is not executed and remote media is not loaded.
 - Removing public access at the provider initiates removal here. Availability checks run lazily after seven days or through the rate-limited manual check. Confirmed removal disables all existing passages and cards from that source; temporary failures leave them available.
 - External platforms may retain previews they already fetched. Disabled content remains stored but is not served. Old links stay disabled if the source returns.
-- There are no accounts, passage editors, private deletion links, or public discovery directory.
+- There are no accounts, editors for published passages, private deletion links, or public discovery directory.
 
 See [product behavior and limits](docs/MVP_PLAN.md), [supported extraction](docs/EXTRACTION.md), and the [message model](docs/MESSAGE_MODEL.md).
 

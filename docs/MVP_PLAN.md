@@ -8,11 +8,11 @@ This document owns product scope and remaining work. See the [glossary](CONTEXT.
 
 1. Paste a supported public conversation URL. Fetch or reuse its saved content and normalize the messages.
 2. Generate a concise title and two or three grounded highlights for an uncached snapshot; use one highlight for a very short source. Highlights are paraphrases, not attributed quotations. Successful generation is required; failures return a retryable error.
-3. Review the read-only title and highlights and choose one of five curated card styles in the in-page preview. Publish stays disabled until artwork and fonts load and text fitting completes.
-4. Publish the saved preview and chosen style, then copy or open the share URL. Repeated publication of the same presentation reuses its link while available.
+3. Review and edit the title and existing highlights, then choose one of five curated card styles in the in-page preview. Text and style changes update the card as you work. Publish stays disabled while text is invalid or artwork, fonts, and text fitting are not ready.
+4. Publish the reviewed wording and chosen style, then copy or open the share URL. Repeated publication of the same presentation reuses its link while available.
 5. Read the saved conversation with its original-source link. Preserve extracted text, ordering, roles, Markdown, code, tables, and safe links. Known unsupported media, tools, and artifacts appear as explicit omissions.
 
-The browser, CLI, and [agent skill](../.agents/skills/passage-share/SKILL.md) use the same prepare/publish operations. A local draft can be saved and published later without regenerating or editing its text. Draft tokens authorize publication for 24 hours and stay private.
+The browser, CLI, and [agent skill](../.agents/skills/passage-share/SKILL.md) use the same prepare/publish operations. Browser drafts support text editing before publication; the standalone CLI publishes its original saved draft without regenerating. Draft tokens authorize publication for 24 hours and stay private.
 
 Card styles are repository-owned presets in [social-templates.ts](../lib/social-templates.ts). The browser remembers only appearance preferences; the initial default is Margin notes. Picker thumbnails and selected previews render [SocialCard](../lib/social-card.tsx) directly in the page. Switching styles makes no `/api/card` request. Browser previews and exported images share template JSX and styles, artwork, font packages, and the fitting policy. Titles display at most two lines with an ellipsis for overflow; the saved summary and reader retain the full title. Card footers show attribution without a reader CTA. The browser measures its own text, so fitted sizes and rendered pixels can differ from Takumi. Publications retain their selected style when browser preferences change. Existing publications with no style retain the plain layout.
 
@@ -20,7 +20,7 @@ Reader and image routes supply crawler-readable initial metadata, absolute image
 
 ## Saved content and availability
 
-A source identifies one public provider share. It can have multiple immutable snapshots and publications. A snapshot holds captured conversation content and its cached generated preview; a publication fixes the reviewed text and style selection. Images are rendered from checked-in template definitions and assets using the current renderer; exact historical image bytes are not stored.
+A source identifies one public provider share. It can have multiple immutable snapshots and publications. A snapshot holds captured conversation content and its cached generated preview; a publication fixes the reviewed text and style selection. Draft edits leave the cached generation and saved conversation unchanged. Published wording is immutable; different reviewed wording or style creates a separate presentation. Images are rendered from checked-in template definitions and assets using the current renderer; exact historical image bytes are not stored.
 
 - Preparation reuses content for seven days after the last complete content fetch. An identical re-fetch advances content verification freshness while retaining the original snapshot and capture time. Availability checks do not advance that freshness or replace saved content.
 - Reader visits trigger a background check when the last conclusive availability result is at least seven days old. Manual checks have a source-wide one-hour cooldown and a per-client budget. Preparation and checks share source-level coordination so concurrent requests do not repeat expensive work.
@@ -31,13 +31,13 @@ A source identifies one public provider share. It can have multiple immutable sn
 
 ## Implementation and limits
 
-One Next.js application, PostgreSQL, Drizzle migrations, and the existing CLI. Keep lifecycle transactions together in [service.ts](../lib/service.ts); storage constraints live in [schema.ts](../lib/db/schema.ts). Provider adapters produce the [shared message model](MESSAGE_MODEL.md). Preview generation lives in [suggestions.ts](../lib/suggestions.ts) and [summary.ts](../lib/summary.ts); reader and image presentation use those saved results.
+One Next.js application, PostgreSQL, Drizzle migrations, and the existing CLI. Keep lifecycle transactions together in [service.ts](../lib/service.ts); storage constraints live in [schema.ts](../lib/db/schema.ts). Provider adapters produce the [shared message model](MESSAGE_MODEL.md). Preview generation lives in [suggestions.ts](../lib/suggestions.ts) and [summary.ts](../lib/summary.ts); reader and image presentation use the reviewed text saved in each publication.
 
 Generation currently uses OpenAI with a configurable model, defaulting to `gpt-5.4-nano`. The request has no tools or retries, reasoning disabled, a 15-second timeout, 700 output tokens, and response storage disabled. Input is capped at 20,000 encoded characters, prioritizing the first user and last assistant messages and marking omissions. This compaction never truncates the saved reader.
 
 | Limit | Default |
 | --- | --- |
-| Title / highlight | 60 / 100 Unicode code points; 1–3 highlights |
+| Title / highlight | 60 / 100 Unicode code points; 1–3 distinct highlights |
 | Provider fetch | 15 seconds total, 2 redirects, 5 MiB wire and decompressed body |
 | Saved transcript | 1 MiB encoded message JSON; oversized input is rejected |
 | Mutation body | 16 KiB |
@@ -63,6 +63,6 @@ The accepted [brand identity](brand-identity.md) defines Passage’s current cop
 
 ## Scope boundary
 
-Included: public ChatGPT/Codex/Claude sources, generated read-only highlights, five curated card styles, browser preferences, immutable saved content, CLI/skill access, lazy removal checks, basic abuse controls, Vercel hosting, and practical self-hosting.
+Included: public ChatGPT/Codex/Claude sources, generated previews with title/highlight editing during draft review, five curated card styles, browser preferences, immutable saved content and published wording, CLI/skill access, lazy removal checks, basic abuse controls, Vercel hosting, and practical self-hosting.
 
-Deferred: accounts, payments, analytics dashboards, discovery feeds, custom domains/slugs, user-authored themes, uploads, generated per-conversation artwork, editable summaries or publications, private shares, creator deletion tokens, conversation continuation, rich media/artifact rendering, scheduled polling, and additional infrastructure. Expand scope when a concrete need warrants it.
+Deferred: accounts, payments, analytics dashboards, discovery feeds, custom domains/slugs, user-authored themes, uploads, generated per-conversation artwork, editing published passages, private shares, creator deletion tokens, conversation continuation, rich media/artifact rendering, scheduled polling, and additional infrastructure. Expand scope when a concrete need warrants it.

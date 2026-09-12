@@ -18,11 +18,11 @@ A conversation-sharing service makes public AI conversations more engaging to sh
 
 **Content block**: One ordered piece of a message, such as text or an explicit omission of known media, a tool interaction, or an artifact. An omission records what is missing without presenting a placeholder as original conversation text.
 
-**Preview**: An automatically generated concise title and highlights describing a snapshot. The sharer reviews the preview before publishing it; its text is not editable.
+**Preview**: A concise title and highlights describing a snapshot, generated initially and editable by the sharer before publication.
 
-**Highlight**: A short, grounded summary of a main idea in the conversation, written by the preview model. It is a paraphrase rather than a quotation attributed to a speaker.
+**Highlight**: A short, grounded summary of a main idea in the conversation, generated initially and refinable during draft review. It is a paraphrase rather than a quotation attributed to a speaker.
 
-**Draft**: A prepared snapshot and generated preview awaiting publication, available for the sharer to review with a chosen card style. It has no public share URL of its own. _Avoid_: Unpublished publication, editable conversation.
+**Draft**: A prepared snapshot and preview awaiting publication, with title and highlights the sharer can edit and a card style they can choose. It has no public share URL of its own. _Avoid_: Unpublished publication, editable conversation.
 
 **Publication**: An independently addressable share of one snapshot with a fixed reviewed title, highlights, and card style; customer-facing copy must call it a “passage.” Repeated publication of an identical presentation reuses its share URL while that publication remains available. _Avoid_: Source, proxied chat, redirect, editable link.
 
@@ -30,15 +30,15 @@ A conversation-sharing service makes public AI conversations more engaging to sh
 
 **Share URL**: The public address of a publication on this service. It opens the reader and supplies the publication's social metadata.
 
-**Card style**: A curated visual design for a social card, independent of the conversation and generated preview text. The chosen style is fixed when a publication is created. _Avoid_: Preview text, conversation theme.
+**Card style**: A curated visual design for a social card, independent of the conversation and preview text. The chosen style is fixed when a publication is created. _Avoid_: Preview text, conversation theme.
 
-**Card preview**: The visual rendering shown to the sharer before publication, combining the generated preview text with the chosen card style. _Avoid_: Preview when the distinction between text and image matters.
+**Card preview**: The visual rendering shown to the sharer before publication, combining the current preview text with the chosen card style. _Avoid_: Preview when the distinction between text and image matters.
 
 **Social card**: The typeset image representing a publication when its share URL is posted elsewhere. Its title and highlights describe the conversation, with subordinate service branding.
 
 **Reader**: The public page displaying a publication's saved conversation, its preview, and a prominent link to the source.
 
-**Sharer**: The person creating a publication by submitting a source URL, reviewing its generated preview, and publishing it. An agent may carry out this workflow on their behalf. The MVP has no accounts or assertion that the sharer owns the source.
+**Sharer**: The person creating a publication by submitting a source URL, reviewing or refining its generated preview, and publishing it. An agent may carry out this workflow on their behalf. The MVP has no accounts or assertion that the sharer owns the source.
 
 **Availability check**: A check that the source remains publicly accessible. It does not refresh a publication's snapshot, title, or highlights. _Avoid_: Sync, refresh content.
 

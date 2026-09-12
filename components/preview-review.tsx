@@ -2,7 +2,7 @@
 
 import { ArrowLeft, ArrowUpRight, BookOpen, Check } from 'lucide-react'
 import Link from 'next/link'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { CopyLink } from '@/components/copy-link'
 import {
@@ -10,6 +10,7 @@ import {
   type CardPreviewStatus
 } from '@/components/social-card-preview'
 import { SocialTemplatePicker } from '@/components/social-template-picker'
+import { SummaryEditor } from '@/components/summary-editor'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
@@ -18,6 +19,7 @@ import { Spinner } from '@/components/ui/spinner'
 import type { CardAppearance } from '@/lib/card-appearance'
 import { clientErrorMessage, postJson } from '@/lib/client-request'
 import { getSocialTemplate } from '@/lib/social-templates'
+import { parseGeneratedPreview } from '@/lib/summary'
 import {
   type GeneratedPreview,
   type Provider,
@@ -52,6 +54,9 @@ export function PreviewReview({
 }) {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
+  const [preview, setPreview] = useState(draft.preview)
+  const validation = useMemo(() => parseGeneratedPreview(preview), [preview])
+  const cardPreview = validation.success ? validation.data : preview
   const [card, setCard] = useState<CardPreviewStatus | null>(null)
   const [cardAttempt, setCardAttempt] = useState(0)
   const [shareUrl, setShareUrl] = useState('')
@@ -70,6 +75,7 @@ export function PreviewReview({
   const cardReady = Boolean(
     preferencesReady && currentCard?.loaded && !currentCardError
   )
+  const publishReady = cardReady && validation.success
 
   useEffect(() => {
     headingRef.current?.focus({ preventScroll: true })
@@ -80,15 +86,23 @@ export function PreviewReview({
     setCardAttempt((attempt) => attempt + 1)
   }
 
+  function changePreview(next: GeneratedPreview) {
+    if (pending || shareUrl) return
+    setPreview(next)
+    setCardAttempt((attempt) => attempt + 1)
+    setError('')
+  }
+
   async function publish() {
-    if (!cardReady || pending || shareUrl) return
+    if (!publishReady || !validation.success || pending || shareUrl) return
     setLockedAppearance(activeAppearance)
     setPending(true)
     setError('')
     try {
       const result = await postJson<{ shareUrl: string }>('/api/publish', {
         draftToken: draft.draftToken,
-        appearance: activeAppearance
+        appearance: activeAppearance,
+        preview: validation.data
       })
       setShareUrl(result.shareUrl)
     } catch (err) {
@@ -114,7 +128,7 @@ export function PreviewReview({
         </p>
         <div className='published-preview'>
           <SocialCardPreview
-            preview={draft.preview}
+            preview={cardPreview}
             provider={draft.provider}
             appearance={activeAppearance}
           />
@@ -162,7 +176,7 @@ export function PreviewReview({
             Review your passage.
           </h1>
           <p className='review-description'>
-            A clear introduction to a conversation worth sharing.
+            Fine-tune the title and highlights, then choose a style.
           </p>
         </div>
         <a
@@ -177,18 +191,15 @@ export function PreviewReview({
       </div>
       <div className='review-grid'>
         <div className='review-content'>
-          <div className='generated-summary' aria-labelledby='generated-title'>
-            <p className='eyebrow'>Highlights</p>
-            <h2 id='generated-title'>{draft.preview.title}</h2>
-            <ul>
-              {draft.preview.highlights.map((highlight, index) => (
-                <li key={index}>{highlight}</li>
-              ))}
-            </ul>
-          </div>
+          <SummaryEditor
+            preview={preview}
+            issues={validation.error?.issues ?? []}
+            disabled={pending}
+            onChange={changePreview}
+          />
           <p className='review-note'>
-            This title and these highlights will introduce your saved
-            conversation. Take a moment to review them before publishing.
+            Keep the wording true to the conversation. Your edits will appear on
+            the card and above the saved conversation.
           </p>
           {error ? (
             <Alert variant='destructive'>
@@ -199,7 +210,7 @@ export function PreviewReview({
             <Button
               size='lg'
               onClick={publish}
-              disabled={!cardReady || pending}
+              disabled={!publishReady || pending}
             >
               {pending ? <Spinner data-icon='inline-start' /> : null}
               {pending ? 'Publishing…' : 'Publish passage'}
@@ -216,13 +227,15 @@ export function PreviewReview({
           <div className='preview-heading'>
             <span className='eyebrow'>Your social card</span>
             <span role='status'>
-              {cardReady
-                ? 'Ready to publish'
-                : currentCardError
-                  ? 'Preview unavailable'
-                  : preferencesReady
-                    ? 'Preparing…'
-                    : 'Loading your preference…'}
+              {!validation.success
+                ? 'Check your text'
+                : cardReady
+                  ? 'Ready to publish'
+                  : currentCardError
+                    ? 'Preview unavailable'
+                    : preferencesReady
+                      ? 'Preparing…'
+                      : 'Loading your preference…'}
             </span>
           </div>
           <div
@@ -232,7 +245,7 @@ export function PreviewReview({
             {preferencesReady ? (
               <SocialCardPreview
                 key={`${draft.draftToken}:${templateId}:${cardAttempt}`}
-                preview={draft.preview}
+                preview={cardPreview}
                 provider={draft.provider}
                 appearance={activeAppearance}
                 attempt={cardAttempt}

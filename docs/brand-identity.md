@@ -27,7 +27,7 @@ Passage helps people share useful work they do with AI. Heavy AI users and build
 
 The promise is confidence in sharing: a link someone feels proud to send, with enough context for a reader to understand its value. Grounded highlights, a preview before publication, and an original-source link support that promise. Sharing one’s process and learning in public are motivations, not guarantees of reach or growth.
 
-The product currently accepts public ChatGPT, Codex, and Claude conversation links, generates a read-only title and highlights, offers five curated card styles, and publishes a passage with saved conversation text and its original source. Browser, CLI, and agent workflows serve this same purpose. Current scope and limits live in the [MVP plan](MVP_PLAN.md); the brand does not add accounts, collections, editing, or custom themes.
+The product currently accepts public ChatGPT, Codex, and Claude conversation links, generates a title and highlights that the sharer can refine before publication, offers five curated card styles, and publishes a passage with saved conversation text and its original source. Published wording stays fixed. Browser, CLI, and agent workflows serve this same purpose. Current scope and limits live in the [MVP plan](MVP_PLAN.md); the brand does not add accounts, collections, or custom themes.
 
 **Creative idea:** Conversations worth sharing. **Rationale:** A clear promise in a calm visual system: Inter, white and charcoal, and a painted landscape give each passage room. Keep the service branding subordinate to the work being shared.
 

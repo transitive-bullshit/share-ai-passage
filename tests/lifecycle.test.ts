@@ -122,6 +122,21 @@ it('rejects invalid appearance at the publication service boundary', async () =>
   ).rejects.toMatchObject({ status: 400 })
 })
 
+it.each([
+  null,
+  { title: '🌱'.repeat(61), highlights: ['One point.'] },
+  { title: 'A title', highlights: ['🦊'.repeat(101)] },
+  { title: 'A title', highlights: [] },
+  { title: 'A title', highlights: ['Same point', ' same\npoint '] }
+])(
+  'rejects invalid edits at the publication service boundary: %j',
+  async (preview) => {
+    await expect(
+      publishPreview('unread-draft', DEFAULT_CARD_APPEARANCE, preview)
+    ).rejects.toMatchObject({ status: 400 })
+  }
+)
+
 describe.skipIf(!testUrl)('publication lifecycle with PostgreSQL', () => {
   beforeAll(() => {
     process.env.DATABASE_URL = testUrl!
@@ -183,7 +198,7 @@ describe.skipIf(!testUrl)('publication lifecycle with PostgreSQL', () => {
     )
   })
 
-  it('publishes the server-generated preview idempotently without accepting text edits', async () => {
+  it('publishes the cached generated preview idempotently when edits are omitted', async () => {
     const url = sourceUrl('claude')
     const prepared = await prepareSource(url)
     const duplicates = await Promise.all(
@@ -199,6 +214,82 @@ describe.skipIf(!testUrl)('publication lifecycle with PostgreSQL', () => {
     expect(first!.publication.cardVersion).toBe(4)
     expect(first!.publication.appearance).toEqual(DEFAULT_CARD_APPEARANCE)
     expect(await getPublication('chatgpt', firstId)).toBeNull()
+  })
+
+  it('publishes reviewed text independently and idempotently while preserving the generated cache', async () => {
+    const url = sourceUrl()
+    const prepared = await prepareSource(url)
+    const originalPublication = await publishPreview(prepared.draftToken)
+    const edited = {
+      title: 'Café habits',
+      highlights: ['Start small.', 'Repeat each day.']
+    }
+    const [first, repeated] = await Promise.all([
+      publishPreview(prepared.draftToken, DEFAULT_CARD_APPEARANCE, {
+        title: '  Cafe\u0301\n habits ',
+        highlights: [' Start\tsmall. ', ' Repeat each day. ']
+      }),
+      publishPreview(prepared.draftToken, DEFAULT_CARD_APPEARANCE, edited)
+    ])
+    expect(first.publicationId).toBe(repeated.publicationId)
+    expect(first.publicationId).not.toBe(originalPublication.publicationId)
+
+    const otherText = await publishPreview(
+      prepared.draftToken,
+      DEFAULT_CARD_APPEARANCE,
+      {
+        ...edited,
+        highlights: ['Make a small start.', 'Repeat each day.']
+      }
+    )
+    const otherStyle = await publishPreview(
+      prepared.draftToken,
+      { templateId: 'electric-risograph' },
+      edited
+    )
+    expect(
+      new Set([
+        originalPublication.publicationId,
+        first.publicationId,
+        otherText.publicationId,
+        otherStyle.publicationId
+      ]).size
+    ).toBe(4)
+
+    const saved = await getPublication('chatgpt', first.publicationId)
+    expect(saved!.preview).toEqual(edited)
+    expect(saved!.snapshot.preview).toEqual(generatedPreview)
+    expect(saved!.snapshot.messages).toEqual(original.messages)
+    expect(
+      (await getPublication('chatgpt', originalPublication.publicationId))!
+        .preview
+    ).toEqual(generatedPreview)
+    expect((await getDraft(prepared.draftToken)).preview).toEqual(
+      generatedPreview
+    )
+
+    advance(1000)
+    const nextDraft = await prepareSource(url)
+    expect(nextDraft.preview).toEqual(generatedPreview)
+    expect(
+      await publishPreview(
+        nextDraft.draftToken,
+        DEFAULT_CARD_APPEARANCE,
+        edited
+      )
+    ).toEqual(first)
+    expect(upstream.suggestPreview).toHaveBeenCalledTimes(1)
+  })
+
+  it('rejects an expired draft even when valid edited text is supplied', async () => {
+    const prepared = await prepareSource(sourceUrl())
+    advance(24 * limits.cooldownMs)
+    await expect(
+      publishPreview(prepared.draftToken, DEFAULT_CARD_APPEARANCE, {
+        title: 'An edited title',
+        highlights: ['An edited takeaway.']
+      })
+    ).rejects.toMatchObject({ status: 410 })
   })
 
   it('saves different templates independently and reuses the same content and style across drafts', async () => {
@@ -298,6 +389,12 @@ describe.skipIf(!testUrl)('publication lifecycle with PostgreSQL', () => {
     await expect(publishPreview(prepared.draftToken)).rejects.toMatchObject({
       status: 410
     })
+    await expect(
+      publishPreview(prepared.draftToken, DEFAULT_CARD_APPEARANCE, {
+        title: 'An edited title',
+        highlights: ['An edited takeaway.']
+      })
+    ).rejects.toMatchObject({ status: 410 })
   })
 
   it('generates a preview for a fresh snapshot without a preview without refetching or advancing content freshness', async () => {
@@ -487,6 +584,12 @@ describe.skipIf(!testUrl)('publication lifecycle with PostgreSQL', () => {
       .where(eq(publications.sourceId, source.id))
     expect(saved).toHaveLength(2)
     expect(saved.every((publication) => publication.disabledAt)).toBe(true)
+    await expect(
+      publishPreview(prepared.draftToken, DEFAULT_CARD_APPEARANCE, {
+        title: 'An edited title',
+        highlights: ['An edited takeaway.']
+      })
+    ).rejects.toMatchObject({ status: 410 })
   })
 
   it('permits verified recreation with a new link while permanently preserving old disabled publications', async () => {

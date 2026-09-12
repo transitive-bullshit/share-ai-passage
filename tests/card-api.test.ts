@@ -8,6 +8,7 @@ import {
   DEFAULT_CARD_APPEARANCE,
   type CardAppearance
 } from '@/lib/card-appearance'
+import { AppError } from '@/lib/errors'
 import { socialTemplateIds } from '@/lib/social-templates'
 import { webpDimensions } from '@/lib/webp'
 
@@ -147,6 +148,58 @@ describe('saved social-card appearance routes', () => {
     expect(service.getDraft).toHaveBeenCalledExactlyOnceWith('signed-preview')
   })
 
+  it.each(['webp', 'html'])(
+    'renders normalized edited copy as %s without changing the draft',
+    async (format) => {
+      const original = structuredClone(savedPreview)
+      const appearance = { templateId: 'friendly-lab' as const }
+      const response = await previewImage(
+        request({
+          draftToken: 'signed-preview',
+          appearance,
+          format,
+          preview: {
+            title: '  Cafe\u0301 habits  ',
+            highlights: [' Start\nsmall. ']
+          }
+        })
+      )
+      expect(response.status).toBe(200)
+      const renderer = format === 'html' ? renderCardPreview : renderCard
+      expect(renderer).toHaveBeenCalledExactlyOnceWith(
+        {
+          title: 'Café habits',
+          highlights: ['Start small.'],
+          provider: 'claude'
+        },
+        appearance
+      )
+      expect(service.getDraft).toHaveBeenCalledExactlyOnceWith('signed-preview')
+      expect(savedPreview).toEqual(original)
+    }
+  )
+
+  it.each([403, 410])(
+    'does not render edited text when the draft is invalid or expired: HTTP %s',
+    async (status) => {
+      service.getDraft.mockRejectedValue(
+        new AppError('Prepare the source again.', status)
+      )
+      const response = await previewImage(
+        request({
+          draftToken: 'invalid-draft',
+          preview: {
+            title: 'An edited title',
+            highlights: ['An edited point.']
+          }
+        })
+      )
+      expect(response.status).toBe(status)
+      expect(renderCard).not.toHaveBeenCalled()
+      expect(renderCardPreview).not.toHaveBeenCalled()
+    }
+  )
+
   it.each([
     { format: 'png' },
     { format: 'svg' },
@@ -155,11 +208,16 @@ describe('saved social-card appearance routes', () => {
     { appearance: {} },
     { appearance: { templateId: 'unknown' } },
     { appearance: { templateId: 'margin-notes', font: 'remote.woff' } },
+    { preview: null },
+    { preview: { title: 'x'.repeat(61), highlights: ['One.'] } },
+    { preview: { title: 'Title', highlights: ['x'.repeat(101)] } },
+    { preview: { title: 'Title', highlights: ['Same', ' same '] } },
+    { preview: { title: 'Title', highlights: [] } },
     { title: 'A client-authored title' },
     { highlights: ['A client-authored highlight'] },
     { selection: 'A client-selected excerpt' }
   ])(
-    'rejects unsupported formats, appearance injection and preview text edits: %j',
+    'rejects unsupported fields and invalid preview text: %j',
     async (input) => {
       const response = await previewImage(
         request({ draftToken: 'signed-preview', ...input })

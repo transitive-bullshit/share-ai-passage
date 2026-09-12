@@ -11,6 +11,7 @@ import {
   requireSameOrigin
 } from '@/lib/http'
 import { enforceBudget, getDraft } from '@/lib/service'
+import { parseGeneratedPreview } from '@/lib/summary'
 
 export const runtime = 'nodejs'
 export const maxDuration = 30
@@ -22,6 +23,7 @@ export async function POST(request: Request) {
     const parsed = z
       .object({
         draftToken: z.string().min(1).max(1024),
+        preview: z.unknown().optional(),
         format: z.enum(['webp', 'html']).optional().default('webp'),
         appearance: cardAppearanceSchema
           .optional()
@@ -31,15 +33,24 @@ export async function POST(request: Request) {
       .safeParse(await readJson(request))
     if (!parsed.success)
       throw new AppError(
-        'Choose a supported card template and prepare the conversation before previewing its card. Preview text cannot be edited.'
+        'Choose a supported card template and prepare the conversation before previewing its card.'
+      )
+    const edited =
+      parsed.data.preview === undefined
+        ? undefined
+        : parseGeneratedPreview(parsed.data.preview)
+    if (edited && !edited.success)
+      throw new AppError(
+        edited.error.issues[0]?.message ?? 'Enter a valid preview summary.'
       )
     const draft = await getDraft(parsed.data.draftToken)
+    const preview = edited?.data ?? draft.preview
     const render =
       parsed.data.format === 'html' ? renderCardPreview : renderCard
     return await render(
       {
-        title: draft.preview.title,
-        highlights: draft.preview.highlights,
+        title: preview.title,
+        highlights: preview.highlights,
         provider: draft.source.provider
       },
       parsed.data.appearance

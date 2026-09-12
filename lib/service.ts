@@ -20,7 +20,7 @@ import { createDraftToken, previewHash, readDraftToken } from './drafts'
 import { AppError } from './errors'
 import { fetchSource, parseSourceUrl } from './providers'
 import { suggestPreview } from './suggestions'
-import { validateGeneratedPreview } from './summary'
+import { parseGeneratedPreview, validateGeneratedPreview } from './summary'
 
 const leaseMs = 60_000
 const preparationRetryMs = 60_000
@@ -369,12 +369,22 @@ export async function getDraft(token: string) {
 
 export async function publishPreview(
   token: string,
-  selectedAppearance: CardAppearance = DEFAULT_CARD_APPEARANCE
+  selectedAppearance: CardAppearance = DEFAULT_CARD_APPEARANCE,
+  selectedPreview?: unknown
 ) {
   const parsed = cardAppearanceSchema.safeParse(selectedAppearance)
   if (!parsed.success) throw new AppError('Choose a supported card template.')
   const appearance = parsed.data
-  const { draft, snapshot, preview } = await getDraft(token)
+  const edited =
+    selectedPreview === undefined
+      ? undefined
+      : parseGeneratedPreview(selectedPreview)
+  if (edited && !edited.success)
+    throw new AppError(
+      edited.error.issues[0]?.message ?? 'Enter a valid preview summary.'
+    )
+  const { draft, snapshot, preview: generated } = await getDraft(token)
+  const preview = edited?.data ?? generated
   const db = getDb()
   const fingerprint = createHash('sha256')
     .update(

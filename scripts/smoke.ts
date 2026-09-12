@@ -302,13 +302,29 @@ async function smokeSource(sourceUrl: string, index: number) {
     'Repeat preparation changed the cached generated preview.'
   )
 
-  stage = `${prepared.provider}: read-only preview enforcement`
-  const publishBody = { draftToken: prepared.draftToken }
+  stage = `${prepared.provider}: reviewed preview validation`
+  const editedPreview = {
+    ...prepared.preview,
+    title:
+      prepared.preview.title === 'A reviewed conversation'
+        ? 'A carefully reviewed conversation'
+        : 'A reviewed conversation'
+  }
+  const publishBody = {
+    draftToken: prepared.draftToken,
+    preview: editedPreview
+  }
   for (const route of ['/api/card', '/api/publish']) {
     for (const edit of [
       { title: 'Caller-supplied title' },
       { highlights: ['Caller-supplied summary'] },
-      { preview: { ...prepared.preview, title: 'Caller-supplied title' } },
+      { preview: { ...prepared.preview, title: 'x'.repeat(61) } },
+      {
+        preview: {
+          ...prepared.preview,
+          highlights: ['Same point', ' same point ']
+        }
+      },
       {
         selection: {
           title: 'Caller-supplied title',
@@ -321,7 +337,7 @@ async function smokeSource(sourceUrl: string, index: number) {
       const tampered = await post(route, { ...publishBody, ...edit })
       verify(
         tampered.status === 400,
-        `${route} must reject caller-supplied preview edits with HTTP 400.`
+        `${route} must reject invalid preview text and unsupported fields with HTTP 400.`
       )
       privateResponse(tampered)
       await tampered.body?.cancel()
@@ -343,13 +359,24 @@ async function smokeSource(sourceUrl: string, index: number) {
     'An exact duplicate must reuse its publication.'
   )
   const repeatedDraft = await readJson(
-    await post('/api/publish', { draftToken: cached.draftToken }),
+    await post('/api/publish', {
+      draftToken: cached.draftToken,
+      preview: editedPreview
+    }),
     publicationSchema
   )
   verify(
     repeatedDraft.publicationId === published.publicationId &&
       repeatedDraft.shareUrl === published.shareUrl,
     'A repeated preparation of the same preview must reuse its publication.'
+  )
+  const originalPublication = await readJson(
+    await post('/api/publish', { draftToken: prepared.draftToken }),
+    publicationSchema
+  )
+  verify(
+    originalPublication.publicationId !== published.publicationId,
+    'Edited preview text must have its own publication; omitting edits preserves the generated preview.'
   )
   verify(
     new URL(published.shareUrl).pathname ===
@@ -364,7 +391,8 @@ async function smokeSource(sourceUrl: string, index: number) {
     checks: {
       repeatPreparation: 'passed',
       duplicatePublication: 'passed',
-      readOnlyPreview: 'passed',
+      editedPreview: 'passed',
+      originalPreviewPublication: 'passed',
       repeatedDraftPublication: 'passed'
     }
   }
@@ -390,7 +418,7 @@ async function smokeSource(sourceUrl: string, index: number) {
     .map((match) => match[1])
     .join('\n')
   verify(
-    [prepared.preview.title, ...prepared.preview.highlights].every((text) =>
+    [editedPreview.title, ...editedPreview.highlights].every((text) =>
       previewText.includes(text)
     ),
     'The HTML card preview must include the reviewed title and every highlight.'
@@ -441,7 +469,7 @@ async function smokeSource(sourceUrl: string, index: number) {
     privateResponse(reader)
     validateReader(
       await reader.text(),
-      prepared,
+      { ...prepared, preview: editedPreview },
       draft.snapshot.messages,
       published.shareUrl
     )

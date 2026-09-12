@@ -119,6 +119,19 @@ function publishButton() {
   return button
 }
 
+async function editField(id: string, value: string) {
+  const input = container.querySelector<HTMLTextAreaElement>(`#${id}`)!
+  expect(input).not.toBeNull()
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(
+      HTMLTextAreaElement.prototype,
+      'value'
+    )!.set!.call(input, value)
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+  return input
+}
+
 it('switches the actual review preview locally across rapid style changes without requesting a card', async () => {
   await act(async () => root.render(createElement(ReviewHarness)))
   for (const templateId of [
@@ -166,7 +179,8 @@ it('ignores stale artwork readiness and publishes only the current reviewed styl
       method: 'POST',
       body: JSON.stringify({
         draftToken: draft.draftToken,
-        appearance: { templateId: 'friendly-lab' }
+        appearance: { templateId: 'friendly-lab' },
+        preview: draft.preview
       })
     })
   )
@@ -195,4 +209,105 @@ it('keeps publishing disabled after a font failure until a retried preview finis
   await act(async () => retryFont.resolve([]))
   expect(publishButton().disabled).toBe(false)
   expect(requests).not.toHaveBeenCalled()
+})
+
+it('edits each field locally and publishes the latest fitted wording, preserving it on success', async () => {
+  const publication = Promise.withResolvers<Response>()
+  requests.mockReturnValue(publication.promise)
+  await act(async () => root.render(createElement(ReviewHarness)))
+  await finishArtwork('margin-notes')
+
+  const earlierArtwork = [...imageDecodes]
+  const title = await editField('summary-title', '  A clearer way to share  ')
+  await editField('summary-highlight-1', '  Keep the   useful idea. ')
+  await editField('summary-highlight-2', 'Make the next step clear.')
+  expect(title.value).toBe('  A clearer way to share  ')
+  expect(container.querySelector('.live-card')?.textContent).toContain(
+    'A clearer way to share'
+  )
+  expect(container.querySelector('.live-card')?.textContent).toContain(
+    'Make the next step clear.'
+  )
+  expect(draft.preview.title).toBe('A useful conversation deserves to travel')
+  expect(requests).not.toHaveBeenCalled()
+
+  await act(async () => earlierArtwork.forEach((image) => image.resolve()))
+  expect(publishButton().disabled).toBe(true)
+  await finishArtwork('margin-notes')
+  expect(publishButton().disabled).toBe(false)
+  await act(async () => publishButton().click())
+  expect(title.disabled).toBe(true)
+  expect(requests).toHaveBeenCalledWith(
+    '/api/publish',
+    expect.objectContaining({
+      body: JSON.stringify({
+        draftToken: draft.draftToken,
+        appearance: { templateId: 'margin-notes' },
+        preview: {
+          title: 'A clearer way to share',
+          highlights: ['Keep the useful idea.', 'Make the next step clear.']
+        }
+      })
+    })
+  )
+  await act(async () =>
+    publication.resolve(
+      Response.json({ shareUrl: 'http://localhost:3000/claude/edited' })
+    )
+  )
+  expect(container.querySelector('.published-preview')?.textContent).toContain(
+    'A clearer way to share'
+  )
+  expect(container.querySelector('.published-preview')?.textContent).toContain(
+    'Make the next step clear.'
+  )
+})
+
+it('shows field errors for empty and over-limit edits while counting Unicode characters correctly', async () => {
+  await act(async () => root.render(createElement(ReviewHarness)))
+  await editField('summary-title', ' ')
+  await finishArtwork('margin-notes')
+  expect(publishButton().disabled).toBe(true)
+  expect(container.querySelector('#summary-title-error')?.textContent).toBe(
+    'Enter a title.'
+  )
+
+  await editField('summary-title', '😀'.repeat(60))
+  await finishArtwork('margin-notes')
+  expect(container.querySelector('#summary-title-count')?.textContent).toBe(
+    '60 / 60'
+  )
+  expect(publishButton().disabled).toBe(false)
+
+  const title = await editField('summary-title', '😀'.repeat(61))
+  expect(title.getAttribute('aria-invalid')).toBe('true')
+  expect(container.querySelector('#summary-title-error')?.textContent).toBe(
+    'Keep your title within 60 characters.'
+  )
+  await editField('summary-highlight-1', 'a'.repeat(101))
+  expect(
+    container.querySelector('#summary-highlight-1-error')?.textContent
+  ).toBe('Keep your highlight within 100 characters.')
+  await finishArtwork('margin-notes')
+  expect(publishButton().disabled).toBe(true)
+  expect(requests).not.toHaveBeenCalled()
+})
+
+it('requires distinct edited highlights and keeps edits when changing styles', async () => {
+  await act(async () => root.render(createElement(ReviewHarness)))
+  await editField('summary-highlight-2', ' keep the useful idea. ')
+  await finishArtwork('margin-notes')
+  expect(container.querySelector('#summary-error')?.textContent).toBe(
+    'Use distinct highlights.'
+  )
+  expect(publishButton().disabled).toBe(true)
+
+  await editField('summary-highlight-2', 'A distinct next step.')
+  await selectTemplate('friendly-lab')
+  await finishArtwork('friendly-lab')
+  expect(container.querySelector('.live-card')?.textContent).toContain(
+    'A distinct next step.'
+  )
+  expect(publishButton().disabled).toBe(false)
+  expect(container.querySelector('#summary-error')).toBeNull()
 })
