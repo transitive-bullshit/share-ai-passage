@@ -5,21 +5,45 @@ import './globals.css'
 
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
+import { Analytics } from '@vercel/analytics/next'
 
 import { BrandMark } from '@/components/brand-mark'
 import { Separator } from '@/components/ui/separator'
+import { brand } from '@/lib/brand'
 import { appUrl } from '@/lib/config'
+
+const title = `${brand.name} — ${brand.headline}`
+const socialImage = {
+  url: '/brand/social-preview.png',
+  width: 1200,
+  height: 630,
+  type: 'image/png',
+  alt: `${brand.name}: ${brand.headline}`
+}
 
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl()),
   title: {
-    default: 'Passage — Conversations worth sharing',
-    template: '%s · Passage'
+    default: title,
+    template: `%s · ${brand.name}`
   },
-  description:
-    'Share a public ChatGPT, Codex, or Claude conversation with an automatically generated title, concise highlights, and a beautiful preview.',
+  description: brand.description,
+  openGraph: {
+    title,
+    description: brand.description,
+    type: 'website',
+    siteName: brand.name,
+    url: '/',
+    images: [socialImage]
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title,
+    description: brand.description,
+    images: [socialImage]
+  },
   robots: { index: false, follow: false },
-  applicationName: 'Passage'
+  applicationName: brand.name
 }
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -31,15 +55,15 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         </a>
         <div className='site-shell'>
           <header className='site-header'>
-            <a href='/' className='wordmark' aria-label='Passage home'>
+            <a href='/' className='wordmark' aria-label={`${brand.name} home`}>
               <BrandMark />
-              Passage
+              {brand.name}
             </a>
             <nav className='header-nav' aria-label='Main navigation'>
               <a href='/#how-it-works'>How it works</a>
               <a href='/#for-agents'>For agents</a>
               <a className='header-cta' href='/'>
-                Create a passage <span aria-hidden='true'>↗</span>
+                {brand.cta} <span aria-hidden='true'>↗</span>
               </a>
             </nav>
           </header>
@@ -48,15 +72,16 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <Separator />
             <div className='footer-row'>
               <a href='/' className='footer-brand'>
-                <BrandMark /> Passage
+                <BrandMark /> {brand.name}
               </a>
-              <span>Good conversations deserve to travel.</span>
+              <span>{brand.mantra}</span>
               <a href='/'>
-                Create a passage <span aria-hidden='true'>↗</span>
+                {brand.cta} <span aria-hidden='true'>↗</span>
               </a>
             </div>
           </footer>
         </div>
+        <Analytics />
       </body>
     </html>
   )

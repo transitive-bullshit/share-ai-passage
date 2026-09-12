@@ -8,15 +8,13 @@ import {
 } from 'lucide-react'
 import Image from 'next/image'
 
+import { brand } from '@/lib/brand'
 import landscape from '@/public/images/passage-landscape.png'
 
 export function LandingDetails() {
   return (
     <>
-      <figure
-        className='hero-example'
-        aria-label='Example of a Passage preview'
-      >
+      <figure className='hero-example' aria-label='Example passage'>
         <div className='showcase-landscape'>
           <Image
             className='showcase-artwork'
@@ -35,7 +33,7 @@ export function LandingDetails() {
                 <i />
               </span>
               <span>
-                <Link2 size={12} aria-hidden='true' /> A shared conversation
+                <Link2 size={12} aria-hidden='true' /> A passage
               </span>
               <span className='example-label'>Preview</span>
             </div>
@@ -43,12 +41,12 @@ export function LandingDetails() {
               src='/api/example-card'
               width={1200}
               height={630}
-              alt='Example Passage card: Make room for the unexpected, with three concise conversation highlights'
+              alt='Example passage card: Make room for the unexpected, with three concise conversation highlights'
               fetchPriority='high'
             />
             <div className='example-window-footer'>
               <span>
-                <Check size={14} aria-hidden='true' /> The full conversation
+                <Check size={14} aria-hidden='true' /> The saved conversation
                 comes with it.
               </span>
               <ArrowUpRight size={16} aria-hidden='true' />
@@ -56,7 +54,7 @@ export function LandingDetails() {
           </div>
         </div>
         <figcaption>
-          A clear introduction. The whole conversation, one click away.
+          A clear introduction. The saved conversation, one click away.
         </figcaption>
       </figure>
 
@@ -121,8 +119,8 @@ export function LandingDetails() {
             <div>
               <h3>Send a link worth opening.</h3>
               <p>
-                Publish your preview with a public, saved copy of the full
-                conversation. The context travels with the idea.
+                Publish your passage with the saved conversation. The context
+                travels with the idea.
               </p>
             </div>
           </li>
@@ -142,11 +140,11 @@ export function LandingDetails() {
             And your agents.
           </h2>
           <p>
-            Make a passage here, from your terminal, or with an agent skill. The
-            same simple flow, wherever you’re working.
+            Create a passage here, from your terminal, or with an agent skill.
+            The same simple flow, wherever you’re working.
           </p>
           <a className='text-link' href='#source-url'>
-            Start with a link <ArrowUpRight size={15} aria-hidden='true' />
+            {brand.cta} <ArrowUpRight size={15} aria-hidden='true' />
           </a>
         </div>
         <div className='terminal-example'>

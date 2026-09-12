@@ -1,0 +1,8 @@
+{
+  "directions": ["folio", "passage"],
+  "poster": [1600, 1300],
+  "shareCard": [1200, 630],
+  "contactSheet": [2400, 980],
+  "sharecardsOverview": [2400, 690],
+  "measuredTextRuns": 26
+}

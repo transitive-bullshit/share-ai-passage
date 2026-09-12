@@ -1,0 +1,14 @@
+{
+  "directions": ["passage"],
+  "poster": [1600, 1300],
+  "shareCard": [1200, 630],
+  "measuredTextRuns": 9,
+  "iconSource": "assets/marks/passage-mark.svg",
+  "copy": {
+    "headline": "Your AI chats, worth sharing",
+    "descriptor": "Turn your AI chats into links you’ll be proud to share",
+    "cta": "Create a passage",
+    "cardLabel": "Example passage",
+    "readerAction": "Read the passage"
+  }
+}

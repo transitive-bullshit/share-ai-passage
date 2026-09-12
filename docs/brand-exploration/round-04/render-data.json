@@ -1,0 +1,154 @@
+{
+  "descriptor": "Turn your AI chats into links you’ll be proud to share.",
+  "sampleTitle": "A calmer way to build with AI",
+  "sampleTitleLines": ["A calmer way to", "build with AI"],
+  "highlights": [
+    "Start with a clear question.",
+    "Make the tradeoffs visible.",
+    "Keep the reasoning close."
+  ],
+  "cardLabel": "Example AI conversation",
+  "cta": "Create a share",
+  "directions": [
+    {
+      "id": "folio",
+      "name": "Folio",
+      "number": "01",
+      "territory": "The considered edition",
+      "headline": ["Your thinking,", "worth sharing."],
+      "mantra": "Give good work a good form.",
+      "character": ["Considered.", "Independent.", "Proud."],
+      "typeLabel": "Instrument Sans",
+      "fontFamily": "instrument-sans",
+      "headingFont": "folioMedium",
+      "bodyFont": "folio",
+      "hero": "assets/folio-hero.png",
+      "colors": [
+        {
+          "name": "Paper",
+          "value": "#F4F0E8"
+        },
+        {
+          "name": "Ink",
+          "value": "#2A2824"
+        },
+        {
+          "name": "Ribbon",
+          "value": "#B85540"
+        }
+      ],
+      "rationale": "The chosen Folio base, preserved with its icon in Ribbon. This is the reference for the three departures.",
+      "alt": "A fan of ivory book pages with a muted vermilion ribbon.",
+      "variant": "Baseline",
+      "family": "Folio",
+      "markName": "Page turn",
+      "markRationale": "The retained Folio page-turn geometry, used in the warm accent color.",
+      "lockup": "mark"
+    },
+    {
+      "id": "index",
+      "name": "Folio",
+      "number": "02",
+      "territory": "The useful parts, up front",
+      "headline": ["Good ideas,", "clearly shared."],
+      "mantra": "Make the useful part easy to see.",
+      "character": ["Clear.", "Useful.", "Considered."],
+      "typeLabel": "Instrument Sans",
+      "fontFamily": "instrument-sans",
+      "headingFont": "folioMedium",
+      "bodyFont": "folio",
+      "hero": "",
+      "colors": [
+        {
+          "name": "Stock",
+          "value": "#F8F6F1"
+        },
+        {
+          "name": "Ink",
+          "value": "#242320"
+        },
+        {
+          "name": "Ribbon",
+          "value": "#B85540"
+        }
+      ],
+      "rationale": "The shared thinking becomes the visual. Wide editorial margins and an oversized, text-led share replace the decorative hero.",
+      "alt": "A native typographic share with a concise title and three highlights.",
+      "variant": "Index",
+      "family": "Folio",
+      "markName": "Page turn",
+      "markRationale": "The retained Folio page-turn geometry, used in the warm accent color.",
+      "lockup": "mark"
+    },
+    {
+      "id": "cut-paper",
+      "name": "Folio",
+      "number": "03",
+      "territory": "A little more character",
+      "headline": ["Your thinking,", "with character."],
+      "mantra": "A little personality. A clear idea.",
+      "character": ["Tactile.", "Personal.", "Open."],
+      "typeLabel": "Instrument Sans",
+      "fontFamily": "instrument-sans",
+      "headingFont": "folioMedium",
+      "bodyFont": "folio",
+      "hero": "assets/cut-paper-hero.png",
+      "colors": [
+        {
+          "name": "Paper",
+          "value": "#F6F0E3"
+        },
+        {
+          "name": "Ink",
+          "value": "#2D2B28"
+        },
+        {
+          "name": "Rust",
+          "value": "#B85540"
+        }
+      ],
+      "rationale": "The book becomes a tactile paper collage. An asymmetric composition and a more expressive share card give Folio a handmade visual voice.",
+      "alt": "A sculptural paper collage of ivory pages and a rust ribbon, framed by muted blue and terracotta paper.",
+      "variant": "Cut paper",
+      "family": "Folio",
+      "markName": "Page turn",
+      "markRationale": "The retained Folio page-turn geometry, used in the warm accent color.",
+      "lockup": "mark"
+    },
+    {
+      "id": "after-hours",
+      "name": "Folio",
+      "number": "04",
+      "territory": "Thoughtful work, warmly shared",
+      "headline": ["Thought through.", "Ready to share."],
+      "mantra": "Give good thinking room.",
+      "character": ["Focused.", "Warm.", "Deliberate."],
+      "typeLabel": "Instrument Sans",
+      "fontFamily": "instrument-sans",
+      "headingFont": "folioMedium",
+      "bodyFont": "folio",
+      "hero": "assets/after-hours-hero.png",
+      "colors": [
+        {
+          "name": "Walnut",
+          "value": "#29231F"
+        },
+        {
+          "name": "Paper",
+          "value": "#F4F0E8"
+        },
+        {
+          "name": "Copper",
+          "value": "#D28C73"
+        }
+      ],
+      "rationale": "A warm evening atmosphere makes the cream share the brightest object. The product feels intimate and focused, with the work still in the foreground.",
+      "alt": "An ivory book and rust ribbon on dark walnut under warm evening light.",
+      "variant": "After hours",
+      "family": "Folio",
+      "markName": "Page turn",
+      "markRationale": "The retained Folio page-turn geometry, used in the warm accent color.",
+      "lockup": "mark"
+    }
+  ]
+}

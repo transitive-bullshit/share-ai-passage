@@ -1,0 +1,654 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Two directions, four variations · Brand exploration 03</title>
+    <style>
+      @font-face {
+        font-family: 'Instrument Sans';
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url('assets/fonts/instrument-sans-latin-400-normal.woff')
+          format('woff');
+      }
+      @font-face {
+        font-family: 'Instrument Sans';
+        font-style: normal;
+        font-weight: 500;
+        font-display: swap;
+        src: url('assets/fonts/instrument-sans-latin-500-normal.woff')
+          format('woff');
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #f3f3f1;
+        color: #30302e;
+        font-family:
+          'Instrument Sans',
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          sans-serif;
+        font-size: 14px;
+      }
+      button,
+      a {
+        color: inherit;
+      }
+      button {
+        font: inherit;
+        cursor: pointer;
+      }
+      a {
+        text-underline-offset: 4px;
+        text-decoration-color: #a3a39d;
+      }
+      a:hover {
+        text-decoration-color: currentColor;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      .header {
+        max-width: 1420px;
+        margin: 0 auto;
+        padding: 28px 36px 23px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 36px;
+      }
+      h1 {
+        font-size: 25px;
+        font-weight: 500;
+        letter-spacing: -0.035em;
+        margin: 0 0 7px;
+      }
+      .subtitle {
+        color: #767672;
+        font-size: 13px;
+        margin: 0;
+        line-height: 1.6;
+      }
+      .header-links {
+        display: flex;
+        gap: 20px;
+        align-items: center;
+        color: #70706c;
+        font-size: 11px;
+        white-space: nowrap;
+      }
+      .round {
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .toolbar {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: #f3f3f1;
+        border-top: 1px solid #e0e0dc;
+        border-bottom: 1px solid #dadad5;
+      }
+      .toolbar-inner {
+        max-width: 1420px;
+        margin: 0 auto;
+        padding: 12px 36px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        flex-wrap: wrap;
+      }
+      .families,
+      .family,
+      .views {
+        display: flex;
+        align-items: center;
+      }
+      .families {
+        gap: 20px;
+      }
+      .family {
+        gap: 3px;
+      }
+      .family + .family {
+        border-left: 1px solid #d7d7d2;
+        padding-left: 20px;
+      }
+      .family-label {
+        color: #8c8c87;
+        font-size: 10px;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        margin-right: 8px;
+      }
+      .direction {
+        border: 1px solid transparent;
+        background: transparent;
+        border-radius: 6px;
+        padding: 9px 13px;
+        color: #70706c;
+        font-size: 13px;
+        white-space: nowrap;
+      }
+      .direction:hover {
+        background: #e9e9e5;
+      }
+      .direction.selected {
+        color: #30302e;
+        background: #fff;
+        border-color: #cececa;
+        box-shadow: 0 1px 2px #30302e06;
+      }
+      .views {
+        gap: 5px;
+      }
+      .view-button {
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: 6px;
+        padding: 9px 13px;
+        font-size: 12px;
+        white-space: nowrap;
+      }
+      .view-button:hover {
+        background: #e9e9e5;
+      }
+      .view-button.active {
+        background: #363634;
+        color: #fff;
+        border-color: #363634;
+      }
+      .marks-button {
+        border-color: #c1c1bc;
+      }
+      main {
+        max-width: 1420px;
+        margin: 0 auto;
+        padding: 28px 36px 34px;
+      }
+      .selected-poster {
+        display: block;
+        width: 100%;
+        max-width: 1100px;
+        margin: 0 auto;
+        line-height: 0;
+      }
+      .selected-poster img {
+        display: block;
+        width: 100%;
+        height: auto;
+        aspect-ratio: 1600 / 1300;
+        background: #fff;
+        box-shadow: 0 1px 8px #3636340b;
+      }
+      .rationale {
+        display: grid;
+        grid-template-columns: 230px 1fr;
+        gap: 28px;
+        width: 100%;
+        max-width: 1100px;
+        margin: 24px auto 0;
+      }
+      .name {
+        font-size: 19px;
+        font-weight: 500;
+        letter-spacing: -0.025em;
+        margin: 0 0 5px;
+      }
+      .type {
+        color: #767672;
+        font-size: 11px;
+        margin: 0;
+        line-height: 1.6;
+      }
+      .rationale-text {
+        font-size: 13px;
+        line-height: 1.65;
+        margin: 0;
+        max-width: 670px;
+      }
+      .asset-links {
+        display: flex;
+        gap: 17px;
+        flex-wrap: wrap;
+        font-size: 11px;
+        margin-top: 13px;
+      }
+      .comparison,
+      .marks-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 35px 26px;
+      }
+      .compare-card,
+      .mark-card {
+        min-width: 0;
+      }
+      .compare-heading {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin: 0 0 12px;
+        gap: 20px;
+      }
+      .compare-heading h2 {
+        font-size: 18px;
+        font-weight: 500;
+        letter-spacing: -0.02em;
+        margin: 0;
+      }
+      .compare-heading h2 span {
+        font-size: 10px;
+        font-weight: 400;
+        color: #898984;
+        margin-right: 10px;
+      }
+      .compare-heading .type {
+        text-align: right;
+      }
+      .compare-poster,
+      .mark-study {
+        display: block;
+        line-height: 0;
+      }
+      .compare-poster img {
+        display: block;
+        width: 100%;
+        height: auto;
+        aspect-ratio: 1600 / 1300;
+        background: #fff;
+        box-shadow: 0 1px 8px #3636340b;
+      }
+      .compare-rationale {
+        color: #696965;
+        font-size: 12px;
+        line-height: 1.6;
+        margin: 13px 0 0;
+        max-width: 590px;
+      }
+      .compare-card .asset-links {
+        margin-top: 10px;
+      }
+      .inspect {
+        border: 0;
+        padding: 0;
+        background: transparent;
+        text-decoration: underline;
+        text-underline-offset: 4px;
+        text-decoration-color: #a3a39d;
+        font-size: 11px;
+      }
+      .marks-intro {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 40px;
+        margin-bottom: 24px;
+      }
+      .marks-intro h2 {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 500;
+        letter-spacing: -0.025em;
+      }
+      .marks-intro p {
+        margin: 0;
+        color: #767672;
+        font-size: 12px;
+        line-height: 1.6;
+      }
+      .mark-study img {
+        display: block;
+        width: 100%;
+        height: auto;
+        aspect-ratio: 1600 / 900;
+        background: #fff;
+        box-shadow: 0 1px 8px #3636340b;
+      }
+      .native-marks {
+        display: flex;
+        align-items: center;
+        gap: 24px;
+        padding: 17px 20px;
+        margin-top: 10px;
+        background: #fff;
+        border: 1px solid #e0e0dc;
+      }
+      .size-example {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .size-example img {
+        display: block;
+        flex-shrink: 0;
+      }
+      .size-example span {
+        color: #767672;
+        font-size: 10px;
+      }
+      .native-marks > a {
+        font-size: 11px;
+        margin-left: auto;
+      }
+      .footer {
+        max-width: 1100px;
+        margin: 28px auto 0;
+        padding-top: 17px;
+        border-top: 1px solid #dadad5;
+        display: flex;
+        justify-content: space-between;
+        gap: 28px;
+        color: #7e7e78;
+        font-size: 11px;
+        line-height: 1.65;
+      }
+      .footer p {
+        margin: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="header">
+      <div>
+        <h1>Two directions, four variations.</h1>
+        <p class="subtitle">
+          Folio’s type and palette stay. New marks, a quieter ribbon variant,
+          and a new name for the trail.
+        </p>
+      </div>
+      <div class="header-links">
+        <span class="round">Round 03 · Proposed</span>
+        <a href="contact-sheet.png" target="_blank" rel="noopener"
+          >Overview PNG ↗</a
+        >
+      </div>
+    </header>
+    <nav class="toolbar">
+      <div class="toolbar-inner">
+        <div class="families">
+          <div class="family">
+            <span class="family-label">Folio</span>
+            <button class="direction" type="button" data-index="0">
+              Pages
+            </button>
+            <button class="direction" type="button" data-index="1">
+              Ribbon
+            </button>
+          </div>
+          <div class="family">
+            <span class="family-label">Trail</span>
+            <button class="direction" type="button" data-index="2">
+              Waymark
+            </button>
+            <button class="direction" type="button" data-index="3">
+              Along
+            </button>
+          </div>
+        </div>
+        <div class="views">
+          <button class="view-button" type="button" data-mode="selected">
+            Full direction
+          </button>
+          <button class="view-button active" type="button" data-mode="compare">
+            Compare all
+          </button>
+          <button
+            class="view-button marks-button"
+            type="button"
+            data-mode="marks"
+          >
+            Marks
+          </button>
+        </div>
+      </div>
+    </nav>
+    <main>
+      <section id="selected-view" hidden>
+        <a
+          class="selected-poster"
+          id="poster-link"
+          href="folio-pages-poster.svg"
+          target="_blank"
+          rel="noopener"
+        >
+          <img
+            id="poster-image"
+            src="folio-pages-poster.svg"
+            width="1600"
+            height="1300"
+            alt="Proposed Folio / Pages brand direction poster"
+          />
+        </a>
+        <div class="rationale">
+          <div>
+            <h2 class="name" id="direction-name">Folio / Pages</h2>
+            <p class="type" id="direction-type">Proposed · Instrument Sans</p>
+          </div>
+          <div>
+            <p class="rationale-text" id="direction-rationale">
+              The approved type and palette, with a new page-turn symbol.
+              Editorial pride remains the main idea.
+            </p>
+            <div class="asset-links">
+              <a
+                id="poster-svg"
+                href="folio-pages-poster.svg"
+                target="_blank"
+                rel="noopener"
+                >Poster SVG ↗</a
+              >
+              <a
+                id="poster-png"
+                href="folio-pages-poster.png"
+                target="_blank"
+                rel="noopener"
+                >Poster PNG ↗</a
+              >
+              <a
+                id="card-png"
+                href="folio-pages-share-card.png"
+                target="_blank"
+                rel="noopener"
+                >Share card PNG ↗</a
+              >
+              <a
+                id="card-svg"
+                href="folio-pages-share-card.svg"
+                target="_blank"
+                rel="noopener"
+                >Share card SVG ↗</a
+              >
+              <a
+                id="study-link"
+                href="folio-pages-mark-study.svg"
+                target="_blank"
+                rel="noopener"
+                >Mark study ↗</a
+              >
+            </div>
+          </div>
+        </div>
+      </section>
+      <section id="comparison" class="comparison"></section>
+      <section id="marks-view" hidden>
+        <header class="marks-intro">
+          <h2>The marks, up close.</h2>
+          <p>
+            Four proposed marks, shown large and at 32 px and 16 px. Folio /
+            Ribbon keeps the wordmark primary.
+          </p>
+        </header>
+        <div id="marks-grid" class="marks-grid"></div>
+      </section>
+      <footer class="footer">
+        <p>
+          Folio’s type and palette carry forward. The new marks and variations
+          are open for discussion.
+        </p>
+        <p>Along is a working name; availability is unchecked.</p>
+      </footer>
+    </main>
+    <script>
+      const directions = [
+        {
+          slug: 'folio-pages',
+          name: 'Folio / Pages',
+          family: 'Folio',
+          type: 'Instrument Sans',
+          rationale:
+            'The approved type and palette, with a new page-turn symbol. Editorial pride remains the main idea.',
+          mark: 'Three paper planes open around a clear fold. A compact mark derived from the sculptural book.'
+        },
+        {
+          slug: 'folio-ribbon',
+          name: 'Folio / Ribbon',
+          family: 'Folio',
+          type: 'Instrument Sans',
+          rationale:
+            'The same Folio identity with more emphasis on the share. A ribbon becomes the signature; the primary logo is the wordmark.',
+          mark: 'A folded ribbon serves as the small signature. The full name leads without a separate icon.'
+        },
+        {
+          slug: 'waymark',
+          name: 'Waymark / Open trail',
+          family: 'Trail',
+          type: 'Plus Jakarta Sans',
+          rationale:
+            'The trail idea, with a small cairn instead of rising squares. Each shared thought becomes a point along the way.',
+          mark: 'Three low, rounded stones make a waypoint. A small piece of evidence that someone passed this way.'
+        },
+        {
+          slug: 'along',
+          name: 'Along / Breadcrumbs',
+          family: 'Trail',
+          type: 'Instrument Sans',
+          rationale:
+            'A warmer name for the trail concept, paired with Folio’s approved type and colors. Share as you go; let a body of work emerge. Along is a working name; availability is unchecked.',
+          mark: 'A gently curving route and a separate next step keep the trail open. The shape stays human and unhurried.'
+        }
+      ]
+      const directionButtons = [...document.querySelectorAll('[data-index]')]
+      const viewButtons = [...document.querySelectorAll('[data-mode]')]
+      const selectedView = document.getElementById('selected-view')
+      const comparisonView = document.getElementById('comparison')
+      const marksView = document.getElementById('marks-view')
+      let selectedIndex = 0
+      let view = 'compare'
+
+      function setMode(mode) {
+        view = mode
+        selectedView.hidden = mode !== 'selected'
+        comparisonView.hidden = mode !== 'compare'
+        marksView.hidden = mode !== 'marks'
+        viewButtons.forEach((button) =>
+          button.classList.toggle('active', button.dataset.mode === mode)
+        )
+        directionButtons.forEach((button, index) =>
+          button.classList.toggle(
+            'selected',
+            mode === 'selected' && index === selectedIndex
+          )
+        )
+      }
+
+      function selectDirection(index) {
+        selectedIndex = index
+        const direction = directions[index]
+        document.getElementById('poster-link').href =
+          `${direction.slug}-poster.svg`
+        document.getElementById('poster-image').src =
+          `${direction.slug}-poster.svg`
+        document.getElementById('poster-image').alt =
+          `Proposed ${direction.name} brand direction poster`
+        document.getElementById('direction-name').textContent = direction.name
+        document.getElementById('direction-type').textContent =
+          `Proposed · ${direction.type}`
+        document.getElementById('direction-rationale').textContent =
+          direction.rationale
+        document.getElementById('poster-svg').href =
+          `${direction.slug}-poster.svg`
+        document.getElementById('poster-png').href =
+          `${direction.slug}-poster.png`
+        document.getElementById('card-png').href =
+          `${direction.slug}-share-card.png`
+        document.getElementById('card-svg').href =
+          `${direction.slug}-share-card.svg`
+        document.getElementById('study-link').href =
+          `${direction.slug}-mark-study.svg`
+        setMode('selected')
+      }
+
+      comparisonView.innerHTML = directions
+        .map(
+          (direction, index) => `
+        <article class="compare-card">
+          <header class="compare-heading">
+            <h2><span>${String(index + 1).padStart(2, '0')}</span>${direction.name}</h2>
+            <p class="type">Proposed · ${direction.type}</p>
+          </header>
+          <a class="compare-poster" href="${direction.slug}-poster.svg" target="_blank" rel="noopener">
+            <img src="${direction.slug}-poster.svg" width="1600" height="1300" alt="Proposed ${direction.name} brand direction poster" loading="lazy" />
+          </a>
+          <p class="compare-rationale">${direction.rationale}</p>
+          <div class="asset-links">
+            <button class="inspect" type="button" data-inspect="${index}">Full direction</button>
+            <a href="${direction.slug}-poster.png" target="_blank" rel="noopener">Poster PNG ↗</a>
+            <a href="${direction.slug}-share-card.png" target="_blank" rel="noopener">Share card PNG ↗</a>
+            <a href="${direction.slug}-mark-study.svg" target="_blank" rel="noopener">Mark study ↗</a>
+          </div>
+        </article>
+      `
+        )
+        .join('')
+
+      document.getElementById('marks-grid').innerHTML = directions
+        .map(
+          (direction, index) => `
+        <article class="mark-card">
+          <header class="compare-heading">
+            <h2><span>${String(index + 1).padStart(2, '0')}</span>${direction.name}</h2>
+            <p class="type">Proposed mark${direction.slug === 'folio-ribbon' ? ' · Secondary glyph' : ''}</p>
+          </header>
+          <a class="mark-study" href="${direction.slug}-mark-study.svg" target="_blank" rel="noopener">
+            <img src="${direction.slug}-mark-study.svg" width="1600" height="900" alt="Proposed ${direction.name} mark study" loading="lazy" />
+          </a>
+          <div class="native-marks">
+            <div class="size-example"><img src="assets/marks/${direction.slug}-mark.svg" width="32" height="32" alt="${direction.name} mark at 32 pixels" /><span>32 px</span></div>
+            <div class="size-example"><img src="assets/marks/${direction.slug}-mark.svg" width="16" height="16" alt="${direction.name} mark at 16 pixels" /><span>16 px</span></div>
+            <a href="assets/marks/${direction.slug}-mark.svg" target="_blank" rel="noopener">Mark SVG ↗</a>
+          </div>
+          <p class="compare-rationale">${direction.mark}</p>
+          <div class="asset-links">
+            <a href="${direction.slug}-mark-study.svg" target="_blank" rel="noopener">Study SVG ↗</a>
+            <a href="${direction.slug}-mark-study.png" target="_blank" rel="noopener">Study PNG ↗</a>
+            <button class="inspect" type="button" data-inspect="${index}">View in the direction</button>
+          </div>
+        </article>
+      `
+        )
+        .join('')
+
+      directionButtons.forEach((button, index) =>
+        button.addEventListener('click', () => selectDirection(index))
+      )
+      viewButtons.forEach((button) =>
+        button.addEventListener('click', () => setMode(button.dataset.mode))
+      )
+      document.querySelectorAll('[data-inspect]').forEach((button) => {
+        button.addEventListener('click', () => {
+          selectDirection(Number(button.dataset.inspect))
+          window.scrollTo({ top: 0 })
+        })
+      })
+      setMode(view)
+    </script>
+  </body>
+</html>

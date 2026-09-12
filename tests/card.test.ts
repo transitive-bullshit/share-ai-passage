@@ -6,6 +6,7 @@ import { Renderer } from 'takumi-js/node'
 
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
+import { brand } from '@/lib/brand'
 import { renderCard, renderCardPreview } from '@/lib/card'
 import { cardFonts } from '@/lib/card-fonts'
 import { cardFontFamily } from '@/lib/social-card'
@@ -151,9 +152,10 @@ it('renders the legacy layout as a private 1200 × 630 WebP offline', async () =
   const text = layoutText()
   expect(text).toEqual(
     expect.arrayContaining([
-      'AI SUMMARY',
+      'HIGHLIGHTS',
       ...data.highlights,
-      'A passage from Claude worth sharing'
+      'A passage from Claude worth sharing',
+      'Read the passage'
     ])
   )
 })
@@ -210,10 +212,10 @@ it('uses the same generic disabled card regardless of saved appearance', async (
   )
   const disabled = await renderCard({ disabled: true })
   const disabledText = layoutText()
-  expect(disabledText).toContain('This conversation is unavailable')
+  expect(disabledText).toContain('This passage is unavailable')
   expect(disabledText).toContain('Original unavailable')
   expect(disabledText.join(' ')).not.toMatch(/ChatGPT|Claude|A passage from/u)
-  expect(disabledText).not.toContain('AI SUMMARY')
+  expect(disabledText).not.toContain('HIGHLIGHTS')
   expect(disabled.headers.get('cache-control')).toContain('no-store')
   const themed = await renderCard(
     { disabled: true },
@@ -248,8 +250,9 @@ it.each(socialTemplates)(
         data.title,
         ...data.highlights,
         'Passage',
-        'AI SUMMARY',
-        'A passage from Claude worth sharing'
+        'HIGHLIGHTS',
+        'A passage from Claude worth sharing',
+        'Read the passage'
       ])
     )
     const copy = nodes.find(
@@ -272,7 +275,11 @@ it.each(socialTemplates)(
       template.font.title,
       template.font.body
     ])
-    for (const face of [template.font.title, template.font.body]) {
+    for (const face of [
+      template.font.title,
+      template.font.body,
+      { family: 'Inter', weight: 600 }
+    ]) {
       expect(
         fonts.some(
           (font) => font.subsetOf === face.family && font.weight === face.weight
@@ -309,7 +316,8 @@ it('previews the same fitted template as escaped HTML with bundled assets and no
   const data = {
     title: '<script>alert("hi")</script> ' + '界'.repeat(40),
     highlights: ['界'.repeat(100), 'W'.repeat(100), '🌱'.repeat(100)],
-    provider: 'claude' as const
+    provider: 'claude' as const,
+    example: true
   }
   const appearance = { templateId: 'makers-workbench' as const }
   await renderCard(data, appearance)
@@ -341,6 +349,11 @@ it('previews the same fitted template as escaped HTML with bundled assets and no
   expect(html).toContain('unicode-range:')
   expect(html).toContain('transform:scale(calc(100vw / 1200px))')
   expect(html).toContain('class="social-card-copy"')
+  expect(html).toContain('Example passage')
+  expect(html).toContain('HIGHLIGHTS')
+  expect(html).toContain('Read the passage')
+  expect(html).toContain(brand.mantra)
+  expect(html).not.toContain('A passage from')
   expect(render).not.toHaveBeenCalled()
   expect(fetch).not.toHaveBeenCalled()
 })

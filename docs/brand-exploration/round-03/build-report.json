@@ -1,0 +1,7 @@
+{
+  "directions": ["folio-pages", "folio-ribbon", "waymark", "along"],
+  "poster": [1600, 1300],
+  "shareCard": [1200, 630],
+  "markStudy": [1600, 900],
+  "measuredTextRuns": 71
+}

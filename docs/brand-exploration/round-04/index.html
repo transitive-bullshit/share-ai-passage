@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Folio, taken in three new directions · Brand exploration 04</title>
+    <style>
+      @font-face {
+        font-family: 'Instrument Sans';
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url('assets/fonts/instrument-sans-latin-400-normal.woff')
+          format('woff');
+      }
+      @font-face {
+        font-family: 'Instrument Sans';
+        font-style: normal;
+        font-weight: 500;
+        font-display: swap;
+        src: url('assets/fonts/instrument-sans-latin-500-normal.woff')
+          format('woff');
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #f3f3f1;
+        color: #30302e;
+        font-family:
+          'Instrument Sans',
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          sans-serif;
+        font-size: 14px;
+      }
+      button,
+      a {
+        color: inherit;
+      }
+      button {
+        font: inherit;
+        cursor: pointer;
+      }
+      a {
+        text-underline-offset: 4px;
+        text-decoration-color: #a3a39d;
+      }
+      a:hover {
+        text-decoration-color: currentColor;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      .header {
+        max-width: 1420px;
+        margin: 0 auto;
+        padding: 28px 36px 23px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 36px;
+      }
+      h1 {
+        font-size: 25px;
+        font-weight: 500;
+        letter-spacing: -0.035em;
+        margin: 0 0 7px;
+      }
+      .subtitle {
+        color: #767672;
+        font-size: 13px;
+        margin: 0;
+        line-height: 1.6;
+      }
+      .header-links {
+        display: flex;
+        gap: 20px;
+        align-items: center;
+        color: #70706c;
+        font-size: 11px;
+        white-space: nowrap;
+      }
+      .round {
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .toolbar {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: #f3f3f1;
+        border-top: 1px solid #e0e0dc;
+        border-bottom: 1px solid #dadad5;
+      }
+      .toolbar-inner {
+        max-width: 1420px;
+        margin: 0 auto;
+        padding: 12px 36px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+      }
+      .directions,
+      .views {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+      .brand {
+        font-size: 12px;
+        font-weight: 500;
+        margin-right: 14px;
+      }
+      .direction {
+        border: 1px solid transparent;
+        background: transparent;
+        border-radius: 6px;
+        padding: 9px 14px;
+        color: #70706c;
+        font-size: 13px;
+        white-space: nowrap;
+      }
+      .direction:hover {
+        background: #e9e9e5;
+      }
+      .direction.selected {
+        color: #30302e;
+        background: #fff;
+        border-color: #cececa;
+        box-shadow: 0 1px 2px #30302e06;
+      }
+      .view-button {
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: 6px;
+        padding: 9px 13px;
+        font-size: 12px;
+        white-space: nowrap;
+      }
+      .view-button:hover {
+        background: #e9e9e5;
+      }
+      .view-button.active {
+        background: #363634;
+        color: #fff;
+        border-color: #363634;
+      }
+      .cards-button {
+        border-color: #c1c1bc;
+      }
+      main {
+        max-width: 1420px;
+        margin: 0 auto;
+        padding: 28px 36px 34px;
+      }
+      .selected-poster {
+        display: block;
+        width: 100%;
+        max-width: 1100px;
+        margin: 0 auto;
+        line-height: 0;
+      }
+      .selected-poster img {
+        display: block;
+        width: 100%;
+        height: auto;
+        aspect-ratio: 1600 / 1300;
+        background: #fff;
+        box-shadow: 0 1px 8px #3636340b;
+      }
+      .rationale {
+        display: grid;
+        grid-template-columns: 230px 1fr;
+        gap: 28px;
+        width: 100%;
+        max-width: 1100px;
+        margin: 24px auto 0;
+      }
+      .name {
+        font-size: 19px;
+        font-weight: 500;
+        letter-spacing: -0.025em;
+        margin: 0 0 5px;
+      }
+      .type {
+        color: #767672;
+        font-size: 11px;
+        margin: 0;
+        line-height: 1.6;
+      }
+      .rationale-text {
+        font-size: 13px;
+        line-height: 1.65;
+        margin: 0;
+        max-width: 670px;
+      }
+      .asset-links {
+        display: flex;
+        gap: 17px;
+        flex-wrap: wrap;
+        font-size: 11px;
+        margin-top: 13px;
+      }
+      .comparison,
+      .cards-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 35px 26px;
+      }
+      .compare-card,
+      .share-card {
+        min-width: 0;
+      }
+      .compare-heading {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin: 0 0 12px;
+        gap: 20px;
+      }
+      .compare-heading h2 {
+        font-size: 18px;
+        font-weight: 500;
+        letter-spacing: -0.02em;
+        margin: 0;
+      }
+      .compare-heading h2 span {
+        font-size: 10px;
+        font-weight: 400;
+        color: #898984;
+        margin-right: 10px;
+      }
+      .compare-heading .type {
+        text-align: right;
+      }
+      .compare-poster,
+      .card-image {
+        display: block;
+        line-height: 0;
+      }
+      .compare-poster img {
+        display: block;
+        width: 100%;
+        height: auto;
+        aspect-ratio: 1600 / 1300;
+        background: #fff;
+        box-shadow: 0 1px 8px #3636340b;
+      }
+      .compare-rationale {
+        color: #696965;
+        font-size: 12px;
+        line-height: 1.6;
+        margin: 13px 0 0;
+        max-width: 590px;
+      }
+      .compare-card .asset-links,
+      .share-card .asset-links {
+        margin-top: 10px;
+      }
+      .inspect {
+        border: 0;
+        padding: 0;
+        background: transparent;
+        text-decoration: underline;
+        text-underline-offset: 4px;
+        text-decoration-color: #a3a39d;
+        font-size: 11px;
+      }
+      .cards-intro {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 40px;
+        margin-bottom: 24px;
+      }
+      .cards-intro h2 {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 500;
+        letter-spacing: -0.025em;
+      }
+      .cards-intro p {
+        margin: 0;
+        color: #767672;
+        font-size: 12px;
+        line-height: 1.6;
+      }
+      .card-image img {
+        display: block;
+        width: 100%;
+        height: auto;
+        aspect-ratio: 1200 / 630;
+        background: #fff;
+        box-shadow: 0 1px 8px #3636340b;
+      }
+      .footer {
+        max-width: 1100px;
+        margin: 28px auto 0;
+        padding-top: 17px;
+        border-top: 1px solid #dadad5;
+        display: flex;
+        justify-content: space-between;
+        gap: 28px;
+        color: #7e7e78;
+        font-size: 11px;
+        line-height: 1.65;
+      }
+      .footer p {
+        margin: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="header">
+      <div>
+        <h1>Folio, taken in three new directions.</h1>
+        <p class="subtitle">
+          The baseline stays. Three larger departures in composition, imagery,
+          and mood.
+        </p>
+      </div>
+      <div class="header-links">
+        <span class="round">Brand exploration · 04</span>
+        <a href="contact-sheet.png" target="_blank" rel="noopener"
+          >Overview PNG ↗</a
+        >
+      </div>
+    </header>
+    <nav class="toolbar">
+      <div class="toolbar-inner">
+        <div class="directions">
+          <span class="brand">Folio</span>
+          <button class="direction" type="button" data-index="0">
+            Baseline
+          </button>
+          <button class="direction" type="button" data-index="1">Index</button>
+          <button class="direction" type="button" data-index="2">
+            Cut paper
+          </button>
+          <button class="direction" type="button" data-index="3">
+            After hours
+          </button>
+        </div>
+        <div class="views">
+          <button class="view-button" type="button" data-mode="selected">
+            Direction
+          </button>
+          <button class="view-button active" type="button" data-mode="compare">
+            Compare all
+          </button>
+          <button
+            class="view-button cards-button"
+            type="button"
+            data-mode="cards"
+          >
+            Share cards
+          </button>
+        </div>
+      </div>
+    </nav>
+    <main>
+      <section id="selected-view" hidden>
+        <a
+          class="selected-poster"
+          id="poster-link"
+          href="folio-poster.svg"
+          target="_blank"
+          rel="noopener"
+        >
+          <img
+            id="poster-image"
+            src="folio-poster.svg"
+            width="1600"
+            height="1300"
+            alt="Folio / Baseline brand direction poster"
+          />
+        </a>
+        <div class="rationale">
+          <div>
+            <h2 class="name" id="direction-name">Folio / Baseline</h2>
+            <p class="type" id="direction-type">
+              The considered edition · Instrument Sans
+            </p>
+          </div>
+          <div>
+            <p class="rationale-text" id="direction-rationale">
+              The chosen Folio base, preserved with its icon in Ribbon. This is
+              the reference for the three departures.
+            </p>
+            <div class="asset-links">
+              <a
+                id="poster-svg"
+                href="folio-poster.svg"
+                target="_blank"
+                rel="noopener"
+                >Poster SVG ↗</a
+              >
+              <a
+                id="poster-png"
+                href="folio-poster.png"
+                target="_blank"
+                rel="noopener"
+                >Poster PNG ↗</a
+              >
+              <a
+                id="card-png"
+                href="folio-share-card.png"
+                target="_blank"
+                rel="noopener"
+                >Share card PNG ↗</a
+              >
+              <a
+                id="card-svg"
+                href="folio-share-card.svg"
+                target="_blank"
+                rel="noopener"
+                >Share card SVG ↗</a
+              >
+            </div>
+          </div>
+        </div>
+      </section>
+      <section id="comparison" class="comparison"></section>
+      <section id="cards-view" hidden>
+        <header class="cards-intro">
+          <h2>Share cards</h2>
+          <p>
+            The same example conversation, in four different layouts. Open any
+            card to see it at full size.
+          </p>
+        </header>
+        <div id="cards-grid" class="cards-grid"></div>
+      </section>
+      <footer class="footer">
+        <p>
+          All four are Folio. The page-turn mark and Instrument Sans carry
+          through each direction.
+        </p>
+        <p>The baseline is retained. The three new directions are proposals.</p>
+      </footer>
+    </main>
+    <script>
+      const directions = [
+        {
+          slug: 'folio',
+          name: 'Folio',
+          label: 'Baseline',
+          territory: 'The considered edition',
+          type: 'Instrument Sans',
+          rationale:
+            'The chosen Folio base, preserved with its icon in Ribbon. This is the reference for the three departures.'
+        },
+        {
+          slug: 'index',
+          name: 'Folio',
+          label: 'Index',
+          territory: 'The useful parts, up front',
+          type: 'Instrument Sans',
+          rationale:
+            'The shared thinking becomes the visual. Wide editorial margins and an oversized, text-led share replace the decorative hero.'
+        },
+        {
+          slug: 'cut-paper',
+          name: 'Folio',
+          label: 'Cut paper',
+          territory: 'A little more character',
+          type: 'Instrument Sans',
+          rationale:
+            'The book becomes a tactile paper collage. An asymmetric composition and a more expressive share card give Folio a handmade visual voice.'
+        },
+        {
+          slug: 'after-hours',
+          name: 'Folio',
+          label: 'After hours',
+          territory: 'Thoughtful work, warmly shared',
+          type: 'Instrument Sans',
+          rationale:
+            'A warm evening atmosphere makes the cream share the brightest object. The product feels intimate and focused, with the work still in the foreground.'
+        }
+      ]
+      const directionButtons = [...document.querySelectorAll('[data-index]')]
+      const viewButtons = [...document.querySelectorAll('[data-mode]')]
+      const selectedView = document.getElementById('selected-view')
+      const comparisonView = document.getElementById('comparison')
+      const cardsView = document.getElementById('cards-view')
+      let selectedIndex = 0
+      let view = 'compare'
+
+      function setMode(mode) {
+        view = mode
+        selectedView.hidden = mode !== 'selected'
+        comparisonView.hidden = mode !== 'compare'
+        cardsView.hidden = mode !== 'cards'
+        viewButtons.forEach((button) =>
+          button.classList.toggle('active', button.dataset.mode === mode)
+        )
+        directionButtons.forEach((button, index) =>
+          button.classList.toggle(
+            'selected',
+            mode === 'selected' && index === selectedIndex
+          )
+        )
+      }
+
+      function selectDirection(index) {
+        selectedIndex = index
+        const direction = directions[index]
+        document.getElementById('poster-link').href =
+          `${direction.slug}-poster.svg`
+        document.getElementById('poster-image').src =
+          `${direction.slug}-poster.svg`
+        document.getElementById('poster-image').alt =
+          `${direction.name} / ${direction.label} brand direction poster`
+        document.getElementById('direction-name').textContent =
+          `${direction.name} / ${direction.label}`
+        document.getElementById('direction-type').textContent =
+          `${direction.territory} · ${direction.type}`
+        document.getElementById('direction-rationale').textContent =
+          direction.rationale
+        document.getElementById('poster-svg').href =
+          `${direction.slug}-poster.svg`
+        document.getElementById('poster-png').href =
+          `${direction.slug}-poster.png`
+        document.getElementById('card-png').href =
+          `${direction.slug}-share-card.png`
+        document.getElementById('card-svg').href =
+          `${direction.slug}-share-card.svg`
+        setMode('selected')
+      }
+
+      comparisonView.innerHTML = directions
+        .map(
+          (direction, index) => `
+        <article class="compare-card">
+          <header class="compare-heading">
+            <h2><span>${String(index + 1).padStart(2, '0')}</span>${direction.label}</h2>
+            <p class="type">${index === 0 ? 'Retained baseline' : 'Proposed direction'} · ${direction.type}</p>
+          </header>
+          <a class="compare-poster" href="${direction.slug}-poster.svg" target="_blank" rel="noopener">
+            <img src="${direction.slug}-poster.svg" width="1600" height="1300" alt="${direction.name} / ${direction.label} brand direction poster" loading="lazy" />
+          </a>
+          <p class="compare-rationale">${direction.rationale}</p>
+          <div class="asset-links">
+            <button class="inspect" type="button" data-inspect="${index}">Full direction</button>
+            <a href="${direction.slug}-poster.svg" target="_blank" rel="noopener">Poster SVG ↗</a>
+            <a href="${direction.slug}-poster.png" target="_blank" rel="noopener">Poster PNG ↗</a>
+            <a href="${direction.slug}-share-card.png" target="_blank" rel="noopener">Share card PNG ↗</a>
+          </div>
+        </article>
+      `
+        )
+        .join('')
+
+      document.getElementById('cards-grid').innerHTML = directions
+        .map(
+          (direction, index) => `
+        <article class="share-card">
+          <header class="compare-heading">
+            <h2><span>${String(index + 1).padStart(2, '0')}</span>${direction.label}</h2>
+            <p class="type">${direction.territory}</p>
+          </header>
+          <a class="card-image" href="${direction.slug}-share-card.svg" target="_blank" rel="noopener">
+            <img src="${direction.slug}-share-card.svg" width="1200" height="630" alt="${direction.name} / ${direction.label} example share card" loading="lazy" />
+          </a>
+          <p class="compare-rationale">${direction.rationale}</p>
+          <div class="asset-links">
+            <a href="${direction.slug}-share-card.svg" target="_blank" rel="noopener">Full-size SVG ↗</a>
+            <a href="${direction.slug}-share-card.png" target="_blank" rel="noopener">Full-size PNG ↗</a>
+            <button class="inspect" type="button" data-inspect="${index}">View direction</button>
+          </div>
+        </article>
+      `
+        )
+        .join('')
+
+      directionButtons.forEach((button, index) =>
+        button.addEventListener('click', () => selectDirection(index))
+      )
+      viewButtons.forEach((button) =>
+        button.addEventListener('click', () => setMode(button.dataset.mode))
+      )
+      document.querySelectorAll('[data-inspect]').forEach((button) => {
+        button.addEventListener('click', () => {
+          selectDirection(Number(button.dataset.inspect))
+          window.scrollTo({ top: 0 })
+        })
+      })
+      setMode(view)
+    </script>
+  </body>
+</html>

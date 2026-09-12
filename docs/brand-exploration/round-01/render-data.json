@@ -1,0 +1,130 @@
+{
+  "descriptor": "Turn a public AI conversation into highlights, a styled share card, and a readable conversation.",
+  "sampleTitle": "A calmer way to build with AI",
+  "sampleTitleLines": ["A calmer way to", "build with AI"],
+  "highlights": [
+    "Start with a clear question.",
+    "Make the tradeoffs visible.",
+    "Keep the reasoning close."
+  ],
+  "cardLabel": "ILLUSTRATIVE CONVERSATION",
+  "cta": "Create a share",
+  "directions": [
+    {
+      "id": "folio",
+      "name": "Folio",
+      "number": "01",
+      "territory": "The considered edition",
+      "headline": ["Your thinking,", "worth sharing."],
+      "mantra": "Give good work a good form.",
+      "character": ["Considered.", "Independent.", "Proud."],
+      "colors": [
+        {
+          "name": "Paper",
+          "value": "#F3EFE5"
+        },
+        {
+          "name": "Ink",
+          "value": "#24211D"
+        },
+        {
+          "name": "Vermilion",
+          "value": "#C74B34"
+        }
+      ],
+      "headingFont": "news",
+      "bodyFont": "inter",
+      "hero": "assets/folio-hero.png",
+      "emphasis": "Editorial authorship",
+      "typeLabel": "Newsreader + Inter",
+      "alt": "A fan of ivory book pages curls around a vermilion ribbon on a warm stone surface."
+    },
+    {
+      "id": "trace",
+      "name": "Trace",
+      "number": "02",
+      "territory": "The open work",
+      "headline": ["Show how", "you got there."],
+      "mantra": "Make the thinking visible.",
+      "character": ["Precise.", "Open.", "Capable."],
+      "colors": [
+        {
+          "name": "Field",
+          "value": "#10201C"
+        },
+        {
+          "name": "Mint",
+          "value": "#DFE9DE"
+        },
+        {
+          "name": "Acid",
+          "value": "#B7F56A"
+        }
+      ],
+      "headingFont": "interBold",
+      "bodyFont": "inter",
+      "hero": "assets/trace-hero.png",
+      "emphasis": "Visible thinking",
+      "typeLabel": "Inter + technical labels",
+      "alt": "A continuous green route winds through a sequence of translucent drafting sheets."
+    },
+    {
+      "id": "relay",
+      "name": "Relay",
+      "number": "03",
+      "territory": "Ideas in circulation",
+      "headline": ["Give your ideas", "a way out."],
+      "mantra": "Good thinking travels.",
+      "character": ["Direct.", "Bold.", "In motion."],
+      "colors": [
+        {
+          "name": "Cobalt",
+          "value": "#243EDB"
+        },
+        {
+          "name": "Cream",
+          "value": "#FFF9E9"
+        },
+        {
+          "name": "Yellow",
+          "value": "#EAF05C"
+        }
+      ],
+      "headingFont": "dmHeavy",
+      "bodyFont": "inter",
+      "hero": "assets/relay-hero.png",
+      "emphasis": "Public expression",
+      "typeLabel": "DM Sans + Inter",
+      "alt": "Broad dark blue and golden arcs radiate across textured cream paper."
+    },
+    {
+      "id": "commonplace",
+      "name": "Commonplace",
+      "number": "04",
+      "territory": "Learning in public",
+      "headline": ["Leave something", "worth finding."],
+      "mantra": "Learn openly. Share generously.",
+      "character": ["Curious.", "Human.", "Generous."],
+      "colors": [
+        {
+          "name": "Sky",
+          "value": "#DDECF1"
+        },
+        {
+          "name": "Forest",
+          "value": "#183E35"
+        },
+        {
+          "name": "Tangerine",
+          "value": "#E88B52"
+        }
+      ],
+      "headingFont": "news",
+      "bodyFont": "dm",
+      "hero": "assets/commonplace-hero.png",
+      "emphasis": "Generous learning",
+      "typeLabel": "Newsreader + DM Sans",
+      "alt": "A branching plant with dark green and orange leaves grows from an open notebook."
+    }
+  ]
+}

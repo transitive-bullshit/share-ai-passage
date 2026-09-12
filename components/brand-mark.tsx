@@ -1,17 +1,26 @@
-export function BrandMark({ className }: { className?: string }) {
+import { brand } from '@/lib/brand'
+
+export function BrandMark({
+  className,
+  size = 28,
+  color = 'currentColor'
+}: {
+  className?: string
+  size?: number
+  color?: string
+}) {
   return (
     <svg
       aria-hidden='true'
       className={className}
-      width='28'
-      height='28'
+      width={size}
+      height={size}
       viewBox='0 0 32 32'
-      fill='none'
-      stroke='currentColor'
-      strokeWidth='1.8'
+      fill={color}
     >
-      <rect x='3' y='8' width='15' height='20' rx='3' />
-      <rect x='12' y='3' width='15' height='20' rx='3' />
+      {brand.markPaths.map((path) => (
+        <path key={path} d={path} fill={color} />
+      ))}
     </svg>
   )
 }

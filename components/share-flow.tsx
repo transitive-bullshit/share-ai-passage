@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
+import { brand } from '@/lib/brand'
 import {
   CARD_PREFERENCES_KEY,
   createCardPreferencesStore
@@ -124,20 +125,12 @@ export function ShareFlow({ children }: { children?: ReactNode }) {
     <>
       <section className='hero'>
         <div className='hero-copy'>
-          <p className='hero-announcement'>
-            <span className='status-dot' aria-hidden='true' />
-            A little more context. A much better link.
-          </p>
           <h1>
-            Good conversations.
+            {brand.headlineLines[0]}
             <br />
-            <span>Beautifully shared.</span>
+            <span>{brand.headlineLines[1]}</span>
           </h1>
-          <p className='hero-description'>
-            Turn a public AI chat into a thoughtful preview,
-            <br className='desktop-break' /> with the highlights up front and
-            the full conversation behind it.
-          </p>
+          <p className='hero-description'>{brand.description}</p>
           <form onSubmit={prepare} className='source-form'>
             <FieldGroup>
               <Field data-invalid={Boolean(error)} data-disabled={pending}>
@@ -174,7 +167,7 @@ export function ShareFlow({ children }: { children?: ReactNode }) {
                       ? 'Preparing…'
                       : retrySeconds > 0
                         ? `Retry in ${retrySeconds < 60 ? `${retrySeconds}s` : `${Math.ceil(retrySeconds / 60)}m`}`
-                        : 'Go'}
+                        : brand.cta}
                     {pending || retrySeconds > 0 ? null : (
                       <ArrowRight data-icon='inline-end' />
                     )}

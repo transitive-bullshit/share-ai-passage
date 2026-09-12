@@ -1,0 +1,28 @@
+{
+  "status": "proposed",
+  "command": "pnpm exec tsx docs/brand-exploration/round-01/build.ts",
+  "posterDimensions": [1600, 2040],
+  "cardDimensions": [1200, 630],
+  "contactSheetDimensions": [1648, 2140],
+  "copyAndPaletteValidatedAgainst": [
+    "folio.md",
+    "trace.md",
+    "relay.md",
+    "commonplace.md"
+  ],
+  "fontInputs": [
+    "assets/fonts/inter-latin-400-normal.woff",
+    "assets/fonts/inter-latin-500-normal.woff",
+    "assets/fonts/inter-latin-700-normal.woff",
+    "assets/fonts/newsreader-latin-400-normal.woff",
+    "assets/fonts/newsreader-latin-400-italic.woff",
+    "assets/fonts/dm-sans-latin-400-normal.woff",
+    "assets/fonts/dm-sans-latin-700-normal.woff",
+    "assets/fonts/dm-sans-latin-900-normal.woff"
+  ],
+  "imageDependenciesEmbedded": true,
+  "measuredTextRuns": 65,
+  "measuredTextFits": true,
+  "editableSvgTypography": "Text elements with embedded WOFF fonts",
+  "rasterTypography": "Outlines from the same WOFF fonts via the installed Satori OpenType dependency"
+}

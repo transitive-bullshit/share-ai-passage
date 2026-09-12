@@ -2,7 +2,7 @@
 
 Passage turns a public ChatGPT, Codex, or Claude conversation into a share link with generated highlights, a social card, and a readable saved conversation. MIT licensed.
 
-This document owns product scope and remaining work. See the [glossary](CONTEXT.md) for terminology, [README](../readme.md) for setup, [testing guidelines](testing.md) for validation, and [production guide](PRODUCTION.md) for hosting. Historical results live in [archived verification](archive/VERIFICATION.md); they describe the revisions tested.
+This document owns product scope and remaining work. See the [glossary](CONTEXT.md) for terminology, [contributing guide](../contributing.md) for setup, [testing guidelines](testing.md) for validation, and [production guide](PRODUCTION.md) for hosting. Historical results live in [archived verification](archive/VERIFICATION.md); they describe the revisions tested.
 
 ## Product behavior
 
@@ -59,7 +59,7 @@ Deployment was recorded on September 11, 2026, with Neon configured and Vercel d
 
 Use the [production guide](PRODUCTION.md) and [testing guidelines](testing.md) for these checks. Record the tested revision, environment, outcome, and any remaining gaps when closing them. Docker execution and controlled deletion of a real provider share also remain unverified; existing Compose validation and synthetic removal tests have narrower coverage.
 
-Brand exploration is ongoing under `docs/brand-exploration/`; its proposed names, designs, and future ambitions are not accepted product changes.
+The accepted [brand identity](brand-identity.md) defines Passage’s current copy, visual rules, and reusable assets. `docs/brand-exploration/` preserves historical proposals and decisions; future ambitions recorded there remain outside the current product scope.
 
 ## Scope boundary
 

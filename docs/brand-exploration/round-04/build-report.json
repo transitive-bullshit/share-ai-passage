@@ -1,0 +1,8 @@
+{
+  "directions": ["folio", "index", "cut-paper", "after-hours"],
+  "poster": [1600, 1300],
+  "shareCard": [1200, 630],
+  "contactSheet": [2400, 1980],
+  "sharecardsOverview": [2400, 1380],
+  "measuredTextRuns": 44
+}

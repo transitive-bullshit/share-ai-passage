@@ -1,0 +1,154 @@
+{
+  "descriptor": "Turn your AI chats into links you’ll be proud to share.",
+  "sampleTitle": "A calmer way to build with AI",
+  "sampleTitleLines": ["A calmer way to", "build with AI"],
+  "highlights": [
+    "Start with a clear question.",
+    "Make the tradeoffs visible.",
+    "Keep the reasoning close."
+  ],
+  "cardLabel": "Example AI conversation",
+  "cta": "Create a share",
+  "directions": [
+    {
+      "id": "folio-pages",
+      "name": "Folio",
+      "number": "01",
+      "territory": "The considered edition",
+      "headline": ["Your thinking,", "worth sharing."],
+      "mantra": "Give good work a good form.",
+      "character": ["Considered.", "Independent.", "Proud."],
+      "typeLabel": "Instrument Sans",
+      "fontFamily": "instrument-sans",
+      "headingFont": "folioMedium",
+      "bodyFont": "folio",
+      "hero": "assets/folio-hero.png",
+      "colors": [
+        {
+          "name": "Paper",
+          "value": "#F4F0E8"
+        },
+        {
+          "name": "Ink",
+          "value": "#2A2824"
+        },
+        {
+          "name": "Ribbon",
+          "value": "#B85540"
+        }
+      ],
+      "rationale": "The approved type and palette, with a new page-turn symbol. Editorial pride remains the main idea.",
+      "alt": "A fan of ivory book pages with a muted vermilion ribbon.",
+      "variant": "Pages",
+      "family": "Folio",
+      "markName": "Page turn",
+      "markRationale": "Three paper planes open around a clear fold. A compact mark derived from the sculptural book.",
+      "lockup": "mark"
+    },
+    {
+      "id": "folio-ribbon",
+      "name": "Folio",
+      "number": "02",
+      "territory": "A personal signature",
+      "headline": ["Your thinking,", "worth sharing."],
+      "mantra": "Give good work a good form.",
+      "character": ["Considered.", "Personal.", "Proud."],
+      "typeLabel": "Instrument Sans",
+      "fontFamily": "instrument-sans",
+      "headingFont": "folioMedium",
+      "bodyFont": "folio",
+      "hero": "assets/folio-hero.png",
+      "colors": [
+        {
+          "name": "Paper",
+          "value": "#F4F0E8"
+        },
+        {
+          "name": "Ink",
+          "value": "#2A2824"
+        },
+        {
+          "name": "Ribbon",
+          "value": "#B85540"
+        }
+      ],
+      "rationale": "The same Folio identity with more emphasis on the share. A ribbon becomes the signature; the primary logo is the wordmark.",
+      "alt": "A fan of ivory book pages with a muted vermilion ribbon.",
+      "variant": "Ribbon",
+      "family": "Folio",
+      "markName": "Ribbon signature",
+      "markRationale": "A folded ribbon serves as the small signature. The full name leads without a separate icon.",
+      "lockup": "wordmark"
+    },
+    {
+      "id": "waymark",
+      "name": "Waymark",
+      "number": "03",
+      "territory": "A public trail of learning",
+      "headline": ["Share your thinking.", "Leave a trail."],
+      "mantra": "A little shared today. A wider path tomorrow.",
+      "character": ["Curious.", "Unhurried.", "Discoverable."],
+      "typeLabel": "Plus Jakarta Sans",
+      "fontFamily": "plus-jakarta-sans",
+      "headingFont": "waymarkMedium",
+      "bodyFont": "waymark",
+      "hero": "assets/waymark-hero.png",
+      "colors": [
+        {
+          "name": "Sand",
+          "value": "#F5F2EB"
+        },
+        {
+          "name": "Charcoal",
+          "value": "#38352F"
+        },
+        {
+          "name": "Ochre",
+          "value": "#A97743"
+        }
+      ],
+      "rationale": "The trail idea, with a small cairn instead of rising squares. Each shared thought becomes a point along the way.",
+      "alt": "A sparse trail of small ochre pebbles and ivory paper fragments branching over pale sand.",
+      "variant": "Open trail",
+      "family": "Trail",
+      "markName": "A small cairn",
+      "markRationale": "Three low, rounded stones make a waypoint. A small piece of evidence that someone passed this way.",
+      "lockup": "mark"
+    },
+    {
+      "id": "along",
+      "name": "Along",
+      "number": "04",
+      "territory": "A little shared along the way",
+      "headline": ["Share your thinking.", "Leave a trail."],
+      "mantra": "Share as you go. Let the work add up.",
+      "character": ["Open.", "Personal.", "In progress."],
+      "typeLabel": "Instrument Sans",
+      "fontFamily": "instrument-sans",
+      "headingFont": "folioMedium",
+      "bodyFont": "folio",
+      "hero": "assets/waymark-hero.png",
+      "colors": [
+        {
+          "name": "Paper",
+          "value": "#F4F0E8"
+        },
+        {
+          "name": "Ink",
+          "value": "#2A2824"
+        },
+        {
+          "name": "Ribbon",
+          "value": "#B85540"
+        }
+      ],
+      "rationale": "A warmer name for the trail concept, paired with Folio’s approved type and colors. Share as you go; let a body of work emerge.",
+      "alt": "A sparse trail of small ochre pebbles and ivory paper fragments branching over pale sand.",
+      "variant": "Breadcrumbs",
+      "family": "Trail",
+      "markName": "An open trail",
+      "markRationale": "A gently curving route and a separate next step keep the trail open. The shape stays human and unhurried.",
+      "lockup": "mark"
+    }
+  ]
+}

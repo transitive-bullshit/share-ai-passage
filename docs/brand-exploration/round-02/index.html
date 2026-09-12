@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Five quieter directions · Brand exploration 02</title>
+    <style>
+      @font-face {
+        font-family: 'Instrument Sans';
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url('assets/fonts/instrument-sans-latin-400-normal.woff')
+          format('woff');
+      }
+      @font-face {
+        font-family: 'Instrument Sans';
+        font-style: normal;
+        font-weight: 500;
+        font-display: swap;
+        src: url('assets/fonts/instrument-sans-latin-500-normal.woff')
+          format('woff');
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #f3f3f1;
+        color: #30302e;
+        font-family:
+          'Instrument Sans',
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          sans-serif;
+        font-size: 14px;
+      }
+      button,
+      a {
+        color: inherit;
+      }
+      button {
+        font: inherit;
+        cursor: pointer;
+      }
+      a {
+        text-underline-offset: 4px;
+        text-decoration-color: #a3a39d;
+      }
+      a:hover {
+        text-decoration-color: currentColor;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      .header {
+        max-width: 1420px;
+        margin: 0 auto;
+        padding: 28px 36px 22px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 40px;
+      }
+      h1 {
+        font-size: 25px;
+        font-weight: 500;
+        letter-spacing: -0.035em;
+        margin: 0 0 5px;
+      }
+      .subtitle {
+        color: #767672;
+        font-size: 13px;
+        margin: 0;
+      }
+      .header-links {
+        display: flex;
+        gap: 22px;
+        align-items: center;
+        color: #70706c;
+        font-size: 11px;
+      }
+      .round {
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .toolbar {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: #f3f3f1;
+        border-top: 1px solid #e0e0dc;
+        border-bottom: 1px solid #dadad5;
+      }
+      .toolbar-inner {
+        max-width: 1420px;
+        margin: 0 auto;
+        padding: 12px 36px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 30px;
+      }
+      .directions {
+        display: flex;
+        gap: 6px;
+      }
+      .direction {
+        border: 1px solid transparent;
+        background: transparent;
+        border-radius: 6px;
+        padding: 10px 17px;
+        color: #70706c;
+        font-size: 13px;
+        white-space: nowrap;
+      }
+      .direction:hover {
+        background: #e9e9e5;
+      }
+      .direction.selected {
+        color: #30302e;
+        background: #fff;
+        border-color: #cececa;
+        box-shadow: 0 1px 2px #30302e06;
+      }
+      .direction span {
+        font-size: 10px;
+        color: #8c8c87;
+        margin-right: 8px;
+      }
+      .compare-button {
+        background: transparent;
+        border: 1px solid #c1c1bc;
+        border-radius: 6px;
+        padding: 10px 15px;
+        font-size: 12px;
+        white-space: nowrap;
+      }
+      .compare-button:hover {
+        background: #e9e9e5;
+      }
+      .compare-button.active {
+        background: #363634;
+        color: #fff;
+        border-color: #363634;
+      }
+      main {
+        max-width: 1420px;
+        margin: 0 auto;
+        padding: 28px 36px 34px;
+      }
+      .selected-poster {
+        display: block;
+        width: 100%;
+        max-width: 1100px;
+        margin: 0 auto;
+        line-height: 0;
+      }
+      .selected-poster img {
+        display: block;
+        width: 100%;
+        height: auto;
+        aspect-ratio: 1600 / 1300;
+        background: #fff;
+        box-shadow: 0 1px 8px #3636340b;
+      }
+      .rationale {
+        display: grid;
+        grid-template-columns: 190px 1fr;
+        gap: 28px;
+        width: 100%;
+        max-width: 1100px;
+        margin: 24px auto 0;
+      }
+      .name {
+        font-size: 19px;
+        font-weight: 500;
+        letter-spacing: -0.025em;
+        margin: 0 0 5px;
+      }
+      .type {
+        color: #767672;
+        font-size: 11px;
+        margin: 0;
+        line-height: 1.6;
+      }
+      .rationale-text {
+        font-size: 13px;
+        line-height: 1.65;
+        margin: 0;
+        max-width: 670px;
+      }
+      .asset-links {
+        display: flex;
+        gap: 17px;
+        flex-wrap: wrap;
+        font-size: 11px;
+        margin-top: 13px;
+      }
+      .comparison {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 35px 26px;
+      }
+      .compare-card {
+        min-width: 0;
+      }
+      .compare-heading {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin: 0 0 12px;
+        gap: 20px;
+      }
+      .compare-heading h2 {
+        font-size: 18px;
+        font-weight: 500;
+        letter-spacing: -0.02em;
+        margin: 0;
+      }
+      .compare-heading h2 span {
+        font-size: 10px;
+        font-weight: 400;
+        color: #898984;
+        margin-right: 10px;
+      }
+      .compare-heading .type {
+        text-align: right;
+      }
+      .compare-poster {
+        display: block;
+        line-height: 0;
+      }
+      .compare-poster img {
+        display: block;
+        width: 100%;
+        height: auto;
+        aspect-ratio: 1600 / 1300;
+        background: #fff;
+        box-shadow: 0 1px 8px #3636340b;
+      }
+      .compare-rationale {
+        color: #696965;
+        font-size: 12px;
+        line-height: 1.6;
+        margin: 13px 0 0;
+        max-width: 570px;
+      }
+      .compare-card .asset-links {
+        margin-top: 10px;
+      }
+      .inspect {
+        border: 0;
+        padding: 0;
+        background: transparent;
+        text-decoration: underline;
+        text-underline-offset: 4px;
+        text-decoration-color: #a3a39d;
+        font-size: 11px;
+      }
+      .footer {
+        max-width: 1100px;
+        margin: 28px auto 0;
+        padding-top: 17px;
+        border-top: 1px solid #dadad5;
+        display: flex;
+        justify-content: space-between;
+        gap: 28px;
+        color: #7e7e78;
+        font-size: 11px;
+        line-height: 1.65;
+      }
+      .footer p {
+        margin: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="header">
+      <div>
+        <h1>Five quieter directions</h1>
+        <p class="subtitle">
+          Folio and Commonplace refined, plus three new ideas.
+        </p>
+      </div>
+      <div class="header-links">
+        <span class="round">Brand exploration · 02</span>
+        <a href="contact-sheet.png" target="_blank" rel="noopener"
+          >Overview PNG ↗</a
+        >
+      </div>
+    </header>
+    <nav class="toolbar">
+      <div class="toolbar-inner">
+        <div class="directions">
+          <button class="direction selected" type="button" data-index="0">
+            <span>01</span>Folio
+          </button>
+          <button class="direction" type="button" data-index="1">
+            <span>02</span>Commonplace
+          </button>
+          <button class="direction" type="button" data-index="2">
+            <span>03</span>Frame
+          </button>
+          <button class="direction" type="button" data-index="3">
+            <span>04</span>Kindred
+          </button>
+          <button class="direction" type="button" data-index="4">
+            <span>05</span>Waymark
+          </button>
+        </div>
+        <button id="compare-button" class="compare-button" type="button">
+          Compare all
+        </button>
+      </div>
+    </nav>
+    <main>
+      <section id="selected-view">
+        <a
+          class="selected-poster"
+          id="poster-link"
+          href="folio-poster.svg"
+          target="_blank"
+          rel="noopener"
+        >
+          <img
+            id="poster-image"
+            src="folio-poster.svg"
+            width="1600"
+            height="1300"
+            alt="Folio brand direction poster"
+          />
+        </a>
+        <div class="rationale">
+          <div>
+            <h2 class="name" id="direction-name">Folio</h2>
+            <p class="type" id="direction-type">Instrument Sans · 400 / 500</p>
+          </div>
+          <div>
+            <p class="rationale-text" id="direction-rationale">
+              A small editorial system that lets the work carry the personality.
+              Quiet structure and deliberate presentation give a shared
+              conversation the feeling of an authored piece.
+            </p>
+            <div class="asset-links">
+              <a
+                id="poster-svg"
+                href="folio-poster.svg"
+                target="_blank"
+                rel="noopener"
+                >Poster SVG ↗</a
+              >
+              <a
+                id="poster-png"
+                href="folio-poster.png"
+                target="_blank"
+                rel="noopener"
+                >Poster PNG ↗</a
+              >
+              <a
+                id="card-png"
+                href="folio-share-card.png"
+                target="_blank"
+                rel="noopener"
+                >Share card PNG ↗</a
+              >
+              <a
+                id="card-svg"
+                href="folio-share-card.svg"
+                target="_blank"
+                rel="noopener"
+                >Share card SVG ↗</a
+              >
+            </div>
+          </div>
+        </div>
+      </section>
+      <section id="comparison" class="comparison" hidden></section>
+      <footer class="footer">
+        <p>
+          Pick what feels right: name, type, color, composition, or tone.
+          Choosing a detail does not lock the direction.
+        </p>
+        <p>Concepts for discussion. Names remain provisional.</p>
+      </footer>
+    </main>
+    <script>
+      const directions = [
+        {
+          slug: 'folio',
+          name: 'Folio',
+          type: 'Instrument Sans · 400 / 500',
+          rationale:
+            'A small editorial system that lets the work carry the personality. Quiet structure and deliberate presentation give a shared conversation the feeling of an authored piece.'
+        },
+        {
+          slug: 'commonplace',
+          name: 'Commonplace',
+          type: 'Hanken Grotesk · 400 / 500',
+          rationale:
+            'A calm, personal record of useful thought, with the warmth of a notebook. The emphasis is on collecting and sharing what is worth keeping.'
+        },
+        {
+          slug: 'frame',
+          name: 'Frame',
+          type: 'Manrope · 400 / 500',
+          rationale:
+            'Give a conversation a clear frame: useful context, deliberate presentation, and an idea that is easy to grasp. The name puts curation and perspective at the center.'
+        },
+        {
+          slug: 'kindred',
+          name: 'Kindred',
+          type: 'Onest · 400 / 500',
+          rationale:
+            'Shared curiosity with a more human center. A gentle, personal expression for ideas that resonate and conversations worth passing along.'
+        },
+        {
+          slug: 'waymark',
+          name: 'Waymark',
+          type: 'Plus Jakarta Sans · 400 / 500',
+          rationale:
+            'Small, public pieces of learning gradually create ways into your work. A quiet trail of useful contributions gives each shared idea a place in the wider story.'
+        }
+      ]
+      const buttons = [...document.querySelectorAll('[data-index]')]
+      const selectedView = document.getElementById('selected-view')
+      const comparisonView = document.getElementById('comparison')
+      const compareButton = document.getElementById('compare-button')
+      let comparing = false
+
+      function setComparison(value) {
+        comparing = value
+        selectedView.hidden = value
+        comparisonView.hidden = !value
+        compareButton.classList.toggle('active', value)
+        compareButton.textContent = value ? 'View one direction' : 'Compare all'
+      }
+
+      function selectDirection(index) {
+        const direction = directions[index]
+        buttons.forEach((button, buttonIndex) =>
+          button.classList.toggle('selected', buttonIndex === index)
+        )
+        document.getElementById('poster-link').href =
+          `${direction.slug}-poster.svg`
+        document.getElementById('poster-image').src =
+          `${direction.slug}-poster.svg`
+        document.getElementById('poster-image').alt =
+          `${direction.name} brand direction poster`
+        document.getElementById('direction-name').textContent = direction.name
+        document.getElementById('direction-type').textContent = direction.type
+        document.getElementById('direction-rationale').textContent =
+          direction.rationale
+        document.getElementById('poster-svg').href =
+          `${direction.slug}-poster.svg`
+        document.getElementById('poster-png').href =
+          `${direction.slug}-poster.png`
+        document.getElementById('card-png').href =
+          `${direction.slug}-share-card.png`
+        document.getElementById('card-svg').href =
+          `${direction.slug}-share-card.svg`
+        setComparison(false)
+      }
+
+      comparisonView.innerHTML = directions
+        .map(
+          (direction, index) => `
+        <article class="compare-card">
+          <header class="compare-heading">
+            <h2><span>${String(index + 1).padStart(2, '0')}</span>${direction.name}</h2>
+            <p class="type">${direction.type}</p>
+          </header>
+          <a class="compare-poster" href="${direction.slug}-poster.svg" target="_blank" rel="noopener">
+            <img src="${direction.slug}-poster.svg" width="1600" height="1300" alt="${direction.name} brand direction poster" loading="lazy" />
+          </a>
+          <p class="compare-rationale">${direction.rationale}</p>
+          <div class="asset-links">
+            <button class="inspect" type="button" data-inspect="${index}">View ${direction.name}</button>
+            <a href="${direction.slug}-poster.png" target="_blank" rel="noopener">Poster PNG ↗</a>
+            <a href="${direction.slug}-share-card.png" target="_blank" rel="noopener">Share card PNG ↗</a>
+          </div>
+        </article>
+      `
+        )
+        .join('')
+
+      buttons.forEach((button, index) =>
+        button.addEventListener('click', () => selectDirection(index))
+      )
+      compareButton.addEventListener('click', () => setComparison(!comparing))
+      comparisonView.querySelectorAll('[data-inspect]').forEach((button) => {
+        button.addEventListener('click', () => {
+          selectDirection(Number(button.dataset.inspect))
+          window.scrollTo({ top: 0 })
+        })
+      })
+    </script>
+  </body>
+</html>

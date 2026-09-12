@@ -382,7 +382,7 @@ export async function publishPreview(
         snapshotId: snapshot.id,
         ...preview,
         appearance,
-        cardVersion: 3
+        cardVersion: 4
       })
     )
     .digest('hex')
@@ -407,7 +407,7 @@ export async function publishPreview(
         title: preview.title,
         highlights: preview.highlights,
         appearance,
-        cardVersion: 3
+        cardVersion: 4
       })
       .onConflictDoNothing({
         target: [
@@ -432,7 +432,7 @@ export async function publishPreview(
           )
       )[0]
     if (!record || record.disabledAt)
-      throw new AppError('This publication is unavailable.', 410)
+      throw new AppError('This passage is unavailable.', 410)
     return { ...record, provider: source.provider }
   })
   return {
@@ -475,7 +475,7 @@ export async function checkAvailability(
         source,
         shouldCheck: false,
         message:
-          'The original is unavailable. This publication remains disabled.'
+          'The original is unavailable. This passage remains unavailable.'
       }
     const nextAllowed = [
       source.retryAfter,
@@ -558,7 +558,7 @@ export async function checkAvailability(
         result.status === 'available'
           ? 'The original is publicly available. Your saved conversation is unchanged.'
           : result.status === 'unavailable'
-            ? 'The original is no longer public. Its publications and cards are now disabled.'
+            ? 'The original is no longer public. Its passages and cards are now disabled.'
             : 'The provider could not confirm availability. The saved conversation remains available; please try again later.'
     }
   })

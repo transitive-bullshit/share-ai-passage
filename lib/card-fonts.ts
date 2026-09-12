@@ -8,7 +8,7 @@ import type { SocialTemplateFont } from './social-templates'
 type FontSubset = {
   name: string
   file: string
-  weight?: 400 | 500 | 700
+  weight?: 400 | 500 | 600 | 700
   ranges: [number, number][]
 }
 export type CardFont = FontDetails & {
@@ -44,15 +44,15 @@ export async function cardFonts(
       subset.name === 'Newsreader' ||
       subset.name === 'DM Sans'
     if (isPrimary) {
-      // Keep the original font set for legacy cards. New templates load only
-      // their own faces plus Inter for the small shared brand and labels.
+      // Keep the existing content fonts for legacy cards. Templates load only
+      // their own faces plus Inter for the shared wordmark and labels.
       const requested = templateFonts
-        ? (subset.name === 'Inter' && (subset.weight ?? 400) <= 500) ||
+        ? (subset.name === 'Inter' && (subset.weight ?? 400) <= 600) ||
           templateFonts.some(
             (font) =>
               font.family === subset.name && font.weight === subset.weight
           )
-        : (subset.name === 'Inter' && (subset.weight ?? 400) <= 500) ||
+        : (subset.name === 'Inter' && (subset.weight ?? 400) <= 600) ||
           subset.weight === 400
       if (!requested) continue
     }

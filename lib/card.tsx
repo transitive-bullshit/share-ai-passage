@@ -5,6 +5,7 @@ import { render, type MeasuredNode, type Node } from 'takumi-js'
 import { fromJsx } from 'takumi-js/helpers/jsx'
 import { Renderer } from 'takumi-js/node'
 
+import { brand } from './brand'
 import type { CardAppearance } from './card-appearance'
 import { cardFonts, type CardFont } from './card-fonts'
 import { privateHeaders } from './http'
@@ -65,8 +66,8 @@ function copyLayout(
 
 async function prepareCard(data: CardData, appearance?: CardAppearance) {
   const text = data.disabled
-    ? 'This conversation is unavailable The original is no longer publicly available. Its saved conversation and preview have been disabled. Saved conversation Original unavailable Passage'
-    : `${data.title} AI SUMMARY ${data.highlights.join(' ')} ${data.example ? 'Example conversation ' : ''}${footerText(data)} Passage 01 02 03`
+    ? 'This passage is unavailable The original is no longer publicly available. Its saved conversation and preview have been disabled. Saved passage Original unavailable Passage'
+    : `${data.title} HIGHLIGHTS ${data.highlights.join(' ')} ${data.example ? 'Example passage ' : ''}${footerText(data)} Read the passage ${brand.name} 01 02 03`
   const template =
     appearance && !data.disabled
       ? getSocialTemplate(appearance.templateId)

@@ -7,7 +7,7 @@ await mkdir(target, { recursive: true })
 type FontSubset = {
   name: string
   file: string
-  weight: 400 | 500 | 700
+  weight: 400 | 500 | 600 | 700
   ranges: [number, number][]
 }
 const manifest: FontSubset[] = []
@@ -15,6 +15,7 @@ const manifest: FontSubset[] = []
 for (const [packageName, name, weight] of [
   ['inter', 'Inter', 400],
   ['inter', 'Inter', 500],
+  ['inter', 'Inter', 600],
   ['inter', 'Inter', 700],
   ['newsreader', 'Newsreader', 400],
   ['dm-sans', 'DM Sans', 400],

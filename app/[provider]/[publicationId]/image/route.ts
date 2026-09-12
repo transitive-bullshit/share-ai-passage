@@ -12,7 +12,7 @@ export async function GET(
   const { provider, publicationId } = await context.params
   const record = await getPublication(provider, publicationId)
   if (!record)
-    return new Response('Publication not found', {
+    return new Response('Passage not found', {
       status: 404,
       headers: privateHeaders
     })

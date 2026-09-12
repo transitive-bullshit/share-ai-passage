@@ -1,0 +1,87 @@
+{
+  "descriptor": "Turn your AI chats into links you’ll be proud to share.",
+  "sampleTitle": "A calmer way to build with AI",
+  "sampleTitleLines": ["A calmer way to", "build with AI"],
+  "highlights": [
+    "Start with a clear question.",
+    "Make the tradeoffs visible.",
+    "Keep the reasoning close."
+  ],
+  "cardLabel": "Example AI conversation",
+  "cta": "Create a share",
+  "directions": [
+    {
+      "id": "folio",
+      "name": "Folio",
+      "number": "01",
+      "territory": "The considered edition",
+      "headline": ["Your thinking,", "worth sharing."],
+      "mantra": "Give good work a good form.",
+      "character": ["Considered.", "Independent.", "Proud."],
+      "typeLabel": "Instrument Sans",
+      "fontFamily": "instrument-sans",
+      "headingFont": "folioMedium",
+      "bodyFont": "folio",
+      "hero": "assets/folio-hero.png",
+      "colors": [
+        {
+          "name": "Paper",
+          "value": "#F4F0E8"
+        },
+        {
+          "name": "Ink",
+          "value": "#2A2824"
+        },
+        {
+          "name": "Ribbon",
+          "value": "#B85540"
+        }
+      ],
+      "rationale": "The retained Folio identity: considered paper, Instrument Sans, sculptural book imagery, and a warm ribbon accent on the page-turn mark.",
+      "alt": "A fan of ivory book pages with a muted vermilion ribbon.",
+      "variant": "Retained direction",
+      "family": "Folio",
+      "markName": "Page turn",
+      "markRationale": "The retained Folio page-turn geometry, used in the warm accent color.",
+      "lockup": "mark"
+    },
+    {
+      "id": "passage",
+      "name": "Passage",
+      "number": "02",
+      "territory": "Conversations worth sharing",
+      "headline": ["Good conversations.", "Beautifully shared."],
+      "descriptor": "Turn a public AI chat into a thoughtful preview, with the highlights up front and the full conversation behind it.",
+      "announcement": "A little more context. A much better link.",
+      "mantra": "Good conversations deserve to travel.",
+      "character": ["Clear.", "Thoughtful.", "Welcoming."],
+      "typeLabel": "Inter",
+      "fontFamily": "inter",
+      "headingFont": "passageMedium",
+      "bodyFont": "passage",
+      "hero": "assets/passage-landscape.png",
+      "colors": [
+        {
+          "name": "White",
+          "value": "#FFFFFF"
+        },
+        {
+          "name": "Charcoal",
+          "value": "#171717"
+        },
+        {
+          "name": "Muted",
+          "value": "#737373"
+        }
+      ],
+      "rationale": "The current Passage homepage, captured as an identity: a quiet white interface, clear Inter typography, an overlapping-page mark, and a painted landscape that gives the shared work room.",
+      "alt": "A soft impressionistic lake landscape with water lilies, trees, and distant misty hills.",
+      "variant": "Current homepage",
+      "family": "Passage",
+      "markName": "Overlapping pages",
+      "markRationale": "The existing two outlined pages, unchanged from the homepage BrandMark component.",
+      "lockup": "mark",
+      "cta": "Create a passage"
+    }
+  ]
+}

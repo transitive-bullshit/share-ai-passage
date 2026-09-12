@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Passage · Brand refinement 07</title>
+    <link
+      rel="icon"
+      href="assets/marks/passage-mark.svg?v=07b"
+      type="image/svg+xml"
+    />
+    <style>
+      @font-face {
+        font-family: Inter;
+        src: url('assets/fonts/inter-latin-400-normal.woff') format('woff');
+        font-weight: 400;
+      }
+      @font-face {
+        font-family: Inter;
+        src: url('assets/fonts/inter-latin-500-normal.woff') format('woff');
+        font-weight: 500;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        color: #262626;
+        background: #efefed;
+        font-family: Inter, Arial, sans-serif;
+        font-size: 14px;
+      }
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+        text-underline-offset: 4px;
+      }
+      header {
+        max-width: 1328px;
+        margin: 0 auto;
+        padding: 40px 32px 24px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 24px;
+      }
+      .eyebrow {
+        margin: 0 0 10px;
+        font-size: 10px;
+        letter-spacing: 1.8px;
+        color: #777;
+        text-transform: uppercase;
+      }
+      h1 {
+        font-size: 30px;
+        font-weight: 500;
+        letter-spacing: -1.1px;
+        margin: 0 0 10px;
+      }
+      .intro {
+        color: #737373;
+        margin: 0;
+        line-height: 1.6;
+      }
+      .header-links {
+        display: flex;
+        gap: 20px;
+        font-size: 12px;
+        color: #737373;
+        white-space: nowrap;
+      }
+      nav {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        border-top: 1px solid #dededb;
+        border-bottom: 1px solid #dededb;
+        background: #efefed;
+      }
+      .toolbar {
+        max-width: 1328px;
+        margin: auto;
+        padding: 12px 32px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .tabs {
+        display: flex;
+        gap: 4px;
+        padding: 4px;
+        background: #e5e5e2;
+        border-radius: 8px;
+      }
+      button {
+        font: inherit;
+        font-size: 12px;
+        color: #71716d;
+        border: 0;
+        background: transparent;
+        padding: 9px 15px;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      button[aria-pressed='true'] {
+        color: #242424;
+        background: #fff;
+        box-shadow: 0 1px 3px #0000000b;
+      }
+      .downloads {
+        display: flex;
+        gap: 18px;
+        font-size: 11px;
+        color: #737373;
+      }
+      main {
+        max-width: 1328px;
+        margin: auto;
+        padding: 26px 32px 48px;
+      }
+      .note {
+        display: flex;
+        justify-content: space-between;
+        gap: 24px;
+        color: #737373;
+        font-size: 12px;
+        line-height: 1.7;
+        margin: 0 0 18px;
+      }
+      .note p {
+        margin: 0;
+      }
+      .note strong {
+        color: #343434;
+        font-weight: 500;
+      }
+      .artwork {
+        background: #fff;
+        border: 1px solid #dededb;
+        border-radius: 3px;
+        overflow: hidden;
+      }
+      .artwork img {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      .usage {
+        margin-top: 26px;
+        padding: 22px 0 0;
+        border-top: 1px solid #dadad7;
+        display: flex;
+        justify-content: space-between;
+        gap: 26px;
+      }
+      .usage p {
+        margin: 0;
+        font-size: 12px;
+        line-height: 1.7;
+        color: #737373;
+      }
+      .usage strong {
+        display: block;
+        margin-bottom: 4px;
+        font-weight: 500;
+        color: #343434;
+      }
+      .usage .name-note {
+        max-width: 410px;
+      }
+      .terms {
+        display: flex;
+        gap: 48px;
+      }
+      .terms span {
+        display: block;
+        color: #303030;
+      }
+      footer {
+        max-width: 1328px;
+        margin: 0 auto;
+        padding: 0 32px 30px;
+        color: #888;
+        font-size: 11px;
+        display: flex;
+        justify-content: space-between;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div>
+        <p class="eyebrow">Brand refinement · 07</p>
+        <h1>Passage</h1>
+        <p class="intro">
+          The Passage identity, with a clear promise and a proposed mark.
+        </p>
+      </div>
+      <div class="header-links">
+        <a href="passage.md">Identity notes ↗</a
+        ><a href="README.md">Build &amp; assets ↗</a>
+      </div>
+    </header>
+    <nav aria-label="Preview views">
+      <div class="toolbar">
+        <div class="tabs">
+          <button type="button" data-view="brand" aria-pressed="true">
+            Brand preview
+          </button>
+          <button type="button" data-view="passage" aria-pressed="false">
+            Example passage
+          </button>
+          <button type="button" data-view="icons" aria-pressed="false">
+            Icon studies
+          </button>
+        </div>
+        <div class="downloads">
+          <a id="svg-link" href="passage-poster.svg?v=07b">Open SVG ↗</a
+          ><a id="png-link" href="passage-poster.png?v=07b">Open PNG ↗</a>
+        </div>
+      </div>
+    </nav>
+    <main>
+      <section id="brand-view">
+        <div class="note">
+          <p>
+            <strong>Passage</strong> · Inter · White, charcoal, and a painted
+            landscape
+          </p>
+          <p>New headline, literal descriptor, and “Create a passage”</p>
+        </div>
+        <div class="artwork">
+          <img
+            src="passage-poster.svg?v=07b"
+            width="1600"
+            height="1300"
+            alt="Passage brand poster: Your AI chats, worth sharing. Turn your AI chats into links you’ll be proud to share. Create a passage."
+          />
+        </div>
+      </section>
+      <section id="passage-view" hidden>
+        <div class="note">
+          <p><strong>A passage</strong> · the shareable artifact</p>
+          <p>Illustrative title and highlights · 1200 × 630</p>
+        </div>
+        <div class="artwork">
+          <img
+            src="passage-share-card.svg?v=07b"
+            width="1200"
+            height="630"
+            alt="Example passage: A calmer way to build with AI, with three highlights and Read the passage."
+          />
+        </div>
+      </section>
+      <section id="icons-view" hidden>
+        <div class="note">
+          <p><strong>Three icon studies, one Passage identity</strong></p>
+          <p>
+            The main preview uses the recommended mark. All icons remain
+            proposed.
+          </p>
+        </div>
+        <div class="artwork">
+          <img
+            src="icon-study.svg?v=07b"
+            alt="Three native Passage icon studies at large and small sizes, in light and dark."
+          />
+        </div>
+      </section>
+      <aside class="usage">
+        <p class="name-note">
+          <strong>Brand name: Passage</strong>The singular gives the brand and
+          each thing you create the same natural name.
+        </p>
+        <div class="terms">
+          <p>Brand<span>Passage</span></p>
+          <p>One artifact<span>a passage</span></p>
+          <p>Several artifacts<span>passages</span></p>
+          <p>Main action<span>Create a passage</span></p>
+        </div>
+      </aside>
+    </main>
+    <footer>
+      <span>Desktop brand study · name and copy selected, icon proposed</span
+      ><a href="assets/marks/passage-mark.svg?v=07b">Native mark SVG ↗</a>
+    </footer>
+    <script>
+      const views = {
+        brand: { section: 'brand-view', file: 'passage-poster' },
+        passage: { section: 'passage-view', file: 'passage-share-card' },
+        icons: { section: 'icons-view', file: 'icon-study' }
+      }
+      for (const button of document.querySelectorAll('[data-view]')) {
+        button.addEventListener('click', () => {
+          const selected = views[button.dataset.view]
+          for (const view of Object.values(views))
+            document.getElementById(view.section).hidden = view !== selected
+          for (const tab of document.querySelectorAll('[data-view]'))
+            tab.setAttribute('aria-pressed', String(tab === button))
+          document.getElementById('svg-link').href =
+            selected.file + '.svg?v=07b'
+          document.getElementById('png-link').href =
+            selected.file + '.png?v=07b'
+        })
+      }
+    </script>
+  </body>
+</html>

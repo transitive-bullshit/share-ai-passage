@@ -160,7 +160,7 @@ export function PreviewReview({
           Your passage is published.
         </h1>
         <p>
-          One link for the highlights and the full conversation. Copy it below
+          One link for the highlights and the saved conversation. Copy it below
           and share it wherever the conversation continues.
         </p>
         <div className='published-preview'>
@@ -176,7 +176,7 @@ export function PreviewReview({
         </div>
         <FieldGroup>
           <Field>
-            <FieldLabel htmlFor='published-url'>Your share link</FieldLabel>
+            <FieldLabel htmlFor='published-url'>Your passage link</FieldLabel>
             <Input
               id='published-url'
               value={shareUrl}
@@ -189,13 +189,13 @@ export function PreviewReview({
           <CopyLink url={shareUrl} />
           <Button asChild>
             <Link href={shareUrl}>
-              View passage
+              Read the passage
               <ArrowUpRight data-icon='inline-end' />
             </Link>
           </Button>
         </div>
         <Button variant='ghost' onClick={onBack}>
-          Share another conversation
+          Create another passage
         </Button>
       </section>
     )
@@ -233,7 +233,7 @@ export function PreviewReview({
       <div className='review-grid'>
         <div className='review-content'>
           <div className='generated-summary' aria-labelledby='generated-title'>
-            <p className='eyebrow'>AI summary</p>
+            <p className='eyebrow'>Highlights</p>
             <h2 id='generated-title'>{draft.preview.title}</h2>
             <ul>
               {draft.preview.highlights.map((highlight, index) => (
@@ -263,7 +263,7 @@ export function PreviewReview({
             <p>
               Creates a public link to your preview
               <br />
-              and the full saved conversation.
+              and the saved conversation.
             </p>
           </div>
         </div>
@@ -347,10 +347,10 @@ export function PreviewReview({
           <div className='reader-promise'>
             <BookOpen size={18} aria-hidden='true' />
             <p>
-              <strong>The full conversation, included.</strong>
+              <strong>The saved conversation, included.</strong>
               <br />
-              Every message is saved as it appeared, with a link back to the
-              original on {providerNames[draft.provider]}.
+              Read the saved conversation text, with known omissions marked and
+              a link to the original on {providerNames[draft.provider]}.
             </p>
           </div>
         </aside>

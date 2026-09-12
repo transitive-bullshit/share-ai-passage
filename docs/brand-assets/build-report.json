@@ -1,0 +1,17 @@
+{
+  "identity": "Passage",
+  "accepted": "2026-09-12",
+  "onepager": [1600, 1300],
+  "examplePassage": [1200, 630],
+  "socialPreview": [1200, 630],
+  "faviconSizes": [16, 32, 48],
+  "measuredTextRuns": 14,
+  "iconSource": "lib/brand.ts",
+  "copy": {
+    "headline": "Your AI chats, worth sharing",
+    "descriptor": "Turn your AI chats into links you’ll be proud to share",
+    "cta": "Create a passage",
+    "cardLabel": "Example passage",
+    "readerAction": "Read the passage"
+  }
+}

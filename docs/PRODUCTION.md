@@ -2,6 +2,12 @@
 
 Deployment recorded September 11, 2026: Neon is configured and Vercel is deployed at [ai-chat-proxy-puce.vercel.app](https://ai-chat-proxy-puce.vercel.app). See the [MVP plan](MVP_PLAN.md#remaining-work) for remaining launch checks; this setup record does not establish hosted extraction or social-platform validation.
 
+## Planned production domain
+
+On September 12, 2026, the owner reported purchasing **share-ai-passage.com** for the intended production address, [https://share-ai-passage.com](https://share-ai-passage.com). This is a planned destination; domain attachment, DNS, and HTTPS have not been verified, and it is not recorded as the live service yet.
+
+When deploying with this domain, add it to the existing Vercel project for Production and configure the DNS records supplied by its Domains settings, following [Vercel’s domain setup guide](https://vercel.com/docs/domains/working-with-domains/add-a-domain). Verify the domain and HTTPS, then redeploy. Confirm that `VERCEL_PROJECT_PRODUCTION_URL` names the intended host and that generated passage links and social metadata use it. Keep the automatic origin resolution below; set `PASSAGE_URL` to the verified service origin for CLI use after activation.
+
 ## Recorded database configuration
 
 | Setting | Value |
@@ -63,7 +69,7 @@ Keep Vercel's system environment variables enabled. Redeploy after changing the 
 - `none` explicitly uses that shared budget on any host. `vercel` requires `VERCEL=1` and the Vercel header.
 - `single` trusts `X-Real-IP` only behind a proxy that overwrites it with the connecting address. For Nginx, use `proxy_set_header X-Real-IP $remote_addr;` and prevent direct public access to the app port.
 
-Self-hosting runs the same app with `pnpm build` and `pnpm start`, or the [Docker setup](../readme.md#docker-alternative). Public proxy hostnames are not inferred from forwarded headers; the current non-Vercel production fallback remains localhost. Arbitrary self-hosted public-origin configuration is a known limitation.
+Self-hosting runs the same app with `pnpm build` and `pnpm start`, or the [Docker setup](../contributing.md#docker-alternative). Public proxy hostnames are not inferred from forwarded headers; the current non-Vercel production fallback remains localhost. Arbitrary self-hosted public-origin configuration is a known limitation.
 
 The Dockerfile migrates before single-instance startup. Multi-instance deployments should migrate in a separate release step. Card rendering uses Takumi's native Node.js backend for WebP output at quality 90. [next.config.ts](../next.config.ts) externalizes `@takumi-rs/core` and traces the bundled fonts and artwork. Standalone packaging must include those assets, public/static files, and Takumi's native binary for the deployment platform. Verify a card request from the production build after changing renderer dependencies.
 

@@ -196,7 +196,7 @@ describe.skipIf(!testUrl)('publication lifecycle with PostgreSQL', () => {
     expect(prepared.preview).toEqual(generatedPreview)
     expect(prepared).not.toHaveProperty('messages')
     expect(first!.preview).toEqual(prepared.preview)
-    expect(first!.publication.cardVersion).toBe(3)
+    expect(first!.publication.cardVersion).toBe(4)
     expect(first!.publication.appearance).toEqual(DEFAULT_CARD_APPEARANCE)
     expect(await getPublication('chatgpt', firstId)).toBeNull()
   })
@@ -224,7 +224,7 @@ describe.skipIf(!testUrl)('publication lifecycle with PostgreSQL', () => {
       expect(reused.publicationId).toBe(publicationId)
       const saved = await getPublication('chatgpt', publicationId)
       expect(saved!.publication.appearance).toEqual(appearance)
-      expect(saved!.publication.cardVersion).toBe(3)
+      expect(saved!.publication.cardVersion).toBe(4)
       expect(saved!.preview).toEqual(generatedPreview)
       expect(saved!.snapshot.messages).toEqual(original.messages)
     }

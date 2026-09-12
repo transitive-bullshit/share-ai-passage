@@ -28,7 +28,7 @@ export function CopyLink({ url }: { url: string }) {
         ) : (
           <Copy data-icon='inline-start' />
         )}
-        {copied ? 'Link copied' : 'Copy share link'}
+        {copied ? 'Link copied' : 'Copy passage link'}
       </Button>
       <span role='status' aria-live='polite'>
         {failed
@@ -39,7 +39,7 @@ export function CopyLink({ url }: { url: string }) {
       </span>
       {failed ? (
         <Input
-          aria-label='Share link to copy'
+          aria-label='Passage link to copy'
           readOnly
           value={url}
           onFocus={(event) => event.target.select()}

@@ -1,3 +1,5 @@
+import { BrandMark } from '../components/brand-mark'
+import { brand } from './brand'
 import type { CardAppearance } from './card-appearance'
 import { providerNames, type Provider } from './domain'
 import { getSocialTemplate, type SocialTemplate } from './social-templates'
@@ -24,12 +26,14 @@ export type CardData =
 export function footerText(data: CardData) {
   return data.disabled
     ? 'Original unavailable'
-    : `A passage from ${providerNames[data.provider]} worth sharing`
+    : data.example
+      ? brand.mantra
+      : `A passage from ${providerNames[data.provider]} worth sharing`
 }
 
 function Card({ data, scale = 1 }: { data: CardData; scale?: number }) {
   const disabled = data.disabled
-  const title = disabled ? 'This conversation is unavailable' : data.title
+  const title = disabled ? 'This passage is unavailable' : data.title
   const highlights = disabled ? null : data.highlights
   return (
     <div
@@ -67,43 +71,22 @@ function Card({ data, scale = 1 }: { data: CardData; scale?: number }) {
             alignItems: 'center',
             gap: 11,
             fontSize: 23,
-            fontWeight: 500,
+            fontWeight: 600,
             letterSpacing: '-0.8px',
             color: '#171717'
           }}
         >
-          <svg
-            width='30'
-            height='30'
-            style={{ width: 30, height: 30, flexShrink: 0 }}
-            viewBox='0 0 32 32'
-            fill='none'
+          <span
+            style={{ display: 'flex', width: 30, height: 30, flexShrink: 0 }}
           >
-            <rect
-              x='3'
-              y='8'
-              width='15'
-              height='20'
-              rx='3'
-              stroke='#171717'
-              strokeWidth='1.8'
-            />
-            <rect
-              x='12'
-              y='3'
-              width='15'
-              height='20'
-              rx='3'
-              stroke='#171717'
-              strokeWidth='1.8'
-            />
-          </svg>
-          <span>Passage</span>
+            <BrandMark size={30} color='#171717' />
+          </span>
+          <span>{brand.name}</span>
         </div>
         {disabled ? (
-          <span>Saved conversation</span>
+          <span>Saved passage</span>
         ) : data.example ? (
-          <span>Example conversation</span>
+          <span>Example passage</span>
         ) : null}
       </div>
       <div
@@ -144,7 +127,7 @@ function Card({ data, scale = 1 }: { data: CardData; scale?: number }) {
                 marginBottom: 1
               }}
             >
-              AI SUMMARY
+              HIGHLIGHTS
             </span>
             {highlights.map((highlight, index) => (
               <div
@@ -221,6 +204,7 @@ function Card({ data, scale = 1 }: { data: CardData; scale?: number }) {
         }}
       >
         <span>{footerText(data)}</span>
+        {!disabled ? <span>Read the passage</span> : null}
       </div>
     </div>
   )
@@ -360,41 +344,20 @@ function TemplateCard({
             alignItems: 'center',
             gap: 10,
             fontSize: 24,
-            fontWeight: 500,
+            fontWeight: 600,
             letterSpacing: '-0.8px'
           }}
         >
-          <svg
-            width='30'
-            height='30'
-            style={{ width: 30, height: 30, flexShrink: 0 }}
-            viewBox='0 0 32 32'
-            fill='none'
+          <span
+            style={{ display: 'flex', width: 30, height: 30, flexShrink: 0 }}
           >
-            <rect
-              x='3'
-              y='8'
-              width='15'
-              height='20'
-              rx='3'
-              stroke={colors.text}
-              strokeWidth='1.8'
-            />
-            <rect
-              x='12'
-              y='3'
-              width='15'
-              height='20'
-              rx='3'
-              stroke={colors.text}
-              strokeWidth='1.8'
-            />
-          </svg>
-          <span>Passage</span>
+            <BrandMark size={30} color={colors.text} />
+          </span>
+          <span>{brand.name}</span>
         </div>
         {data.example ? (
           <span style={{ fontSize: 17, color: colors.muted }}>
-            Example conversation
+            Example passage
           </span>
         ) : null}
       </div>
@@ -440,7 +403,7 @@ function TemplateCard({
               marginBottom: 2
             }}
           >
-            AI SUMMARY
+            HIGHLIGHTS
           </span>
           {data.highlights.map((highlight, index) => (
             <div
@@ -487,6 +450,7 @@ function TemplateCard({
         }}
       >
         <span>{footerText(data)}</span>
+        <span>Read the passage</span>
       </div>
     </div>
   )

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" color="#B85540">
+  <title>Folio — curved paper planes</title>
+  <g fill="currentColor">
+    <path d="M24 18C17 40 18 61 30 82L40 78C30 58 30 39 38 21Z"/>
+    <path d="M48 16C35 35 33 58 45 82L54 79C47 56 52 36 63 23Z"/>
+    <path d="M74 25C57 39 52 59 59 81L69 83C66 62 73 47 87 38Z"/>
+  </g>
+</svg>

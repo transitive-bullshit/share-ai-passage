@@ -1,0 +1,54 @@
+{
+  "descriptor": "Turn your AI chats into links you’ll be proud to share",
+  "sampleTitle": "A calmer way to build with AI",
+  "sampleTitleLines": ["A calmer way to", "build with AI"],
+  "highlights": [
+    "Start with a clear question.",
+    "Make the tradeoffs visible.",
+    "Keep the reasoning close."
+  ],
+  "cardLabel": "Example passage",
+  "cta": "Create a passage",
+  "directions": [
+    {
+      "id": "passage",
+      "name": "Passage",
+      "number": "01",
+      "territory": "Conversations worth sharing",
+      "headline": ["Your AI chats,", "worth sharing"],
+      "descriptor": "Turn your AI chats into links you’ll be proud to share",
+      "mantra": "Good conversations deserve to travel.",
+      "character": ["Clear.", "Thoughtful.", "Welcoming."],
+      "typeLabel": "Inter",
+      "fontFamily": "inter",
+      "headingFont": "passageMedium",
+      "bodyFont": "passage",
+      "hero": "assets/passage-landscape.png",
+      "colors": [
+        {
+          "name": "White",
+          "value": "#FFFFFF"
+        },
+        {
+          "name": "Charcoal",
+          "value": "#171717"
+        },
+        {
+          "name": "Muted",
+          "value": "#737373"
+        }
+      ],
+      "rationale": "A clear promise in a calm visual system: Inter, white and charcoal, and a painted landscape give each passage room.",
+      "alt": "A soft impressionistic lake landscape with water lilies, trees, and distant misty hills.",
+      "variant": "Focused direction",
+      "family": "Passage",
+      "markName": "Open passage",
+      "markRationale": "A solid split P with a narrow open channel, connecting the Passage name to the idea of an opening.",
+      "lockup": "mark",
+      "cta": "Create a passage",
+      "markStyle": "custom",
+      "markFile": "assets/marks/open-passage-mark.svg"
+    }
+  ],
+  "readerAction": "Read the passage"
+}

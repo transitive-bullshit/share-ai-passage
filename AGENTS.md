@@ -8,7 +8,8 @@
 
 Keep current guidance concise under `docs/`. Read the relevant document for the task:
 
-- Setup and CLI usage: [README](readme.md).
+- Setup and CLI usage: [Contributing](contributing.md).
+- Customer-facing UI, marketing, README, or social assets: read [Brand identity](docs/brand-identity.md) and apply its accepted copy, visual rules, and reusable assets.
 - Product behavior, scope, and remaining work: [MVP plan](docs/MVP_PLAN.md).
 - Entities and terminology: [domain glossary](docs/CONTEXT.md).
 - Message extraction, storage, or rendering: [message model](docs/MESSAGE_MODEL.md).

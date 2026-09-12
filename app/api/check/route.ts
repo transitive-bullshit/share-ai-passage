@@ -22,17 +22,17 @@ export async function POST(request: Request) {
         publicationId: z.uuid()
       })
       .safeParse(await readJson(request))
-    if (!parsed.success) throw new AppError('This publication is invalid.')
+    if (!parsed.success) throw new AppError('This passage is invalid.')
     const record = await getPublication(
       parsed.data.provider,
       parsed.data.publicationId
     )
-    if (!record) throw new AppError('This publication was not found.', 404)
+    if (!record) throw new AppError('This passage was not found.', 404)
     const result = record.disabled
       ? {
           status: 'unavailable',
           message:
-            'This publication is disabled. It will not be restored automatically.'
+            'This passage is unavailable. It will not be restored automatically.'
         }
       : await checkAvailability(record.source.id, 'manual')
     return Response.json(result, { headers: privateHeaders })

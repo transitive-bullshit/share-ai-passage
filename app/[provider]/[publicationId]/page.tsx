@@ -117,7 +117,7 @@ export default async function ReaderPage({ params }: Props) {
         <h1>{publication.title}</h1>
         <section className='reader-summary' aria-labelledby='summary-heading'>
           <h2 id='summary-heading' className='eyebrow'>
-            AI summary
+            Highlights
           </h2>
           <ul>
             {preview.highlights.map((highlight, index) => (
@@ -147,7 +147,7 @@ export default async function ReaderPage({ params }: Props) {
       <div className='conversation-heading' id='conversation'>
         <div className='conversation-heading-copy'>
           <h2>The conversation</h2>
-          <p>The complete, unchanged snapshot.</p>
+          <p>The complete saved conversation.</p>
         </div>
         {lastReplyIndex > 3 ? (
           <Button asChild variant='ghost' size='sm'>

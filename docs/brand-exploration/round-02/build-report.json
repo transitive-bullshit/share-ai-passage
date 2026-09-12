@@ -1,0 +1,6 @@
+{
+  "directions": ["folio", "commonplace", "frame", "kindred", "waymark"],
+  "poster": [1600, 1300],
+  "shareCard": [1200, 630],
+  "measuredTextRuns": 82
+}
