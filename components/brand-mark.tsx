@@ -1,11 +1,15 @@
+import type { CSSProperties } from 'react'
+
 import { brand } from '@/lib/brand'
 
 export function BrandMark({
   className,
+  style,
   size = 28,
   color = 'currentColor'
 }: {
   className?: string
+  style?: CSSProperties
   size?: number
   color?: string
 }) {
@@ -15,6 +19,7 @@ export function BrandMark({
       className={className}
       width={size}
       height={size}
+      style={style}
       viewBox='0 0 32 32'
       fill={color}
     >

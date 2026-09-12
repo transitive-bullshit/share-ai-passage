@@ -8,6 +8,7 @@ import { Renderer } from 'takumi-js/node'
 import { brand } from './brand'
 import type { CardAppearance } from './card-appearance'
 import { cardFonts, type CardFont } from './card-fonts'
+import { initialCardTextFit, nextCardTextFit } from './card-text-fit'
 import { privateHeaders } from './http'
 import { SocialCard, footerText, type CardData } from './social-card'
 import { getSocialTemplate, type SocialTemplate } from './social-templates'
@@ -87,9 +88,7 @@ async function prepareCard(data: CardData, appearance?: CardAppearance) {
     fontFamilies: [...new Set(fonts.map((font) => font.subsetOf))]
   }
   const maxHeight = template?.layout.copy.maxHeight ?? 407
-  let scale = 1
-  let lower = 0
-  let upper = 1
+  let fit = initialCardTextFit()
   let fitted:
     | {
         element: ReturnType<typeof SocialCard>
@@ -101,13 +100,13 @@ async function prepareCard(data: CardData, appearance?: CardAppearance) {
     | undefined
   // Measure without encoding. Search for the largest fitting text size; a single
   // height ratio over-shrinks wrapped copy because line counts also change.
-  for (let attempt = 0; attempt < 8; attempt++) {
+  while (!fit.done) {
     const element = (
       <SocialCard
         data={data}
         appearance={appearance}
         background={background}
-        scale={scale}
+        scale={fit.scale}
       />
     )
     const { node, css } = await fromJsx(element)
@@ -116,12 +115,8 @@ async function prepareCard(data: CardData, appearance?: CardAppearance) {
     if (!copy) throw new Error('Social card is missing its copy layout')
     if (copy.height <= maxHeight) {
       fitted = { element, node, css, fonts, options }
-      if (scale === 1) return fitted
-      lower = scale
-    } else {
-      upper = scale
     }
-    scale = (lower + upper) / 2
+    fit = nextCardTextFit(fit, copy.height <= maxHeight)
   }
   if (fitted) return fitted
   throw new Error('Social card text could not fit within its template')

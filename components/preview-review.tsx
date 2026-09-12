@@ -5,6 +5,10 @@ import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 
 import { CopyLink } from '@/components/copy-link'
+import {
+  SocialCardPreview,
+  type CardPreviewStatus
+} from '@/components/social-card-preview'
 import { SocialTemplatePicker } from '@/components/social-template-picker'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -12,7 +16,7 @@ import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import type { CardAppearance } from '@/lib/card-appearance'
-import { clientErrorMessage, postBlob, postJson } from '@/lib/client-request'
+import { clientErrorMessage, postJson } from '@/lib/client-request'
 import { getSocialTemplate } from '@/lib/social-templates'
 import {
   type GeneratedPreview,
@@ -48,18 +52,7 @@ export function PreviewReview({
 }) {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
-  const [card, setCard] = useState<{
-    html: string
-    appearance: CardAppearance
-    attempt: number
-    loaded: boolean
-    error?: string
-  } | null>(null)
-  const [cardError, setCardError] = useState<{
-    appearance: CardAppearance
-    attempt: number
-    message: string
-  } | null>(null)
+  const [card, setCard] = useState<CardPreviewStatus | null>(null)
   const [cardAttempt, setCardAttempt] = useState(0)
   const [shareUrl, setShareUrl] = useState('')
   const [lockedAppearance, setLockedAppearance] =
@@ -73,59 +66,15 @@ export function PreviewReview({
     card?.appearance === activeAppearance && card.attempt === cardAttempt
       ? card
       : null
-  const currentCardError =
-    (cardError?.appearance === activeAppearance &&
-    cardError.attempt === cardAttempt
-      ? cardError.message
-      : '') ||
-    currentCard?.error ||
-    ''
+  const currentCardError = currentCard?.error || ''
   const cardReady = Boolean(
     preferencesReady && currentCard?.loaded && !currentCardError
   )
-  const cardTitle = `${draft.preview.title}: ${draft.preview.highlights.join(' ')}`
 
   useEffect(() => {
     headingRef.current?.focus({ preventScroll: true })
     window.scrollTo({ top: 0, behavior: 'instant' })
   }, [shareUrl])
-
-  useEffect(() => {
-    if (!preferencesReady) return
-    const controller = new AbortController()
-
-    async function loadCard() {
-      try {
-        const blob = await postBlob(
-          '/api/card',
-          {
-            draftToken: draft.draftToken,
-            appearance: activeAppearance,
-            format: 'html'
-          },
-          controller.signal
-        )
-        const html = await blob.text()
-        if (controller.signal.aborted) return
-        setCard({
-          html,
-          appearance: activeAppearance,
-          attempt: cardAttempt,
-          loaded: false
-        })
-      } catch (err) {
-        if (!controller.signal.aborted)
-          setCardError({
-            appearance: activeAppearance,
-            attempt: cardAttempt,
-            message: clientErrorMessage(err)
-          })
-      }
-    }
-
-    void loadCard()
-    return () => controller.abort()
-  }, [draft.draftToken, cardAttempt, activeAppearance, preferencesReady])
 
   function retryCard() {
     setCardAttempt((attempt) => attempt + 1)
@@ -164,15 +113,11 @@ export function PreviewReview({
           and share it wherever the conversation continues.
         </p>
         <div className='published-preview'>
-          {currentCard ? (
-            <iframe
-              className='social-card-preview'
-              srcDoc={currentCard.html}
-              title={cardTitle}
-              sandbox=''
-              tabIndex={-1}
-            />
-          ) : null}
+          <SocialCardPreview
+            preview={draft.preview}
+            provider={draft.provider}
+            appearance={activeAppearance}
+          />
         </div>
         <FieldGroup>
           <Field>
@@ -284,35 +229,14 @@ export function PreviewReview({
             className='live-card'
             aria-busy={!cardReady && !currentCardError}
           >
-            {currentCard ? (
-              <iframe
-                key={`${templateId}:${cardAttempt}`}
-                className='social-card-preview'
-                srcDoc={currentCard.html}
-                title={cardTitle}
-                sandbox=''
-                tabIndex={-1}
-                onLoad={() =>
-                  setCard((latest) =>
-                    latest?.html === currentCard.html &&
-                    latest.appearance === activeAppearance &&
-                    latest.attempt === cardAttempt
-                      ? { ...latest, loaded: true }
-                      : latest
-                  )
-                }
-                onError={() =>
-                  setCard((latest) =>
-                    latest?.html === currentCard.html &&
-                    latest.appearance === activeAppearance &&
-                    latest.attempt === cardAttempt
-                      ? {
-                          ...latest,
-                          error: 'The card preview could not be displayed.'
-                        }
-                      : latest
-                  )
-                }
+            {preferencesReady ? (
+              <SocialCardPreview
+                key={`${draft.draftToken}:${templateId}:${cardAttempt}`}
+                preview={draft.preview}
+                provider={draft.provider}
+                appearance={activeAppearance}
+                attempt={cardAttempt}
+                onStatusChange={setCard}
               />
             ) : (
               <div className='card-loading'>

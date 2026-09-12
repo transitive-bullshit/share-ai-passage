@@ -20,7 +20,7 @@ Set `OPENAI_API_KEY` in `.env.local` before preparing a new conversation. Previe
 
 `pnpm dev` uses [Portless](https://portless.sh/). Open the exact URL printed in the terminal, normally `https://ai-chat-proxy.localhost`; proxy settings can change its scheme or port. Worktrees get their own app subdomain. To run directly at [localhost:3000](http://localhost:3000), use `PORTLESS=0 pnpm dev` (`PORT` overrides 3000).
 
-Paste a public `https://chatgpt.com/share/<uuid>`, `https://chatgpt.com/s/cx_<id>`, or `https://claude.ai/share/<uuid>` URL. Choose **Create a passage**, review the generated title and highlights, choose a card style, then **Publish passage**. Text is read-only; the HTML preview shares its template JSX and CSS with the published social image. Takumi renders 1200 × 630 WebP cards at quality 90 using bundled artwork and fonts. The browser remembers your last style choice.
+Paste a public `https://chatgpt.com/share/<uuid>`, `https://chatgpt.com/s/cx_<id>`, or `https://claude.ai/share/<uuid>` URL. Choose **Create a passage**, review the generated title and highlights, choose a card style, then **Publish passage**. Text is read-only; style changes update the preview directly in the page without a `/api/card` request. Publishing becomes available after artwork, fonts, and text fitting are ready. The browser remembers your last style choice.
 
 ### Local database
 
@@ -77,9 +77,9 @@ See [product behavior and limits](docs/MVP_PLAN.md), [supported extraction](docs
 
 ## Maintaining cards
 
-Templates and layout definitions live in [social-templates.ts](lib/social-templates.ts), with optimized backgrounds and [asset provenance](public/social-templates/README.md) under `public/social-templates/`. The public interface accepts known styles only.
+Templates and layout definitions live in [social-templates.ts](lib/social-templates.ts), with optimized backgrounds and [asset provenance](public/social-templates/README.md) under `public/social-templates/`. The public interface accepts known styles only. The in-page preview renders [SocialCard](lib/social-card.tsx) locally, sharing template JSX and styles, artwork, font packages, and the fitting policy with exported images. Browser and Takumi text measurements can produce different fitted sizes and pixels.
 
-`pnpm fonts:prepare` builds the local font bundle before development, builds, and unit tests. Keep the artwork, font, and native renderer tracing entries in [next.config.ts](next.config.ts) when changing rendering assets. The renderer fits text without dropping highlights; glyph coverage is limited by the bundled fonts.
+`pnpm fonts:prepare` builds the local font bundle before development, builds, and unit tests. Keep the artwork, font, and native renderer tracing entries in [next.config.ts](next.config.ts) when changing rendering assets. The renderer fits text without dropping highlights; glyph coverage is limited by the bundled fonts. Takumi exports 1200 × 630 WebP cards at quality 90. The draft `/api/card` endpoint returns WebP by default and accepts an explicit HTML format for agent and HTTP consumers.
 
 ## Marketing examples
 

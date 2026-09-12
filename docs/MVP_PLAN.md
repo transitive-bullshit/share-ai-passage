@@ -8,15 +8,15 @@ This document owns product scope and remaining work. See the [glossary](CONTEXT.
 
 1. Paste a supported public conversation URL. Fetch or reuse its saved content and normalize the messages.
 2. Generate a concise title and two or three grounded highlights for an uncached snapshot; use one highlight for a very short source. Highlights are paraphrases, not attributed quotations. Successful generation is required; failures return a retryable error.
-3. Review the read-only title and highlights, choose one of five curated card styles, and load the HTML card preview. Publish stays disabled until the preview and its assets load.
+3. Review the read-only title and highlights and choose one of five curated card styles in the in-page preview. Publish stays disabled until artwork and fonts load and text fitting completes.
 4. Publish the saved preview and chosen style, then copy or open the share URL. Repeated publication of the same presentation reuses its link while available.
 5. Read the saved conversation with its original-source link. Preserve extracted text, ordering, roles, Markdown, code, tables, and safe links. Known unsupported media, tools, and artifacts appear as explicit omissions.
 
 The browser, CLI, and [agent skill](../.agents/skills/passage-share/SKILL.md) use the same prepare/publish operations. A local draft can be saved and published later without regenerating or editing its text. Draft tokens authorize publication for 24 hours and stay private.
 
-Card styles are repository-owned presets in [social-templates.ts](../lib/social-templates.ts). The browser remembers only appearance preferences; the initial default is Margin notes. Picker thumbnails and selected previews use HTML. All preview paths share the template JSX and CSS with the image renderer; selected previews also use the same fitted text sizes, without encoding a bitmap. Publications retain their selected style when browser preferences change. Existing publications with no style retain the plain layout.
+Card styles are repository-owned presets in [social-templates.ts](../lib/social-templates.ts). The browser remembers only appearance preferences; the initial default is Margin notes. Picker thumbnails and selected previews render [SocialCard](../lib/social-card.tsx) directly in the page. Switching styles makes no `/api/card` request. Browser previews and exported images share template JSX and styles, artwork, font packages, and the fitting policy. The browser measures its own text, so fitted sizes and rendered pixels can differ from Takumi. Publications retain their selected style when browser preferences change. Existing publications with no style retain the plain layout.
 
-Reader and image routes supply crawler-readable initial metadata, absolute image URLs, and noindex directives. Takumi renders 1200 × 630 WebP cards at quality 90 with bundled artwork and fonts, without provider or model requests. Social metadata declares `image/webp`. The draft card endpoint returns WebP by default and HTML when requested for the creation preview.
+Reader and image routes supply crawler-readable initial metadata, absolute image URLs, and noindex directives. Takumi renders 1200 × 630 WebP cards at quality 90 with bundled artwork and fonts, without provider or model requests. Social metadata declares `image/webp`. The draft card endpoint returns WebP by default and supports explicit HTML requests for agent and HTTP consumers.
 
 ## Saved content and availability
 
@@ -42,7 +42,7 @@ Generation currently uses OpenAI with a configurable model, defaulting to `gpt-5
 | Saved transcript | 1 MiB encoded message JSON; oversized input is rejected |
 | Mutation body | 16 KiB |
 | Prepare / manual check | 10 / 5 attempts per client per hour |
-| Publish / card preview | 60 / 120 attempts per client per hour |
+| Publish / card API | 60 / 120 attempts per client per hour |
 
 Accept only supported HTTPS provider shares, canonicalize copied query parameters/fragments away, and validate redirects and resolved public IPs. Keep compatibility within those rules; observed CDN paths, signing parameters, and MIME labels are not permanent provider contracts. See [extraction](EXTRACTION.md).
 

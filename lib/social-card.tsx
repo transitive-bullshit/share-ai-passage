@@ -7,7 +7,7 @@ import { getSocialTemplate, type SocialTemplate } from './social-templates'
 /** Explicit local fallbacks keep the browser and image renderer on the same faces. */
 export function cardFontFamily(family: string) {
   return [
-    ...new Set([family, 'Inter', 'Noto Sans', 'Noto Sans SC', 'Noto Emoji'])
+    ...new Set([family, 'Inter', 'Noto Sans', 'Noto Emoji', 'Noto Sans SC'])
   ]
     .map((name) => `"${name}"`)
     .join(', ')
@@ -79,7 +79,11 @@ function Card({ data, scale = 1 }: { data: CardData; scale?: number }) {
           <span
             style={{ display: 'flex', width: 30, height: 30, flexShrink: 0 }}
           >
-            <BrandMark size={30} color='#171717' />
+            <BrandMark
+              size={30}
+              color='#171717'
+              style={{ width: 30, height: 30, flexShrink: 0 }}
+            />
           </span>
           <span>{brand.name}</span>
         </div>
@@ -351,7 +355,11 @@ function TemplateCard({
           <span
             style={{ display: 'flex', width: 30, height: 30, flexShrink: 0 }}
           >
-            <BrandMark size={30} color={colors.text} />
+            <BrandMark
+              size={30}
+              color={colors.text}
+              style={{ width: 30, height: 30, flexShrink: 0 }}
+            />
           </span>
           <span>{brand.name}</span>
         </div>

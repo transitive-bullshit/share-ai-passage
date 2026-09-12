@@ -1,7 +1,4 @@
-import '@fontsource/dm-sans/latin-400.css'
-import '@fontsource/dm-sans/latin-500.css'
-import '@fontsource/dm-sans/latin-700.css'
-import '@fontsource/newsreader/latin-400.css'
+import './social-card-fonts'
 
 import type { Provider } from '@/lib/domain'
 import { SocialCard } from '@/lib/social-card'
