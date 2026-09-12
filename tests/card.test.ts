@@ -154,10 +154,10 @@ it('renders the legacy layout as a private 1200 × 630 WebP offline', async () =
     expect.arrayContaining([
       'HIGHLIGHTS',
       ...data.highlights,
-      'A passage from Claude worth sharing',
-      'Read the passage'
+      'A passage from Claude worth sharing'
     ])
   )
+  expect(text).not.toContain('Read the passage')
 })
 
 const wideCharacterCopy = {
@@ -251,10 +251,10 @@ it.each(socialTemplates)(
         ...data.highlights,
         'Passage',
         'HIGHLIGHTS',
-        'A passage from Claude worth sharing',
-        'Read the passage'
+        'A passage from Claude worth sharing'
       ])
     )
+    expect(layoutText(nodes)).not.toContain('Read the passage')
     const copy = nodes.find(
       (node) => node.node.className === 'social-card-copy'
     )!
@@ -288,6 +288,35 @@ it.each(socialTemplates)(
     }
   }
 )
+
+// The numbered layout has the narrowest copy box and smallest height allowance.
+it('paints an ellipsis on a two-line title without shortening the saved title', async () => {
+  const template = socialTemplates.find(({ id }) => id === 'makers-workbench')!
+  const fullTitle =
+    'Release verified search accessibility fixes; defer the rest'
+  const data = {
+    title: fullTitle,
+    highlights: ['Keep untested panels on the backlog.'],
+    provider: 'chatgpt' as const
+  }
+  const response = await renderCard(data, { templateId: template.id })
+  const withEllipsis = Buffer.from(await response.arrayBuffer())
+  const title = renderedLayout().find(
+    ({ node }) => node.className === 'social-card-title'
+  )!
+  const lineHeight = template.layout.titleSize * template.layout.titleLineHeight
+
+  expect(title.height).toBeCloseTo(lineHeight * 2, 0)
+  expect(title.width).toBeLessThanOrEqual(template.layout.copy.width)
+  expect(layoutText()).toContain(fullTitle)
+  expect(data.title).toBe(fullTitle)
+
+  // Height alone passes even when Takumi silently clips without painting dots.
+  const [tree, options] = vi.mocked(render).mock.lastCall!
+  title.node.style = { ...title.node.style, textOverflow: 'clip' }
+  const withoutEllipsis = await render(tree, options)
+  expect(withEllipsis).not.toEqual(Buffer.from(withoutEllipsis))
+})
 
 // The numbered layout has the narrowest copy box and smallest height allowance.
 it('fits three maximum-length wide highlights while using the tightest template’s available space', async () => {
@@ -351,7 +380,7 @@ it('previews the same fitted template as escaped HTML with bundled assets and no
   expect(html).toContain('class="social-card-copy"')
   expect(html).toContain('Example passage')
   expect(html).toContain('HIGHLIGHTS')
-  expect(html).toContain('Read the passage')
+  expect(html).not.toContain('Read the passage')
   expect(html).toContain(brand.mantra)
   expect(html).not.toContain('A passage from')
   expect(render).not.toHaveBeenCalled()

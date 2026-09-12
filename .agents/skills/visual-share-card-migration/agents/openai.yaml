@@ -1,0 +1,4 @@
+interface:
+  display_name: "Visual share card migration"
+  short_description: "Compare share card visuals and AI summary changes"
+  default_prompt: "Use $visual-share-card-migration to capture and compare Passage cards before and after this change."

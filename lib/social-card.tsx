@@ -104,7 +104,13 @@ function Card({ data, scale = 1 }: { data: CardData; scale?: number }) {
         }}
       >
         <div
+          className='social-card-title'
           style={{
+            display: '-webkit-box',
+            WebkitBoxOrient: 'vertical',
+            WebkitLineClamp: 2,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
             fontSize: 60 * scale,
             fontWeight: 500,
             lineHeight: 1.08,
@@ -208,7 +214,6 @@ function Card({ data, scale = 1 }: { data: CardData; scale?: number }) {
         }}
       >
         <span>{footerText(data)}</span>
-        {!disabled ? <span>Read the passage</span> : null}
       </div>
     </div>
   )
@@ -383,7 +388,13 @@ function TemplateCard({
         }}
       >
         <div
+          className='social-card-title'
           style={{
+            display: '-webkit-box',
+            WebkitBoxOrient: 'vertical',
+            WebkitLineClamp: 2,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
             fontFamily: cardFontFamily(font.title.family),
             fontWeight: font.title.weight,
             fontSize: layout.titleSize * scale,
@@ -454,11 +465,10 @@ function TemplateCard({
           paddingTop: 17,
           borderTop: `1px solid ${colors.rule}`,
           color: colors.muted,
-          fontSize: 14
+          fontSize: layout.footerSize
         }}
       >
         <span>{footerText(data)}</span>
-        <span>Read the passage</span>
       </div>
     </div>
   )

@@ -80,6 +80,10 @@ Write plainly, warmly, and with respect for the work being shared. Name the acti
 | Read the passage | Open the published artifact |
 | Copy passage link | Copy its address |
 
+Share card titles occupy at most two lines, with an ellipsis when the title overflows. Keep the full title in the saved summary and reader. Card footers show the source attribution or example mantra. Reserve **Read the passage** for the interactive link that opens a published passage; omit it from card templates and their exported images.
+
+Margin notes, Electric risograph, Maker’s workbench, and Friendly lab use 16 px footer text with the footer rule at y = 566 on the 1200 × 630 canvas. Midnight observatory uses 14 px text with its rule at y = 558.
+
 The one-pager’s example is **A calmer way to build with AI**, with “Start with a clear question.”, “Make the tradeoffs visible.”, and “Keep the reasoning close.” These are illustrative design content, not a required title or fixed highlights in the product. Preserve the existing live example when applying the identity.
 
 ## Assets and maintenance

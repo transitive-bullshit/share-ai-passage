@@ -81,6 +81,28 @@ Templates and layout definitions live in [social-templates.ts](lib/social-templa
 
 `pnpm fonts:prepare` builds the local font bundle before development, builds, and unit tests. Keep the artwork, font, and native renderer tracing entries in [next.config.ts](next.config.ts) when changing rendering assets. The renderer fits text without dropping highlights; glyph coverage is limited by the bundled fonts. Takumi exports 1200 × 630 WebP cards at quality 90. The draft `/api/card` endpoint returns WebP by default and accepts an explicit HTML format for agent and HTTP consumers.
 
+## Visual share card review
+
+The project [visual-share-card-migration skill](.agents/skills/visual-share-card-migration/SKILL.md) applies before changing card visuals or the structured summary task. Eight authored conversations cover short advice, debugging, travel, tradeoffs, uncertainty, German, dense text, and long-input truncation. Each review renders eight representative cards, one per conversation spread across the five styles, through the real WebP and HTML renderers. It needs no database or running app.
+
+```sh
+# Start before editing: eight chats, eight cards, eight paid requests.
+pnpm cards:review start summary-review --generate
+
+# After a visual change, keep the same sources/styles and latest candidate text.
+pnpm cards:review update summary-review
+
+# After a summary-task change, regenerate on those same sources and styles.
+pnpm cards:review update summary-review --generate
+pnpm cards:review serve
+```
+
+Open [the review](http://127.0.0.1:4399/summary-review.html) or choose a run at [the local review index](http://127.0.0.1:4399). Keep using `update summary-review` for each tweak: the before stays frozen, while a successful full capture refreshes the latest after and the same report URL. Updates keep the baseline's source chats and style pairings. Without `--generate`, they retain the latest after's summaries and provenance, or the before's on the first update. A failed update preserves the previous before, after, and report. Each gallery supports chat/template filters, changed-only comparisons, word counts, expandable source text, native-size exports, and saved HTML previews.
+
+`start <run>` captures the current output; omit `--generate` for an offline layout baseline using clearly labeled authored summaries. `start <run> --from <saved>` copies an existing frozen snapshot and assets as the before without rerendering, preserving its original summary provenance. Add `--generate` to make a fresh before from the saved source chats using the current AI task. Live generation loads ordinary local configuration, bypasses cached app previews, and refuses CI/test environments. The lower-level `capture` and `compare` commands remain available for importing or comparing historical snapshots.
+
+Inspect the final saved HTML samples after fonts and artwork load alongside their exported WebP images. When a change affects the app preview, inspect the live `SocialCardPreview` after its fonts and artwork load too. Verify requested ellipsis and fit in those actual outputs; synthetic stress cases and height assertions alone are insufficient. Word counts and image changes support human review and do not establish plain-language compliance or semantic quality. Reports, source JSON, model/task provenance, and rendered assets remain under ignored `work/share-card-review/`. They include complete conversation text. No passage is published.
+
 ## Marketing examples
 
 The two [README previews](readme.md#example-passages) share one authored question-and-answer conversation. [lib/marketing-examples.ts](lib/marketing-examples.ts) is the single source for their text and styles: Margin notes and Midnight observatory. These clearly labeled illustrative passages ship with the app when deployed; they need no production database or provider share URLs. After changing the fixture, fetch these card routes from the normal local development origin:

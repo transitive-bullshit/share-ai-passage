@@ -26,6 +26,7 @@
     "fix:lint": "oxlint --fix",
     "fonts:prepare": "tsx scripts/prepare-fonts.ts",
     "fixtures:summary": "tsx scripts/regenerate-summary-fixture.ts",
+    "cards:review": "tsx scripts/share-card-review.ts",
     "db:local": "tsx scripts/db-local.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",

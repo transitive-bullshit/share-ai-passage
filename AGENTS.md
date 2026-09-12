@@ -15,6 +15,7 @@ Keep current guidance concise under `docs/`. Read the relevant document for the 
 - Message extraction, storage, or rendering: [message model](docs/MESSAGE_MODEL.md).
 - Provider URLs, fetching, or parsing: [extraction guide](docs/EXTRACTION.md).
 - Writing, running, or reviewing tests and changing CI: [testing guidelines](docs/testing.md).
+- Share card visuals or AI summary task changes: use [visual-share-card-migration](.agents/skills/visual-share-card-migration/SKILL.md) to capture a baseline before editing and compare the result.
 - Deployment, production data, or self-hosting: [production guide](docs/PRODUCTION.md).
 
 Update the relevant existing document when behavior changes. `docs/archive/` holds historical reports; `docs/research/` and `docs/brand-exploration/` contain research and proposals, not current requirements.

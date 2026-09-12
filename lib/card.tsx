@@ -68,7 +68,7 @@ function copyLayout(
 async function prepareCard(data: CardData, appearance?: CardAppearance) {
   const text = data.disabled
     ? 'This passage is unavailable The original is no longer publicly available. Its saved conversation and preview have been disabled. Saved passage Original unavailable Passage'
-    : `${data.title} HIGHLIGHTS ${data.highlights.join(' ')} ${data.example ? 'Example passage ' : ''}${footerText(data)} Read the passage ${brand.name} 01 02 03`
+    : `${data.title} … HIGHLIGHTS ${data.highlights.join(' ')} ${data.example ? 'Example passage ' : ''}${footerText(data)} ${brand.name} 01 02 03`
   const template =
     appearance && !data.disabled
       ? getSocialTemplate(appearance.templateId)

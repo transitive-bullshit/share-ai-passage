@@ -36,6 +36,7 @@ export type SocialTemplate = {
     headerTop: number
     footerTop: number
     footerWidth: number
+    footerSize: number
     scrim: string
     marker: 'dash' | 'square' | 'number' | 'star' | 'circle'
   }
@@ -83,8 +84,9 @@ export const socialTemplates: readonly SocialTemplate[] = [
       gap: 29,
       highlightGap: 14,
       headerTop: 49,
-      footerTop: 558,
+      footerTop: 566,
       footerWidth: 710,
+      footerSize: 16,
       scrim:
         'linear-gradient(90deg, #f8f4e9 0%, rgba(248,244,233,0.99) 50%, rgba(248,244,233,0.94) 62%, rgba(248,244,233,0) 79%)',
       marker: 'dash'
@@ -114,8 +116,9 @@ export const socialTemplates: readonly SocialTemplate[] = [
       gap: 29,
       highlightGap: 14,
       headerTop: 48,
-      footerTop: 558,
+      footerTop: 566,
       footerWidth: 684,
+      footerSize: 16,
       scrim:
         'linear-gradient(90deg, rgba(252,229,213,0.99) 0%, rgba(252,229,213,0.98) 51%, rgba(252,229,213,0.86) 62%, rgba(252,229,213,0) 76%)',
       marker: 'square'
@@ -146,8 +149,9 @@ export const socialTemplates: readonly SocialTemplate[] = [
       gap: 27,
       highlightGap: 14,
       headerTop: 52,
-      footerTop: 558,
+      footerTop: 566,
       footerWidth: 681,
+      footerSize: 16,
       scrim:
         'linear-gradient(90deg, rgba(250,247,239,0.98) 0%, rgba(250,247,239,0.96) 51%, rgba(250,247,239,0.85) 63%, rgba(250,247,239,0) 79%)',
       marker: 'number'
@@ -179,6 +183,7 @@ export const socialTemplates: readonly SocialTemplate[] = [
       headerTop: 49,
       footerTop: 558,
       footerWidth: 700,
+      footerSize: 14,
       scrim:
         'linear-gradient(90deg, #101f2b 0%, rgba(16,31,43,0.99) 51%, rgba(16,31,43,0.92) 64%, rgba(16,31,43,0) 91%)',
       marker: 'star'
@@ -209,8 +214,9 @@ export const socialTemplates: readonly SocialTemplate[] = [
       gap: 29,
       highlightGap: 14,
       headerTop: 49,
-      footerTop: 558,
+      footerTop: 566,
       footerWidth: 714,
+      footerSize: 16,
       scrim:
         'linear-gradient(90deg, rgba(252,251,246,0.98) 0%, rgba(252,251,246,0.96) 50%, rgba(252,251,246,0.78) 64%, rgba(252,251,246,0) 78%)',
       marker: 'circle'
