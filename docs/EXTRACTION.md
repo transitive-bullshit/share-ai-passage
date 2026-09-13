@@ -19,7 +19,7 @@ Codex downloads may follow up to two redirects within the `*.oaiusercontent.com`
 ## Parsing and availability
 
 - ChatGPT reads ordered `linear_conversation` messages and excludes root-only or explicitly hidden nodes.
-- Codex reads the versioned `turns[].items` snapshot, preserving visible user/agent messages, source-provided phases, and public summaries. Unknown versions or malformed/unknown items are inconclusive.
+- Codex reads the versioned `turns[].items` snapshot, preserving visible user/agent messages, source-provided phases, and public summaries. Parser v3 labels published reasoning summaries separately so the reader can collapse them. An unphased agent message remains unphased. Unknown versions or malformed/unknown items are inconclusive.
 - Claude reads public `chat_messages` in provider order, including exposed structured text/tool blocks. Explicit upstream truncation is rejected.
 - Preserve supported text and known omissions. Reject an empty/unreadable conversation or more than 1 MiB of normalized message JSON. Never execute provider HTML or fetch attached media.
 

@@ -54,6 +54,8 @@ The canonical path data and common site copy live in [lib/brand.ts](../lib/brand
 
 Use the existing semantic CSS tokens. Brand controls are neutral. Error and success colors describe state; colors in the landscape belong to the artwork. The five curated passage styles may use their own palettes and content typography while retaining the same Passage mark and voice.
 
+In saved conversations, blue (`#326DA8`) identifies source links, with small local favicon glyphs (GitHub’s mark or a web/email symbol). Syntax colors distinguish code tokens. These functional reading cues leave brand controls neutral. Keep prose around 46rem wide; dense desktop tables may extend to 66rem, with wider expansion and contained scrolling on small screens. Questions use the secondary surface, while answers remain on white without repeated visible role labels.
+
 Use **Inter 400** for body copy and highlights, **500** for headings/actions, and **600** for the wordmark. The site headline scales to 68 px with 1.055 line-height and tight tracking; supporting copy is 17 px/1.75. Keep the existing responsive scale, generous white space, and pill-shaped primary form. The gray second headline line creates hierarchy without another font. The one-pager scales this system to its larger canvas.
 
 Local Inter WOFF inputs and the [license](brand-assets/fonts/inter-LICENSE.txt) are included in the asset set. The application uses its existing Fontsource imports. System sans-serif is the fallback.

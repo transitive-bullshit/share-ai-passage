@@ -39,12 +39,21 @@ const observedSnapshot = () => ({
 const snapshot = (items: unknown[]) => ({ version: 1, turns: [{ items }] })
 
 describe('public Codex snapshots', () => {
+  it('distinguishes published reasoning summaries from assistant answers', () => {
+    const result = parseCodex(observedSnapshot(), 200)
+    expect(result.status).toBe('available')
+    if (result.status !== 'available') return
+    expect(result.conversation.messages[1]).toMatchObject({
+      kind: 'reasoning_summary'
+    })
+  })
+
   it('preserves public user text, summaries, commentary, and final answers in order', () => {
     const result = parseCodex(observedSnapshot(), 200)
     expect(result.status).toBe('available')
     if (result.status !== 'available') return
     expect(result.conversation.title).toBe('A shared code discussion')
-    expect(result.conversation.parserVersion).toBe('codex-public-json-v2')
+    expect(result.conversation.parserVersion).toBe('codex-public-json-v3')
     expect(result.conversation.messages.map((entry) => entry.role)).toEqual([
       'user',
       'assistant',
