@@ -70,7 +70,11 @@ it.each(['missing-example', 'toString'])(
   async (exampleId) => {
     const params = Promise.resolve({ exampleId })
     await expect(ExamplePage({ params })).rejects.toBe(missing)
-    await expect(generateMetadata({ params })).rejects.toBe(missing)
+    expect(await generateMetadata({ params })).toMatchObject({
+      robots: { index: false, follow: false },
+      openGraph: { images: [] },
+      twitter: { images: [] }
+    })
     const response = await exampleImage(
       new Request(`https://passage.example/examples/${exampleId}/image`),
       { params }
@@ -87,9 +91,7 @@ it('clearly labels the authored conversation without a claimed provider source',
   })
   const html = renderToStaticMarkup(page)
   expect(html).toContain('Example passage')
-  expect(html).toContain(
-    'An illustrative conversation about sharing with Passage.'
-  )
+  expect(html).toContain('An illustrative debugging conversation.')
   expect(html).toContain('Copy passage link')
   expect(html).toContain('Create a passage')
   expect(html).not.toMatch(/href="https?:\/\/(?:chatgpt\.com|claude\.ai)/)

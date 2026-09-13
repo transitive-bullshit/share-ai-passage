@@ -4,12 +4,18 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 import { CopyLink } from '@/components/copy-link'
+import { JsonLd } from '@/components/json-ld'
 import { SavedMessage } from '@/components/saved-message'
 import { Button } from '@/components/ui/button'
 import { brand } from '@/lib/brand'
 import { appUrl } from '@/lib/config'
 import { getMarketingExample } from '@/lib/marketing-examples'
 import { getSocialTemplate } from '@/lib/social-templates'
+import {
+  passageJsonLd,
+  publicPageMetadata,
+  unavailableMetadata
+} from '@/lib/seo'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,35 +24,14 @@ type Props = { params: Promise<{ exampleId: string }> }
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { exampleId } = await params
   const example = getMarketingExample(exampleId)
-  if (!example) notFound()
+  if (!example) return unavailableMetadata('Example passage not found')
   const url = `${appUrl()}/examples/${example.id}`
-  const description = example.highlights.join('. ') + '.'
-  const image = {
-    url: `${url}/image`,
-    width: 1200,
-    height: 630,
-    type: 'image/webp',
-    alt: example.title
-  }
-  return {
+  return publicPageMetadata({
     title: example.title,
-    description,
-    robots: { index: false, follow: false },
-    openGraph: {
-      title: example.title,
-      description,
-      type: 'article',
-      siteName: brand.name,
-      url,
-      images: [image]
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title: example.title,
-      description,
-      images: [image]
-    }
-  }
+    description: example.highlights.join(' '),
+    url,
+    image: { url: `${url}/image`, type: 'image/webp' }
+  })
 }
 
 export default async function ExamplePage({ params }: Props) {
@@ -56,6 +41,13 @@ export default async function ExamplePage({ params }: Props) {
   const shareUrl = `${appUrl()}/examples/${example.id}`
   return (
     <main id='main' className='reader'>
+      <JsonLd
+        data={passageJsonLd({
+          title: example.title,
+          description: example.highlights.join(' '),
+          url: shareUrl
+        })}
+      />
       <header className='reader-header'>
         <div className='reader-meta'>
           <p className='eyebrow'>Example passage</p>
@@ -83,14 +75,14 @@ export default async function ExamplePage({ params }: Props) {
             <CopyLink url={shareUrl} />
           </div>
           <p className='snapshot-note'>
-            An illustrative conversation about sharing with Passage.
+            An illustrative debugging conversation.
           </p>
         </div>
       </header>
       <div className='conversation-heading' id='conversation'>
         <div className='conversation-heading-copy'>
           <h2>The conversation</h2>
-          <p>A question and a practical answer.</p>
+          <p>A timing problem, shared test data, and a clearer next step.</p>
         </div>
         <ArrowDown size={19} aria-hidden='true' />
       </div>
