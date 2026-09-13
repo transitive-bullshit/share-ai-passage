@@ -34,7 +34,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     : record.publication.title
   const description = record.disabled
     ? 'The original conversation is no longer publicly available.'
-    : record.preview.highlights.join(' ')
+    : record.preview.highlights.filter((text) => text.trim()).join(' ') ||
+      record.preview.title
   return {
     title,
     description,
@@ -100,6 +101,7 @@ export default async function ReaderPage({ params }: Props) {
       console.warn('Automatic availability check did not complete.')
     }
   })
+  const highlights = preview.highlights.filter((text) => text.trim())
   const shareUrl = `${appUrl()}/${provider}/${publicationId}`
   const captured = new Intl.DateTimeFormat('en', {
     dateStyle: 'long',
@@ -115,16 +117,18 @@ export default async function ReaderPage({ params }: Props) {
           <span>Saved on Passage</span>
         </div>
         <h1>{publication.title}</h1>
-        <section className='reader-summary' aria-labelledby='summary-heading'>
-          <h2 id='summary-heading' className='eyebrow'>
-            Highlights
-          </h2>
-          <ul>
-            {preview.highlights.map((highlight, index) => (
-              <li key={index}>{highlight}</li>
-            ))}
-          </ul>
-        </section>
+        {highlights.length > 0 ? (
+          <section className='reader-summary' aria-labelledby='summary-heading'>
+            <h2 id='summary-heading' className='eyebrow'>
+              Highlights
+            </h2>
+            <ul>
+              {highlights.map((highlight, index) => (
+                <li key={index}>{highlight}</li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
         <div className='reader-source-bar'>
           <div className='reader-actions'>
             <Button asChild>

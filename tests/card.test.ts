@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react'
+import { createElement, type ReactElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { render, type MeasuredNode, type Node } from 'takumi-js'
 import { fromJsx } from 'takumi-js/helpers/jsx'
@@ -9,7 +9,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { brand } from '@/lib/brand'
 import { renderCard, renderCardPreview } from '@/lib/card'
 import { cardFonts } from '@/lib/card-fonts'
-import { cardFontFamily } from '@/lib/social-card'
+import { SocialCard, cardFontFamily } from '@/lib/social-card'
 import { socialTemplates } from '@/lib/social-templates'
 import { webpDimensions } from '@/lib/webp'
 
@@ -385,4 +385,49 @@ it('previews the same fitted template as escaped HTML with bundled assets and no
   expect(html).not.toContain('A passage from')
   expect(render).not.toHaveBeenCalled()
   expect(fetch).not.toHaveBeenCalled()
+})
+
+it.each([undefined, ...socialTemplates.map(({ id }) => ({ templateId: id }))])(
+  'omits blank highlights and their heading for appearance %j',
+  (appearance) => {
+    const data = {
+      title: 'A title without highlights',
+      provider: 'claude' as const,
+      highlights: ['', ' \n\t ']
+    }
+    const empty = renderToStaticMarkup(
+      createElement(SocialCard, { data, appearance })
+    )
+    expect(empty).not.toContain('HIGHLIGHTS')
+    expect(empty).not.toContain('no longer publicly available')
+    const filled = renderToStaticMarkup(
+      createElement(SocialCard, {
+        data: { ...data, highlights: ['', 'Keep this.', '  '] },
+        appearance
+      })
+    )
+    const clean = renderToStaticMarkup(
+      createElement(SocialCard, {
+        data: { ...data, highlights: ['Keep this.'] },
+        appearance
+      })
+    )
+    expect(filled).toBe(clean)
+  }
+)
+
+it('renders the expanded hard limits without overflowing the tightest template', async () => {
+  const data = {
+    title: 'W'.repeat(600),
+    provider: 'claude' as const,
+    highlights: ['界'.repeat(1000), 'W'.repeat(1000), '🌱'.repeat(1000)]
+  }
+  const response = await renderCard(data, {
+    templateId: 'midnight-observatory'
+  })
+  expect(response.status).toBe(200)
+  expect(webpDimensions(Buffer.from(await response.arrayBuffer()))).toEqual({
+    width: 1200,
+    height: 630
+  })
 })

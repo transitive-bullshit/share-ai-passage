@@ -124,9 +124,8 @@ it('rejects invalid appearance at the publication service boundary', async () =>
 
 it.each([
   null,
-  { title: '🌱'.repeat(61), highlights: ['One point.'] },
-  { title: 'A title', highlights: ['🦊'.repeat(101)] },
-  { title: 'A title', highlights: [] },
+  { title: '🌱'.repeat(601), highlights: ['One point.'] },
+  { title: 'A title', highlights: ['🦊'.repeat(1001)] },
   { title: 'A title', highlights: ['Same point', ' same\npoint '] }
 ])(
   'rejects invalid edits at the publication service boundary: %j',
@@ -279,6 +278,34 @@ describe.skipIf(!testUrl)('publication lifecycle with PostgreSQL', () => {
       )
     ).toEqual(first)
     expect(upstream.suggestPreview).toHaveBeenCalledTimes(1)
+  })
+
+  it('stores title-only passages at the new hard limit and deduplicates blank highlight slots', async () => {
+    const prepared = await prepareSource(sourceUrl())
+    const preview = { title: '🌱'.repeat(limits.title), highlights: [] }
+    const first = await publishPreview(
+      prepared.draftToken,
+      DEFAULT_CARD_APPEARANCE,
+      preview
+    )
+    const second = await publishPreview(
+      prepared.draftToken,
+      DEFAULT_CARD_APPEARANCE,
+      { ...preview, highlights: [' ', '\n\t'] }
+    )
+    expect(second.publicationId).toBe(first.publicationId)
+    expect(
+      (await getPublication('chatgpt', first.publicationId))!.preview
+    ).toEqual(preview)
+    const withHighlight = await publishPreview(
+      prepared.draftToken,
+      DEFAULT_CARD_APPEARANCE,
+      { ...preview, highlights: ['🦊'.repeat(limits.highlight)] }
+    )
+    expect(
+      (await getPublication('chatgpt', withHighlight.publicationId))!.preview
+        .highlights
+    ).toEqual(['🦊'.repeat(limits.highlight)])
   })
 
   it('rejects an expired draft even when valid edited text is supplied', async () => {

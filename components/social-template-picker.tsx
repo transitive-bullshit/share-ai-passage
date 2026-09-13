@@ -34,9 +34,7 @@ export function SocialTemplatePicker({
         <FieldTitle id='social-template-label'>
           Choose your card style
         </FieldTitle>
-        <FieldDescription id='social-template-help'>
-          A different look for the same conversation.
-        </FieldDescription>
+
         <ToggleGroup
           type='single'
           variant='outline'
@@ -49,7 +47,9 @@ export function SocialTemplatePicker({
           }}
           disabled={disabled}
           aria-labelledby='social-template-label'
-          aria-describedby='social-template-help social-template-memory'
+          aria-describedby={
+            preferencesAvailable ? undefined : 'social-template-memory'
+          }
           className='social-template-options'
         >
           {socialTemplates.map((template) => (
@@ -58,7 +58,6 @@ export function SocialTemplatePicker({
               value={template.id}
               className='social-template-option'
               aria-label={template.name}
-              title={template.description}
             >
               <span className='social-template-thumbnail'>
                 <SocialTemplateThumbnail
@@ -69,15 +68,14 @@ export function SocialTemplatePicker({
                   <Check />
                 </span>
               </span>
-              <span className='social-template-name'>{template.name}</span>
             </ToggleGroupItem>
           ))}
         </ToggleGroup>
-        <FieldDescription id='social-template-memory' role='status'>
-          {preferencesAvailable
-            ? 'Remembered in this browser for your next conversation.'
-            : 'Used for this visit. This browser couldn’t save your preference.'}
-        </FieldDescription>
+        {!preferencesAvailable ? (
+          <FieldDescription id='social-template-memory' role='status'>
+            Used for this visit. This browser couldn’t save your preference.
+          </FieldDescription>
+        ) : null}
       </Field>
     </FieldGroup>
   )

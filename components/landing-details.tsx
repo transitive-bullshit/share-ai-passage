@@ -1,11 +1,4 @@
-import {
-  ArrowUpRight,
-  Asterisk,
-  Check,
-  Link2,
-  MessageCircle,
-  Terminal
-} from 'lucide-react'
+import { ArrowUpRight, Check, Link2, Terminal } from 'lucide-react'
 import Image from 'next/image'
 
 import { brand } from '@/lib/brand'
@@ -65,13 +58,16 @@ export function LandingDetails() {
         <p>Bring the conversation from wherever it started.</p>
         <div className='provider-list'>
           <span>
-            <MessageCircle aria-hidden='true' /> ChatGPT
+            <img src='/providers/chatgpt.svg' width={24} height={24} alt='' />{' '}
+            ChatGPT
           </span>
           <span>
-            <Terminal aria-hidden='true' /> Codex
+            <img src='/providers/codex.svg' width={24} height={24} alt='' />{' '}
+            Codex
           </span>
           <span>
-            <Asterisk aria-hidden='true' /> Claude
+            <img src='/providers/claude.svg' width={24} height={24} alt='' />{' '}
+            Claude
           </span>
         </div>
       </section>
@@ -82,7 +78,6 @@ export function LandingDetails() {
         aria-labelledby='how-heading'
       >
         <div className='section-intro'>
-          <p className='eyebrow'>Small effort. Better sharing.</p>
           <h2 id='how-heading'>
             The good part,
             <br />
@@ -133,7 +128,6 @@ export function LandingDetails() {
         aria-labelledby='agents-heading'
       >
         <div className='section-intro'>
-          <p className='eyebrow'>Fits the way you work</p>
           <h2 id='agents-heading'>
             For you.
             <br />

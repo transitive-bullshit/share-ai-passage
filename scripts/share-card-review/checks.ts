@@ -73,7 +73,7 @@ const snapshotSchema = z.object({
         sourceHash: fingerprint,
         preview: z.object({
           title: z.string().min(1),
-          highlights: z.array(z.string().min(1)).min(1)
+          highlights: z.array(z.string().min(1))
         }),
         provider: z.enum(['chatgpt', 'claude']),
         reviewNotes: z.string(),

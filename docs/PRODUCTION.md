@@ -19,7 +19,7 @@ When deploying with this domain, add it to the existing Vercel project for Produ
 | Compute / idle behavior | Fixed 0.25 CU; suspends after five idle minutes |
 | Recovery history | Six hours, subject to the plan's limits |
 
-The checked-in migrations were applied during setup. Runtime uses a pooled `DATABASE_URL`; migrations prefer `DIRECT_DATABASE_URL` or `DATABASE_URL_UNPOOLED` when configured. The app's pool is limited to five connections per instance and disables prepared statements for pooler compatibility. Apply subsequent migrations before serving the changed application.
+Migration state verified September 13, 2026: local development and production are both through `0006_short_vertigo`. This run applied `0006` locally and pending `0005`–`0006` on production. Migration hashes, the source snapshot index, and publication constraints (1–600 title characters, 0–3 highlights) were verified. Saved conversations were not changed; this did not deploy the application. Runtime uses a pooled `DATABASE_URL`; migrations prefer `DIRECT_DATABASE_URL` or `DATABASE_URL_UNPOOLED` when configured. The app's pool is limited to five connections per instance and disables prepared statements for pooler compatibility. Apply subsequent migrations before serving the changed application.
 
 Credentials live in ignored `.env.prod.local` with owner-only file permissions. It contains a separate stable production `APP_SECRET` and the model configuration. Ordinary development and tests do not need this file.
 

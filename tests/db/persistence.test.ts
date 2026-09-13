@@ -188,7 +188,7 @@ describe.skipIf(!testUrl)('PostgreSQL persistence and concurrency', () => {
     expect(savedOriginal!.title).toBe('A useful conversation')
   })
 
-  it.each([null, [], {}, ['one', 'two', 'three', 'four']])(
+  it.each([null, {}, ['one', 'two', 'three', 'four']])(
     'rejects invalid publication highlights: %j',
     async (highlights) => {
       const source = await createSource()

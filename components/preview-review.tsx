@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowLeft, ArrowUpRight, BookOpen, Check } from 'lucide-react'
+import { ArrowLeft, ArrowUpRight, Check } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
@@ -18,7 +18,6 @@ import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import type { CardAppearance } from '@/lib/card-appearance'
 import { clientErrorMessage, postJson } from '@/lib/client-request'
-import { getSocialTemplate } from '@/lib/social-templates'
 import { parseGeneratedPreview } from '@/lib/summary'
 import {
   type GeneratedPreview,
@@ -171,13 +170,9 @@ export function PreviewReview({
       </div>
       <div className='review-heading'>
         <div>
-          <p className='eyebrow'>Ready when you are</p>
           <h1 ref={headingRef} tabIndex={-1}>
-            Review your passage.
+            Review your passage
           </h1>
-          <p className='review-description'>
-            Fine-tune the title and highlights, then choose a style.
-          </p>
         </div>
         <a
           className='text-link'
@@ -197,10 +192,7 @@ export function PreviewReview({
             disabled={pending}
             onChange={changePreview}
           />
-          <p className='review-note'>
-            Keep the wording true to the conversation. Your edits will appear on
-            the card and above the saved conversation.
-          </p>
+
           {error ? (
             <Alert variant='destructive'>
               <AlertDescription>{error}</AlertDescription>
@@ -216,28 +208,9 @@ export function PreviewReview({
               {pending ? 'Publishing…' : 'Publish passage'}
               {pending ? null : <ArrowUpRight data-icon='inline-end' />}
             </Button>
-            <p>
-              Creates a public link to your preview
-              <br />
-              and the saved conversation.
-            </p>
           </div>
         </div>
         <aside className='review-preview' aria-label='Social card preview'>
-          <div className='preview-heading'>
-            <span className='eyebrow'>Your social card</span>
-            <span role='status'>
-              {!validation.success
-                ? 'Check your text'
-                : cardReady
-                  ? 'Ready to publish'
-                  : currentCardError
-                    ? 'Preview unavailable'
-                    : preferencesReady
-                      ? 'Preparing…'
-                      : 'Loading your preference…'}
-            </span>
-          </div>
           <div
             className='live-card'
             aria-busy={!cardReady && !currentCardError}
@@ -270,10 +243,7 @@ export function PreviewReview({
               </AlertDescription>
             </Alert>
           ) : null}
-          <p className='preview-note'>
-            {getSocialTemplate(templateId).name} · How your link will appear
-            when you share it.
-          </p>
+
           <SocialTemplatePicker
             appearance={activeAppearance}
             provider={draft.provider}
@@ -281,15 +251,6 @@ export function PreviewReview({
             disabled={pending || !preferencesReady}
             preferencesAvailable={preferencesAvailable}
           />
-          <div className='reader-promise'>
-            <BookOpen size={18} aria-hidden='true' />
-            <p>
-              <strong>The saved conversation, included.</strong>
-              <br />
-              Read the saved conversation text, with known omissions marked and
-              a link to the original on {providerNames[draft.provider]}.
-            </p>
-          </div>
         </aside>
       </div>
     </section>

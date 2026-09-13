@@ -180,11 +180,11 @@ export const publications = pgTable(
     index('publications_snapshot_idx').on(table.snapshotId),
     check(
       'publications_title_length',
-      sql`char_length(${table.title}) between 1 and 60`
+      sql`char_length(${table.title}) between 1 and 600`
     ),
     check(
       'publications_highlights_count',
-      sql`jsonb_typeof(${table.highlights}) = 'array' and jsonb_array_length(${table.highlights}) between 1 and 3`
+      sql`jsonb_typeof(${table.highlights}) = 'array' and jsonb_array_length(${table.highlights}) between 0 and 3`
     ),
     check('publications_generation_nonnegative', sql`${table.generation} >= 0`)
   ]

@@ -120,7 +120,7 @@ function Card({ data, scale = 1 }: { data: CardData; scale?: number }) {
         >
           {title}
         </div>
-        {highlights ? (
+        {highlights?.length ? (
           <div
             style={{
               display: 'flex',
@@ -174,7 +174,7 @@ function Card({ data, scale = 1 }: { data: CardData; scale?: number }) {
               </div>
             ))}
           </div>
-        ) : (
+        ) : disabled ? (
           <div
             style={{
               display: 'flex',
@@ -195,7 +195,7 @@ function Card({ data, scale = 1 }: { data: CardData; scale?: number }) {
               conversation and preview have been disabled.
             </div>
           </div>
-        )}
+        ) : null}
       </div>
       <div
         className='social-card-footer'
@@ -405,52 +405,54 @@ function TemplateCard({
         >
           {data.title}
         </div>
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: layout.highlightGap * scale
-          }}
-        >
-          <span
+        {data.highlights.length > 0 ? (
+          <div
             style={{
-              fontFamily: cardFontFamily('Inter'),
-              fontSize: 12,
-              fontWeight: 500,
-              letterSpacing: '1.6px',
-              color: colors.accent,
-              marginBottom: 2
+              display: 'flex',
+              flexDirection: 'column',
+              gap: layout.highlightGap * scale
             }}
           >
-            HIGHLIGHTS
-          </span>
-          {data.highlights.map((highlight, index) => (
-            <div
-              key={index}
-              style={{ display: 'flex', gap: 13, alignItems: 'flex-start' }}
+            <span
+              style={{
+                fontFamily: cardFontFamily('Inter'),
+                fontSize: 12,
+                fontWeight: 500,
+                letterSpacing: '1.6px',
+                color: colors.accent,
+                marginBottom: 2
+              }}
             >
-              <HighlightMarker
-                template={template}
-                index={index}
-                scale={scale}
-              />
-              <span
-                style={{
-                  fontFamily: cardFontFamily(font.body.family),
-                  fontWeight: font.body.weight,
-                  fontSize: layout.highlightSize * scale,
-                  lineHeight: layout.highlightLineHeight,
-                  color: colors.muted,
-                  whiteSpace: 'normal',
-                  overflowWrap: 'anywhere',
-                  flex: 1
-                }}
+              HIGHLIGHTS
+            </span>
+            {data.highlights.map((highlight, index) => (
+              <div
+                key={index}
+                style={{ display: 'flex', gap: 13, alignItems: 'flex-start' }}
               >
-                {highlight}
-              </span>
-            </div>
-          ))}
-        </div>
+                <HighlightMarker
+                  template={template}
+                  index={index}
+                  scale={scale}
+                />
+                <span
+                  style={{
+                    fontFamily: cardFontFamily(font.body.family),
+                    fontWeight: font.body.weight,
+                    fontSize: layout.highlightSize * scale,
+                    lineHeight: layout.highlightLineHeight,
+                    color: colors.muted,
+                    whiteSpace: 'normal',
+                    overflowWrap: 'anywhere',
+                    flex: 1
+                  }}
+                >
+                  {highlight}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : null}
       </div>
       <div
         className='social-card-footer'
@@ -486,11 +488,15 @@ export function SocialCard({
   scale?: number
   background?: string
 }) {
-  if (data.disabled || !appearance) return <Card data={data} scale={scale} />
+  const filtered = data.disabled
+    ? data
+    : { ...data, highlights: data.highlights.filter((text) => text.trim()) }
+  if (filtered.disabled || !appearance)
+    return <Card data={filtered} scale={scale} />
   const template = getSocialTemplate(appearance.templateId)
   return (
     <TemplateCard
-      data={data}
+      data={filtered}
       template={template}
       background={background ?? template.backgroundImage}
       scale={scale}

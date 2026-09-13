@@ -20,7 +20,7 @@ Set `OPENAI_API_KEY` in `.env.local` before preparing a new conversation. Previe
 
 `pnpm dev` uses [Portless](https://portless.sh/). Open the exact URL printed in the terminal, normally `https://ai-chat-proxy.localhost`; proxy settings can change its scheme or port. Worktrees get their own app subdomain. To run directly at [localhost:3000](http://localhost:3000), use `PORTLESS=0 pnpm dev` (`PORT` overrides 3000).
 
-Paste a public `https://chatgpt.com/share/<uuid>`, `https://chatgpt.com/s/cx_<id>`, or `https://claude.ai/share/<uuid>` URL. Choose **Create a passage**, review or edit the generated title and existing highlights, choose a card style, then **Publish passage**. Text and style changes update the preview directly in the page without a `/api/card` request. Publishing becomes available when the text is valid and artwork, fonts, and text fitting are ready. The browser remembers your last style choice.
+Paste a public `https://chatgpt.com/share/<uuid>`, `https://chatgpt.com/s/cx_<id>`, or `https://claude.ai/share/<uuid>` URL. Choose **Create a passage**, review or edit the generated title and add or remove optional highlights, choose a card style, then **Publish passage**. Text and style changes update the preview directly in the page without a `/api/card` request. Publishing becomes available when the text is valid and artwork, fonts, and text fitting are ready. The browser remembers your last style choice.
 
 ### Local database
 
@@ -50,6 +50,8 @@ Start with [.env.example](.env.example). `APP_SECRET` must be stable and at leas
 
 The app derives its public origin from Portless in development, Vercel system variables when hosted there, or localhost and `PORT` elsewhere. The [production guide](docs/PRODUCTION.md) explains the exact origin and proxy behavior. Set `PASSAGE_URL` to the actual service origin when using the CLI or smoke scripts.
 
+The public `/llms.txt` is served from `public/llms.txt`. Keep its product summary, supported link formats, and documentation links aligned with current behavior.
+
 ## CLI and agent skill
 
 The standalone CLI requires Node.js 24+ and a running Passage service. It uses the same service operations as the web app and has no npm dependencies. Its default origin is `http://ai-chat-proxy.localhost:1355`; set `PASSAGE_URL` or `--base-url` to match your server.
@@ -61,7 +63,7 @@ pnpm share publish work/draft.json
 
 `prepare` never publishes. The standalone CLI's `publish` uses the original saved draft and its server, rejects changes to that local draft's preview, and reuses the link when retried. Browser draft editing is separate from this CLI flow. Keep draft files private: their tokens authorize publication until they expire.
 
-API clients can send an optional `preview: { title, highlights }` with the existing draft token to `POST /api/publish` or `POST /api/card`. Omitting it uses the cached generated preview. The server normalizes Unicode and whitespace and applies the same [summary limits](docs/MVP_PLAN.md#implementation-and-limits), including distinct highlights. Publishing stores the reviewed text in the publication; it does not replace the snapshot's cached generation.
+API clients can send an optional `preview: { title, highlights }` with the existing draft token to `POST /api/publish` or `POST /api/card`. Omitting it uses the cached generated preview. The server normalizes Unicode and whitespace and applies the same [summary limits](docs/MVP_PLAN.md#implementation-and-limits), including distinct nonblank highlights. Blank slots are filtered out, and a title-only passage is valid. Recommendations do not block publishing; hard caps are 600 Unicode characters for a title and 1,000 per highlight (at most three). Apply migration `0006_short_vertigo.sql` before deploying this behavior so database constraints accept the new limits. Publishing stores the reviewed text in the publication; it does not replace the snapshot's cached generation.
 
 `pnpm share '<public-url>'` displays the preview and asks before publishing in a terminal. Noninteractive use prepares only unless `--yes` is supplied. Use `--json` for structured output and `pnpm share --help` for options.
 

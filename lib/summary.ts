@@ -4,7 +4,8 @@ import {
   type ExtractedConversation,
   type GeneratedPreview,
   type Message,
-  limits
+  limits,
+  summaryRecommendations
 } from './domain'
 import { messageText } from './messages'
 
@@ -14,17 +15,17 @@ export function normalizeSummaryText(text: string) {
   return text.normalize('NFC').replace(/\s+/gu, ' ').trim()
 }
 
-function summaryText(limit: number, label: string) {
+function summaryText(limit: number, label: string, optional = false) {
   return (
     z
       .string()
-      .min(1, `Enter a ${label}.`)
+      .min(optional ? 0 : 1, `Enter a ${label}.`)
       // Zod counts UTF-16 units; the refinement applies the Unicode limit.
       .max(limit * 2, `Keep your ${label} within ${limit} characters.`)
       .refine((text) => {
         const normalized = normalizeSummaryText(text)
         return (
-          normalized.length > 0 &&
+          (optional || normalized.length > 0) &&
           !invalidUnicode.test(normalized) &&
           !Array.from(normalized).some((character) => {
             const point = character.codePointAt(0)!
@@ -45,27 +46,26 @@ function summaryText(limit: number, label: string) {
 export const generatedPreviewSchema = z
   .strictObject({
     title: summaryText(limits.title, 'title').describe(
-      `An informative, original title of at most ${limits.title} Unicode characters.`
+      `A specific, concise title. Aim for ${summaryRecommendations.titleWords} words or fewer, with the most distinctive terms first. ${limits.title} Unicode characters is the abuse-prevention ceiling, not a target.`
     ),
     highlights: z
       .array(
-        summaryText(limits.highlight, 'highlight').describe(
-          `A concise paraphrased takeaway of at most ${limits.highlight} Unicode characters.`
+        summaryText(limits.highlight, 'highlight', true).describe(
+          `A concise paraphrased takeaway, ideally within ${summaryRecommendations.highlight} characters. Hard ceiling: ${limits.highlight} Unicode characters.`
         )
       )
-      .min(1, 'Include at least one highlight.')
       .max(
         limits.highlights,
         `Include at most ${limits.highlights} highlights.`
       )
       .describe(
-        'Two or three distinct takeaways; one for a very short conversation.'
+        'Up to three distinct takeaways. Use one for a short source, or none when highlights would only repeat the title.'
       )
   })
   .refine(({ highlights }) => {
-    const normalized = highlights.map((text) =>
-      normalizeSummaryText(text).toLowerCase()
-    )
+    const normalized = highlights
+      .map((text) => normalizeSummaryText(text).toLowerCase())
+      .filter(Boolean)
     return new Set(normalized).size === normalized.length
   }, 'Use distinct highlights.')
 
@@ -87,7 +87,10 @@ export function parseGeneratedPreview(input: unknown) {
     }
   }
 
-  return generatedPreviewSchema.safeParse(candidate)
+  const parsed = generatedPreviewSchema.safeParse(candidate)
+  if (parsed.success)
+    parsed.data.highlights = parsed.data.highlights.filter(Boolean)
+  return parsed
 }
 
 export function validateGeneratedPreview(input: unknown): GeneratedPreview {

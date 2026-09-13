@@ -27,7 +27,7 @@ Passage helps people share useful work they do with AI. Heavy AI users and build
 
 The promise is confidence in sharing: a link someone feels proud to send, with enough context for a reader to understand its value. Grounded highlights, a preview before publication, and an original-source link support that promise. Sharing one’s process and learning in public are motivations, not guarantees of reach or growth.
 
-The product currently accepts public ChatGPT, Codex, and Claude conversation links, generates a title and highlights that the sharer can refine before publication, offers five curated card styles, and publishes a passage with saved conversation text and its original source. Published wording stays fixed. Browser, CLI, and agent workflows serve this same purpose. Current scope and limits live in the [MVP plan](MVP_PLAN.md); the brand does not add accounts, collections, or custom themes.
+The product currently accepts public ChatGPT, Codex, and Claude conversation links, generates a title and optional highlights that the sharer can refine before publication, offers five curated card styles, and publishes a passage with saved conversation text and its original source. Published wording stays fixed. Browser, CLI, and agent workflows serve this same purpose. Current scope and limits live in the [MVP plan](MVP_PLAN.md); the brand does not add accounts, collections, or custom themes.
 
 **Creative idea:** Conversations worth sharing. **Rationale:** A clear promise in a calm visual system: Inter, white and charcoal, and a painted landscape give each passage room. Keep the service branding subordinate to the work being shared.
 
@@ -62,7 +62,7 @@ Local Inter WOFF inputs and the [license](brand-assets/fonts/inter-LICENSE.txt) 
 
 The [painted landscape](brand-assets/passage-landscape.png) is the accepted hero: a soft impressionistic lake with water lilies, trees, and distant misty hills. Its broad, calm setting frames a white example passage. Keep enough of the landscape visible to retain that sense of place; its purpose is to frame readable work.
 
-Use a centered introduction, clear descriptor, public-link input, and **Create a passage** CTA. The announcement above the headline is removed. The landscape showcase follows the form. The social image is composed specifically for 1200 × 630; individual passage cards lead with their content rather than the product headline.
+Use a centered introduction, clear descriptor, public-link input, and **Create a passage** CTA. The announcement above the headline is removed. The homepage header omits the creation CTA; it remains available on reader pages. Below-fold sections use headings without eyebrow copy. Provider labels use locally stored ChatGPT, Codex, and Claude logos from `public/providers/`. The landscape showcase follows the form. The social image is composed specifically for 1200 × 630; individual passage cards lead with their content rather than the product headline.
 
 The landscape is the existing 1672 × 941 application image, retained unchanged. Its SHA-256 is `d4618cc38cadbc1d14f9e36ae168ff8d648093e509361c8a709303086d83989a`. The exact original generation prompt was not recovered; see [historical provenance](brand-exploration/round-05/assets/provenance.md). No new imagery was generated for this identity.
 
@@ -73,12 +73,14 @@ Write plainly, warmly, and with respect for the work being shared. Name the acti
 | Use | Purpose |
 | --- | --- |
 | Create a passage | Begin the creation workflow |
-| Paste a public link… | Explain the required input |
+| Paste a public chat link… | Explain the required input |
 | Preview first. Publish when you’re ready. | Make the publication boundary clear |
 | Highlights | Label the generated introduction |
 | Example passage | Label illustrative product content |
 | Read the passage | Open the published artifact |
 | Copy passage link | Copy its address |
+
+The editor uses “Review your passage” without a period. Style choices show visual thumbnails with accessible names, without visible theme names or preview captions. Title guidance is roughly 10 words at most (usually 4–7), leading with the most distinctive terms; highlights recommend 100 characters. These are soft recommendations, with hard caps of 600 title characters and 1,000 characters per highlight. Sharers can add or remove up to three highlights; blank highlights and empty highlights sections are omitted.
 
 Share card titles occupy at most two lines, with an ellipsis when the title overflows. Keep the full title in the saved summary and reader. Card footers show the source attribution or example mantra. Reserve **Read the passage** for the interactive link that opens a published passage; omit it from card templates and their exported images.
 

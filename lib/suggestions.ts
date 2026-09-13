@@ -4,7 +4,7 @@ import { generateText, Output } from 'ai'
 import {
   type ExtractedConversation,
   type GeneratedPreview,
-  limits
+  summaryRecommendations
 } from './domain'
 import { AppError } from './errors'
 import { getPreviewFailureDiagnostic } from './preview-diagnostics'
@@ -54,7 +54,8 @@ export async function suggestPreview(
       }),
       system: [
         'Summarize a public AI conversation for a small share card.',
-        `Write an informative title of at most ${limits.title} Unicode characters and two or three distinct highlights of at most ${limits.highlight} Unicode characters each. Use one highlight only for a very short source.`,
+        `Write the shortest specific title that identifies what makes this conversation worth opening. Aim for ${summaryRecommendations.titleWords} words or fewer; shorter is better when it preserves meaning. Put the most unique, relevant terms first: the named subject, concrete problem, finding, or trade-off. Usually use 4–7 words. Keep only the central distinguishing idea; do not pack the title with every detail. Cut generic openings, setup, filler, and repeated context (for example, omit "for future use" from a title about freezing bread).`,
+        `Write only distinct, useful highlights, ideally within ${summaryRecommendations.highlight} characters each. Use up to three; one is enough for a short source, and none is better than filler or repeating the title. These are brevity recommendations, not targets to fill.`,
         'Paraphrase the main ideas in original words. Use plain text without quotation marks, speaker prefixes, Markdown, or a verbatim excerpt.',
         'Make each highlight useful on its own: state a concrete takeaway, trade-off, or proposed next step. Lead with the topic or conclusion itself.',
         'Ground every claim in the supplied conversation. Preserve uncertainty. Describe proposed work as proposed, without claiming it was completed. Do not invent facts, outcomes, or attribution.',

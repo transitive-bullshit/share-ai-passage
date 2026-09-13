@@ -275,19 +275,19 @@ it('shows field errors for empty and over-limit edits while counting Unicode cha
   await editField('summary-title', '😀'.repeat(60))
   await finishArtwork('margin-notes')
   expect(container.querySelector('#summary-title-count')?.textContent).toBe(
-    '60 / 60'
+    '1 word · ~10 recommended'
   )
   expect(publishButton().disabled).toBe(false)
 
-  const title = await editField('summary-title', '😀'.repeat(61))
+  const title = await editField('summary-title', '😀'.repeat(601))
   expect(title.getAttribute('aria-invalid')).toBe('true')
   expect(container.querySelector('#summary-title-error')?.textContent).toBe(
-    'Keep your title within 60 characters.'
+    'Keep your title within 600 characters.'
   )
-  await editField('summary-highlight-1', 'a'.repeat(101))
+  await editField('summary-highlight-1', 'a'.repeat(1001))
   expect(
     container.querySelector('#summary-highlight-1-error')?.textContent
-  ).toBe('Keep your highlight within 100 characters.')
+  ).toBe('Keep your highlight within 1000 characters.')
   await finishArtwork('margin-notes')
   expect(publishButton().disabled).toBe(true)
   expect(requests).not.toHaveBeenCalled()
@@ -310,4 +310,45 @@ it('requires distinct edited highlights and keeps edits when changing styles', a
   )
   expect(publishButton().disabled).toBe(false)
   expect(container.querySelector('#summary-error')).toBeNull()
+})
+
+it('publishes above recommendations with whitespace highlights removed', async () => {
+  await act(async () => root.render(createElement(ReviewHarness)))
+  await editField(
+    'summary-title',
+    'A useful specific title that takes more than ten words to describe clearly'
+  )
+  await editField('summary-highlight-1', ' \n\t ')
+  await editField('summary-highlight-2', 'A'.repeat(101))
+  await finishArtwork('margin-notes')
+  expect(publishButton().disabled).toBe(false)
+  await act(async () => publishButton().click())
+  const body = JSON.parse(requests.mock.calls[0]![1]!.body as string)
+  expect(body.preview.highlights).toEqual(['A'.repeat(101)])
+})
+
+it('removes every highlight and restores an optional empty field', async () => {
+  await act(async () => root.render(createElement(ReviewHarness)))
+  for (let count = 0; count < 2; count++) {
+    const remove = Array.from(container.querySelectorAll('button')).find(
+      (button) => button.getAttribute('aria-label') === 'Remove highlight 1'
+    )!
+    await act(async () => remove.click())
+  }
+  await finishArtwork('margin-notes')
+  expect(publishButton().disabled).toBe(false)
+  expect(container.querySelector('.live-card')?.textContent).not.toContain(
+    'HIGHLIGHTS'
+  )
+  const add = Array.from(container.querySelectorAll('button')).find(
+    (button) => button.textContent === 'Add highlight'
+  )!
+  await act(async () => add.click())
+  const field = container.querySelector<HTMLTextAreaElement>(
+    '#summary-highlight-1'
+  )!
+  expect(field.value).toBe('')
+  expect(field.required).toBe(false)
+  await finishArtwork('margin-notes')
+  expect(publishButton().disabled).toBe(false)
 })

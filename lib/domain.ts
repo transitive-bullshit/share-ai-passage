@@ -95,9 +95,15 @@ export const providerNames = {
   claude: 'Claude'
 } satisfies Record<Provider, string>
 
-export const limits = {
+export const summaryRecommendations = {
+  titleWords: 10,
   title: 60,
-  highlight: 100,
+  highlight: 100
+} as const
+
+export const limits = {
+  title: summaryRecommendations.title * 10,
+  highlight: summaryRecommendations.highlight * 10,
   highlights: 3,
   transcriptBytes: 1024 * 1024,
   freshnessMs: 7 * 24 * 60 * 60 * 1000,

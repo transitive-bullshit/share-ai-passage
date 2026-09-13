@@ -71,11 +71,11 @@ describe('generated preview validation', () => {
       }).title
     ).toBe('é'.repeat(60))
     expect(() =>
-      validateGeneratedPreview({ ...preview, title: '🌱'.repeat(61) })
-    ).toThrow('60 characters')
+      validateGeneratedPreview({ ...preview, title: '🌱'.repeat(601) })
+    ).toThrow('600 characters')
     expect(() =>
-      validateGeneratedPreview({ ...preview, highlights: ['🦊'.repeat(101)] })
-    ).toThrow('100 characters')
+      validateGeneratedPreview({ ...preview, highlights: ['🦊'.repeat(1001)] })
+    ).toThrow('1000 characters')
   })
 
   it.each([
@@ -86,15 +86,35 @@ describe('generated preview validation', () => {
     { ...preview, title: '\uD800' },
     { ...preview, title: 'bad\0title' },
     { ...preview, title: '\n\t ' },
-    { ...preview, highlights: [] },
     { ...preview, highlights: ['a', 'b', 'c', 'd'] },
     { ...preview, highlights: [null] },
-    { ...preview, highlights: ['\n '] },
     { ...preview, highlights: ['bad\uDFFFtext'] },
     { ...preview, highlights: ['bad\u0001text'] },
     { ...preview, highlights: ['Same point', ' same\npoint '] }
   ])('rejects malformed or unusable generated output %j', (input) => {
     expect(() => validateGeneratedPreview(input)).toThrow()
+  })
+
+  it('allows optional highlights, filters blank slots, and accepts the full hard limits', () => {
+    expect(
+      validateGeneratedPreview({
+        title: 'Title',
+        highlights: [' ', '\n\t', 'Keep this.']
+      })
+    ).toEqual({ title: 'Title', highlights: ['Keep this.'] })
+    expect(
+      validateGeneratedPreview({ title: 'Title', highlights: [] }).highlights
+    ).toEqual([])
+    expect(
+      validateGeneratedPreview({ title: 'Title', highlights: [' ', ''] })
+        .highlights
+    ).toEqual([])
+    expect(
+      validateGeneratedPreview({
+        title: '🌱'.repeat(600),
+        highlights: ['🦊'.repeat(1000)]
+      })
+    ).toEqual({ title: '🌱'.repeat(600), highlights: ['🦊'.repeat(1000)] })
   })
 
   it('accepts one highlight for a short source and up to three distinct highlights', () => {
@@ -182,7 +202,7 @@ describe('mandatory generated previews', () => {
       })
       await expect(suggestPreview(conversation)).resolves.toEqual({
         ...preview,
-        [field]: field === 'title' ? 'x'.repeat(60) : ['x'.repeat(100)]
+        [field]: field === 'title' ? 'x'.repeat(600) : ['x'.repeat(1000)]
       })
       expect(generate).toHaveBeenCalledTimes(1)
     }
@@ -216,8 +236,7 @@ describe('mandatory generated previews', () => {
   })
 
   it.each([
-    { ...preview, title: 'x'.repeat(61) },
-    { ...preview, highlights: [] },
+    { ...preview, title: 'x'.repeat(601) },
     { ...preview, highlights: ['Same', ' same '] },
     { ...preview, excerpt: 'Invented text' }
   ])(

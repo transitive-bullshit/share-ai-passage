@@ -1,13 +1,20 @@
 'use client'
 
+import { X } from 'lucide-react'
+
 import {
   Field,
   FieldError,
   FieldGroup,
   FieldLabel
 } from '@/components/ui/field'
+import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { type GeneratedPreview, limits } from '@/lib/domain'
+import {
+  type GeneratedPreview,
+  limits,
+  summaryRecommendations
+} from '@/lib/domain'
 import { normalizeSummaryText } from '@/lib/summary'
 
 type ValidationIssue = { path: readonly PropertyKey[]; message: string }
@@ -16,7 +23,9 @@ function SummaryTextField({
   id,
   label,
   value,
-  limit,
+  recommendation,
+  wordCount = false,
+  onRemove,
   error,
   groupError,
   disabled,
@@ -25,13 +34,21 @@ function SummaryTextField({
   id: string
   label: string
   value: string
-  limit: number
+  recommendation: number
+  wordCount?: boolean
+  onRemove?: () => void
   error?: string
   groupError?: string
   disabled: boolean
   onChange: (value: string) => void
 }) {
-  const count = Array.from(normalizeSummaryText(value)).length
+  const normalized = normalizeSummaryText(value)
+  const count = wordCount
+    ? normalized
+      ? normalized.split(/\s+/u).length
+      : 0
+    : Array.from(normalized).length
+  const unit = wordCount ? (count === 1 ? 'word' : 'words') : 'characters'
   const invalid = Boolean(error || groupError)
   return (
     <Field data-invalid={invalid} data-disabled={disabled}>
@@ -40,11 +57,24 @@ function SummaryTextField({
         <span
           id={`${id}-count`}
           className='summary-character-count'
-          data-over-limit={count > limit}
-          aria-label={`${count} of ${limit} characters`}
+          data-over-limit={count > recommendation}
+          aria-label={`${count} ${unit}; ${recommendation} or fewer recommended`}
         >
-          {count} / {limit}
+          {count} {unit} · {wordCount ? '~' : ''}
+          {recommendation} recommended
         </span>
+        {onRemove ? (
+          <Button
+            type='button'
+            variant='ghost'
+            size='icon-xs'
+            disabled={disabled}
+            onClick={onRemove}
+            aria-label={`Remove ${label.toLowerCase()}`}
+          >
+            <X />
+          </Button>
+        ) : null}
       </div>
       <Textarea
         id={id}
@@ -52,7 +82,7 @@ function SummaryTextField({
         value={value}
         rows={2}
         className='resize-none'
-        required
+        required={id === 'summary-title'}
         disabled={disabled}
         aria-invalid={invalid}
         aria-describedby={[
@@ -64,6 +94,7 @@ function SummaryTextField({
           .join(' ')}
         onChange={(event) => onChange(event.target.value)}
       />
+
       {error ? <FieldError id={`${id}-error`}>{error}</FieldError> : null}
     </Field>
   )
@@ -88,7 +119,8 @@ export function SummaryEditor({
           id='summary-title'
           label='Title'
           value={preview.title}
-          limit={limits.title}
+          recommendation={summaryRecommendations.titleWords}
+          wordCount
           error={issues.find((issue) => issue.path[0] === 'title')?.message}
           disabled={disabled}
           onChange={(title) => onChange({ ...preview, title })}
@@ -99,12 +131,20 @@ export function SummaryEditor({
             id={`summary-highlight-${index + 1}`}
             label={`Highlight ${index + 1}`}
             value={highlight}
-            limit={limits.highlight}
+            recommendation={summaryRecommendations.highlight}
             error={
               issues.find(
                 (issue) =>
                   issue.path[0] === 'highlights' && issue.path[1] === index
               )?.message
+            }
+            onRemove={() =>
+              onChange({
+                ...preview,
+                highlights: preview.highlights.filter(
+                  (_, position) => position !== index
+                )
+              })
             }
             groupError={groupError}
             disabled={disabled}
@@ -118,6 +158,18 @@ export function SummaryEditor({
             }
           />
         ))}
+        {preview.highlights.length < limits.highlights ? (
+          <Button
+            type='button'
+            variant='outline'
+            disabled={disabled}
+            onClick={() =>
+              onChange({ ...preview, highlights: [...preview.highlights, ''] })
+            }
+          >
+            Add highlight
+          </Button>
+        ) : null}
         {groupError ? (
           <FieldError id='summary-error'>{groupError}</FieldError>
         ) : null}

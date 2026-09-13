@@ -43,6 +43,13 @@
       "when": 1789129352546,
       "tag": "0005_source_latest_snapshot_index",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789306240747,
+      "tag": "0006_short_vertigo",
+      "breakpoints": true
     }
   ]
 }

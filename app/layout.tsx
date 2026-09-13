@@ -7,6 +7,7 @@ import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 import { Analytics } from '@vercel/analytics/next'
 
+import { HeaderCreateLink } from '@/components/header-create-link'
 import { BrandMark } from '@/components/brand-mark'
 import { Separator } from '@/components/ui/separator'
 import { brand } from '@/lib/brand'
@@ -62,9 +63,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <nav className='header-nav' aria-label='Main navigation'>
               <a href='/#how-it-works'>How it works</a>
               <a href='/#for-agents'>For agents</a>
-              <a className='header-cta' href='/'>
-                {brand.cta} <span aria-hidden='true'>↗</span>
-              </a>
+              <HeaderCreateLink />
             </nav>
           </header>
           {children}

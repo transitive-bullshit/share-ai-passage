@@ -152,7 +152,7 @@ export function ShareFlow({ children }: { children?: ReactNode }) {
                       setUrl(event.target.value)
                       setError('')
                     }}
-                    placeholder='Paste a public link…'
+                    placeholder='Paste a public chat link…'
                     disabled={pending}
                     aria-invalid={Boolean(error)}
                     aria-describedby='source-help'

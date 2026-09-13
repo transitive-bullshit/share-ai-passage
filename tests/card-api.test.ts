@@ -209,10 +209,9 @@ describe('saved social-card appearance routes', () => {
     { appearance: { templateId: 'unknown' } },
     { appearance: { templateId: 'margin-notes', font: 'remote.woff' } },
     { preview: null },
-    { preview: { title: 'x'.repeat(61), highlights: ['One.'] } },
-    { preview: { title: 'Title', highlights: ['x'.repeat(101)] } },
+    { preview: { title: 'x'.repeat(601), highlights: ['One.'] } },
+    { preview: { title: 'Title', highlights: ['x'.repeat(1001)] } },
     { preview: { title: 'Title', highlights: ['Same', ' same '] } },
-    { preview: { title: 'Title', highlights: [] } },
     { title: 'A client-authored title' },
     { highlights: ['A client-authored highlight'] },
     { selection: 'A client-selected excerpt' }

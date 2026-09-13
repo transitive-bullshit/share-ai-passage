@@ -7,14 +7,14 @@ This document owns product scope and remaining work. See the [glossary](CONTEXT.
 ## Product behavior
 
 1. Paste a supported public conversation URL. Fetch or reuse its saved content and normalize the messages.
-2. Generate a concise title and two or three grounded highlights for an uncached snapshot; use one highlight for a very short source. Highlights are paraphrases, not attributed quotations. Successful generation is required; failures return a retryable error.
-3. Review and edit the title and existing highlights, then choose one of five curated card styles in the in-page preview. Text and style changes update the card as you work. Publish stays disabled while text is invalid or artwork, fonts, and text fitting are not ready.
+2. Generate a concise title and up to three grounded highlights for an uncached snapshot; use fewer for short sources and omit highlights that only repeat the title. Aim for a 4–7 word title, roughly 10 words at most, with the most distinctive terms first. Highlights are paraphrases, not attributed quotations. Successful generation is required; failures return a retryable error.
+3. Review and edit the title, add or remove optional highlights, then choose one of five curated card styles in the in-page preview. Text and style changes update the card as you work. Publish stays disabled while text is invalid or artwork, fonts, and text fitting are not ready.
 4. Publish the reviewed wording and chosen style, then copy or open the share URL. Repeated publication of the same presentation reuses its link while available.
 5. Read the saved conversation with its original-source link. Preserve extracted text, ordering, roles, Markdown, code, tables, and safe links. Known unsupported media, tools, and artifacts appear as explicit omissions.
 
 The browser, CLI, and [agent skill](../.agents/skills/passage-share/SKILL.md) use the same prepare/publish operations. Browser drafts support text editing before publication; the standalone CLI publishes its original saved draft without regenerating. Draft tokens authorize publication for 24 hours and stay private.
 
-Card styles are repository-owned presets in [social-templates.ts](../lib/social-templates.ts). The browser remembers only appearance preferences; the initial default is Margin notes. Picker thumbnails and selected previews render [SocialCard](../lib/social-card.tsx) directly in the page. Switching styles makes no `/api/card` request. Browser previews and exported images share template JSX and styles, artwork, font packages, and the fitting policy. Titles display at most two lines with an ellipsis for overflow; the saved summary and reader retain the full title. Card footers show attribution without a reader CTA. The browser measures its own text, so fitted sizes and rendered pixels can differ from Takumi. Publications retain their selected style when browser preferences change. Existing publications with no style retain the plain layout.
+Card styles are repository-owned presets in [social-templates.ts](../lib/social-templates.ts). The browser remembers only appearance preferences; the initial default is Margin notes. Picker thumbnails and selected previews render [SocialCard](../lib/social-card.tsx) directly in the page. Switching styles makes no `/api/card` request. Browser previews and exported images share template JSX and styles, artwork, font packages, and the fitting policy. Blank or whitespace-only highlights are filtered before publication and rendering; title-only cards and readers omit the highlights heading. Character recommendations do not block publication; the hard caps do. Titles display at most two lines with an ellipsis for overflow; the saved summary and reader retain the full title. Card footers show attribution without a reader CTA. The browser measures its own text, so fitted sizes and rendered pixels can differ from Takumi. Publications retain their selected style when browser preferences change. Existing publications with no style retain the plain layout.
 
 Reader and image routes supply crawler-readable initial metadata, absolute image URLs, and noindex directives. Takumi renders 1200 × 630 WebP cards at quality 90 with bundled artwork and fonts, without provider or model requests. Social metadata declares `image/webp`. The draft card endpoint returns WebP by default and supports explicit HTML requests for agent and HTTP consumers.
 
@@ -37,7 +37,7 @@ Generation currently uses OpenAI with a configurable model, defaulting to `gpt-5
 
 | Limit | Default |
 | --- | --- |
-| Title / highlight | 60 / 100 Unicode code points; 1–3 distinct highlights |
+| Title / highlight | Soft guidance: roughly 10 words for the title, 100 characters per highlight. Hard caps: 600 / 1,000 Unicode code points; 0–3 distinct nonblank highlights |
 | Provider fetch | 15 seconds total, 2 redirects, 5 MiB wire and decompressed body |
 | Saved transcript | 1 MiB encoded message JSON; oversized input is rejected |
 | Mutation body | 16 KiB |

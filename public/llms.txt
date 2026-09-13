@@ -1,0 +1,21 @@
+# Passage
+
+> Turn your AI chats into links you’ll be proud to share.
+
+Passage turns public ChatGPT, Codex, and Claude conversations into shareable pages with a concise title, AI-generated highlights, a social preview card, and the saved conversation with its original-source link. No account is required.
+
+## Workflow
+
+1. Paste a public conversation link: `https://chatgpt.com/share/<uuid>`, `https://chatgpt.com/s/cx_<id>`, or `https://claude.ai/share/<uuid>`.
+2. Review and edit the generated title and highlights, and choose a card style.
+3. Publish the passage and copy its share link. Preparation alone does not publish.
+
+Published wording is fixed. Private conversations are not supported. Known unsupported media, tools, and artifacts are marked as omissions. Confirmed removal of the source disables its existing passages; availability checks are not instantaneous.
+
+## Links
+
+- [Create a passage](https://share-ai-passage.com/): Browser creation workflow.
+- [Source repository](https://github.com/transitive-bullshit/ai-chat-proxy): MIT-licensed application.
+- [CLI and setup](https://github.com/transitive-bullshit/ai-chat-proxy/blob/main/contributing.md): Local setup, configuration, and prepare/publish commands.
+- [Agent skill](https://github.com/transitive-bullshit/ai-chat-proxy/blob/main/.agents/skills/passage-share/SKILL.md): Share an existing public conversation using the bundled CLI. Set PASSAGE_URL to the service origin and keep draft tokens private.
+- [Product behavior](https://github.com/transitive-bullshit/ai-chat-proxy/blob/main/docs/MVP_PLAN.md): Supported behavior, limits, and scope.
