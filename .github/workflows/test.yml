@@ -2,10 +2,15 @@ name: Test
 
 on: [push]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
-    name: Test Node.js ${{ matrix.node-version }}
+    name: Test Node.js 24
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     services:
       postgres:
@@ -24,18 +29,12 @@ jobs:
       TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ai_chat_proxy_test
       APP_SECRET: ci-only-random-test-secret-not-for-deployment
 
-    strategy:
-      fail-fast: true
-      matrix:
-        node-version:
-          - 24
-
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 24
           cache: 'pnpm'
 
       - run: pnpm install --frozen-lockfile --strict-peer-dependencies

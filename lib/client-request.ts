@@ -29,17 +29,15 @@ export function clientErrorMessage(error: unknown) {
   return error instanceof ClientRequestError ? error.message : connectionError
 }
 
-async function postResponse(path: string, body: unknown, signal?: AbortSignal) {
+async function postResponse(path: string, body: unknown) {
   let response: Response
   try {
     response = await fetch(path, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      signal
+      body: JSON.stringify(body)
     })
-  } catch (err) {
-    if (signal?.aborted) throw err
+  } catch {
     throw new ClientRequestError(connectionError)
   }
 
@@ -68,19 +66,5 @@ export async function postJson<T>(path: string, body: unknown) {
     return (await response.json()) as T
   } catch {
     throw new ClientRequestError(responseError, response.status)
-  }
-}
-
-export async function postBlob(
-  path: string,
-  body: unknown,
-  signal?: AbortSignal
-) {
-  const response = await postResponse(path, body, signal)
-  try {
-    return await response.blob()
-  } catch (err) {
-    if (signal?.aborted) throw err
-    throw new ClientRequestError(connectionError)
   }
 }

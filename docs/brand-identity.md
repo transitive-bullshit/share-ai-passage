@@ -19,7 +19,7 @@
 
 Preserve the headline and descriptor without a trailing period. The headline may break after the comma: **Your AI chats,** / **worth sharing**. Use title case for the brand and lowercase for the artifact. **Publication** remains the internal domain term; customer-facing copy uses **passage**. See the [glossary](CONTEXT.md).
 
-The production domain is **share-ai-passage.com**, purchased by the owner on September 12, 2026. The intended production URL is **https://share-ai-passage.com**. This records the owner’s purchase and intended use; DNS, hosting association, and HTTPS activation are deployment work. The application continues deriving its origin from its runtime configuration. See [production guidance](PRODUCTION.md).
+The production domain is **share-ai-passage.com**, purchased by the owner on September 12, 2026. Its canonical production URL is **https://www.share-ai-passage.com**; the apex redirects there. Anonymous HTTPS serving was verified on September 13. The application continues deriving its origin from its runtime configuration. See [production guidance](PRODUCTION.md).
 
 ## Purpose, audience, and promise
 
@@ -86,7 +86,7 @@ Share card titles occupy at most two lines, with an ellipsis when the title over
 
 Margin notes, Electric risograph, Maker’s workbench, and Friendly lab use 16 px footer text with the footer rule at y = 566 on the 1200 × 630 canvas. Midnight observatory uses 14 px text with its rule at y = 558.
 
-The one-pager’s example is **A calmer way to build with AI**, with “Start with a clear question.”, “Make the tradeoffs visible.”, and “Keep the reasoning close.” These are illustrative design content, not a required title or fixed highlights in the product. Preserve the existing live example when applying the identity.
+The one-pager’s example is **A calmer way to build with AI**, with “Start with a clear question.”, “Make the tradeoffs visible.”, and “Keep the reasoning close.” These are illustrative design content, not a required title or fixed highlights in the product. The website and README use a more concrete authored debugging example, **Why the test passed locally but failed in CI**, to show useful takeaways and the conversation behind them.
 
 ## Assets and maintenance
 
@@ -109,7 +109,7 @@ pnpm exec tsx docs/brand-assets/build.ts
 
 The build uses tsx and the development-only Resvg/Satori dependencies; OpenType is resolved through Satori. Application cards use the separate Takumi renderer. It checks the JSON render projection and shared site copy against this guide. SVG one-pager/social outputs retain editable text with embedded font and image inputs; PNG output outlines the same fonts. The command also updates the application favicon files and `public/brand/social-preview.png`.
 
-The README shows two clearly labeled illustrative passages, using Margin notes and Midnight observatory. Their shared marketing conversation lives in [marketing-examples.ts](../lib/marketing-examples.ts); the same card renderer exports their WebP images. These examples ship with the app and do not depend on production database records or provider share URLs. Their footer uses the brand mantra. See [maintenance instructions](../contributing.md#marketing-examples).
+The README shows two clearly labeled illustrative passages, using Margin notes and Midnight observatory. Their shared debugging conversation lives in [marketing-examples.ts](../lib/marketing-examples.ts); the homepage links to the first example and uses its image route. The same card renderer exports the README WebP images. These examples ship with the app and do not depend on production database records or provider share URLs. Their footer uses the brand mantra. Place links to try Passage, read an example, and run locally before the README images. Link the site’s agent section to its setup instructions and skill. See [maintenance instructions](../contributing.md#marketing-examples).
 
 **Export verification (September 12, 2026):** Actual PNG dimensions and all three embedded ICO entries were checked. Application icons and social artwork are byte-identical to their canonical masters. SVGs have no external asset references; standalone copies reproduced identical PNGs using only embedded fonts and artwork with system fonts disabled. All PNG compositions and the marks at 16–96 px were visually inspected. The live homepage was checked at desktop and 375 px, and the new favicon, social image, metadata, and example-card routes were verified. After integrating the Takumi renderer, `pnpm test` passed all 407 tests with a migrated disposable local PostgreSQL database, including 37 card/image-route tests, and `pnpm build` passed. Both example readers and their 1200 × 630 WebP routes returned 200 from the local production build; unknown examples returned 404. The exported images and the same templates rendered as HTML in Chrome were visually checked for font, artwork, and text fit.
 

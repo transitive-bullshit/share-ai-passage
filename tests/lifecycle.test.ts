@@ -26,7 +26,7 @@ import {
   type ProviderResult,
   type SourceReference
 } from '@/lib/domain'
-import { readDraftToken } from '@/lib/drafts'
+import { createDraftToken, readDraftToken } from '@/lib/drafts'
 import { AppError } from '@/lib/errors'
 import { message } from '@/lib/messages'
 import {
@@ -135,6 +135,55 @@ it.each([
     ).rejects.toMatchObject({ status: 400 })
   }
 )
+
+it('rejects an expired draft even when valid edited text is supplied', async () => {
+  const token = createDraftToken(
+    randomUUID(),
+    0,
+    generatedPreview,
+    Date.now() - 24 * 60 * 60 * 1000
+  )
+  await expect(
+    publishPreview(token, DEFAULT_CARD_APPEARANCE, {
+      title: 'An edited title',
+      highlights: ['An edited takeaway.']
+    })
+  ).rejects.toMatchObject({ status: 410 })
+})
+
+it('maps rate-limit results to allowed requests and retryable errors', async () => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(baseTime)
+  const resetAt = new Date(baseTime.getTime() + 1501)
+  const budget = vi
+    .spyOn(databaseRateLimit, 'consumeRateLimit')
+    .mockResolvedValueOnce({ allowed: true, remaining: 4, resetAt })
+    .mockResolvedValueOnce({ allowed: false, remaining: 0, resetAt })
+    .mockResolvedValueOnce({
+      allowed: false,
+      remaining: 0,
+      resetAt: baseTime
+    })
+  try {
+    await expect(enforceBudget('test:budget', 5)).resolves.toBeUndefined()
+    expect(budget).toHaveBeenCalledExactlyOnceWith({
+      key: 'test:budget',
+      limit: 5,
+      windowMs: limits.cooldownMs
+    })
+    await expect(enforceBudget('test:budget', 5)).rejects.toMatchObject({
+      status: 429,
+      retryAfter: 2
+    })
+    await expect(enforceBudget('test:budget', 5)).rejects.toMatchObject({
+      status: 429,
+      retryAfter: 1
+    })
+  } finally {
+    budget.mockRestore()
+    vi.useRealTimers()
+  }
+})
 
 describe.skipIf(!testUrl)('publication lifecycle with PostgreSQL', () => {
   beforeAll(() => {
@@ -308,17 +357,6 @@ describe.skipIf(!testUrl)('publication lifecycle with PostgreSQL', () => {
     ).toEqual(['🦊'.repeat(limits.highlight)])
   })
 
-  it('rejects an expired draft even when valid edited text is supplied', async () => {
-    const prepared = await prepareSource(sourceUrl())
-    advance(24 * limits.cooldownMs)
-    await expect(
-      publishPreview(prepared.draftToken, DEFAULT_CARD_APPEARANCE, {
-        title: 'An edited title',
-        highlights: ['An edited takeaway.']
-      })
-    ).rejects.toMatchObject({ status: 410 })
-  })
-
   it('saves different templates independently and reuses the same content and style across drafts', async () => {
     const url = sourceUrl()
     const first = await prepareSource(url)
@@ -467,9 +505,8 @@ describe.skipIf(!testUrl)('publication lifecycle with PostgreSQL', () => {
     expect(upstream.suggestPreview).toHaveBeenCalledTimes(2)
   })
 
-  it('shares the manual cooldown across publications and admits checks at its exact boundary', async () => {
-    const { source, prepared } = await preparedPublication()
-    await publishPreview(prepared.draftToken)
+  it('enforces the source manual cooldown and admits checks at its exact boundary', async () => {
+    const { source } = await preparedPublication()
     advance(limits.cooldownMs - 1)
     expect((await checkAvailability(source.id, 'manual')).status).toBe(
       'cooldown'
@@ -485,22 +522,6 @@ describe.skipIf(!testUrl)('publication lifecycle with PostgreSQL', () => {
     expect((await checkAvailability(source.id, 'manual')).status).toBe(
       'cooldown'
     )
-  })
-
-  it('enforces five manual attempts per client atomically', async () => {
-    const key = `test:manual:${randomUUID()}`
-    rateKeys.push(key)
-    const attempts = await Promise.allSettled(
-      Array.from({ length: 12 }, () => enforceBudget(key, 5))
-    )
-    expect(
-      attempts.filter((result) => result.status === 'fulfilled')
-    ).toHaveLength(5)
-    expect(
-      attempts
-        .filter((result) => result.status === 'rejected')
-        .every((result) => result.reason.status === 429)
-    ).toBe(true)
   })
 
   it('runs one automatic check at the exact seven-day boundary and excludes concurrent preparation', async () => {

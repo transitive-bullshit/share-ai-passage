@@ -1,7 +1,9 @@
 import { ArrowUpRight, Check, Link2, Terminal } from 'lucide-react'
 import Image from 'next/image'
+import Link from 'next/link'
 
 import { brand } from '@/lib/brand'
+import { featuredExample } from '@/lib/marketing-examples'
 import landscape from '@/public/images/passage-landscape.png'
 
 export function LandingDetails() {
@@ -18,7 +20,11 @@ export function LandingDetails() {
             placeholder='blur'
             loading='eager'
           />
-          <div className='example-window'>
+          <Link
+            className='example-window'
+            href={`/examples/${featuredExample.id}`}
+            aria-label={`Read the example passage: ${featuredExample.title}`}
+          >
             <div className='example-toolbar'>
               <span className='window-dots' aria-hidden='true'>
                 <i />
@@ -26,29 +32,25 @@ export function LandingDetails() {
                 <i />
               </span>
               <span>
-                <Link2 size={12} aria-hidden='true' /> A passage
+                <Link2 size={12} aria-hidden='true' /> Example passage
               </span>
-              <span className='example-label'>Preview</span>
+              <span className='example-label'>Read it ↗</span>
             </div>
             <img
-              src='/api/example-card'
+              src={`/examples/${featuredExample.id}/image`}
               width={1200}
               height={630}
-              alt='Example passage card: Make room for the unexpected, with three concise conversation highlights'
+              alt={`Example passage card: ${featuredExample.title}`}
               fetchPriority='high'
             />
             <div className='example-window-footer'>
               <span>
-                <Check size={14} aria-hidden='true' /> The saved conversation
-                comes with it.
+                <Check size={14} aria-hidden='true' /> Read the passage
               </span>
               <ArrowUpRight size={16} aria-hidden='true' />
             </div>
-          </div>
+          </Link>
         </div>
-        <figcaption>
-          A clear introduction. The saved conversation, one click away.
-        </figcaption>
       </figure>
 
       <section
@@ -104,8 +106,8 @@ export function LandingDetails() {
             <div>
               <h3>Give it a clear introduction.</h3>
               <p>
-                Get a concise title, a few AI-generated highlights, and a share
-                card. Review everything before it goes live.
+                Edit the generated title and highlights, then choose from five
+                card styles. Review everything before it goes live.
               </p>
             </div>
           </li>
@@ -137,8 +139,12 @@ export function LandingDetails() {
             Create a passage here, from your terminal, or with an agent skill.
             The same simple flow, wherever you’re working.
           </p>
-          <a className='text-link' href='#source-url'>
-            {brand.cta} <ArrowUpRight size={15} aria-hidden='true' />
+          <a
+            className='text-link'
+            href={`${brand.repositoryUrl}/blob/main/contributing.md#cli-and-agent-skill`}
+          >
+            Set up the CLI or agent skill
+            <ArrowUpRight size={15} aria-hidden='true' />
           </a>
         </div>
         <div className='terminal-example'>
@@ -167,9 +173,57 @@ export function LandingDetails() {
             </p>
           </div>
           <div className='terminal-footer'>
-            Also available as the <code>passage-share</code> agent skill.
+            Also available as the{' '}
+            <a
+              href={`${brand.repositoryUrl}/tree/main/.agents/skills/passage-share`}
+            >
+              <code>passage-share</code> agent skill
+            </a>
+            .
           </div>
         </div>
+      </section>
+
+      <section className='help-section' aria-labelledby='help-heading'>
+        <div className='section-intro'>
+          <h2 id='help-heading'>A little context.</h2>
+          <p>
+            Public conversations, a preview you control, and a clear link back
+            to the source.
+          </p>
+        </div>
+        <dl className='help-list'>
+          <div id='public-link-help'>
+            <dt>How do I get a public conversation link?</dt>
+            <dd>
+              Use the Share option in ChatGPT, Codex, or Claude to create a
+              public link, then paste it here. A private conversation address or
+              workspace-only link won’t work. Check that the source opens while
+              signed out.
+            </dd>
+          </div>
+          <div>
+            <dt>What will my passage include?</dt>
+            <dd>
+              A title and highlights you can edit, your chosen card style, and
+              the saved conversation text with a link to the original. Code,
+              tables, and formatting are preserved where supported. Missing
+              media, tools, and artifacts are marked. Anyone with the passage
+              link can read it; public passages can appear in search results.
+            </dd>
+          </div>
+          <div>
+            <dt>Can I edit or remove it later?</dt>
+            <dd>
+              Review your wording before publishing; published passages stay
+              fixed. To disable a passage, remove public access to the original
+              and use “Check original availability” in the reader. Confirmed
+              removal disables its passages and cards here. Checks are limited
+              to once an hour, and other platforms may retain previews they
+              already fetched.
+            </dd>
+          </div>
+        </dl>
       </section>
     </>
   )

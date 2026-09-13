@@ -1,6 +1,7 @@
 import { renderCard } from '@/lib/card'
 import { privateHeaders } from '@/lib/http'
 import { getMarketingExample } from '@/lib/marketing-examples'
+import { publicImageResponse } from '@/lib/seo'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -16,13 +17,15 @@ export async function GET(
       status: 404,
       headers: privateHeaders
     })
-  return renderCard(
-    {
-      title: example.title,
-      highlights: example.highlights,
-      provider: 'chatgpt',
-      example: true
-    },
-    example.appearance
+  return publicImageResponse(
+    await renderCard(
+      {
+        title: example.title,
+        highlights: example.highlights,
+        provider: 'chatgpt',
+        example: true
+      },
+      example.appearance
+    )
   )
 }

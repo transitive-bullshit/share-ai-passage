@@ -76,6 +76,7 @@ The portable [passage-share skill](.agents/skills/passage-share/SKILL.md) includ
 - Removing public access at the provider initiates removal here. Availability checks run lazily after seven days or through the rate-limited manual check. Confirmed removal disables all existing passages and cards from that source; temporary failures leave them available.
 - External platforms may retain previews they already fetched. Disabled content remains stored but is not served. Old links stay disabled if the source returns.
 - There are no accounts, editors for published passages, private deletion links, or public discovery directory.
+- Available production passages and their public cards may appear in search results. Preview/staging/local builds, drafts, and unavailable content stay `noindex`. Page canonicals, social metadata, and safely serialized JSON-LD describe the same saved presentation. See [hosting configuration](docs/PRODUCTION.md#hosting-configuration) for the environment policy.
 
 See [product behavior and limits](docs/MVP_PLAN.md), [supported extraction](docs/EXTRACTION.md), and the [message model](docs/MESSAGE_MODEL.md).
 
@@ -109,7 +110,7 @@ Inspect the final saved HTML samples after fonts and artwork load alongside thei
 
 ## Marketing examples
 
-The two [README previews](readme.md#example-passages) share one authored question-and-answer conversation. [lib/marketing-examples.ts](lib/marketing-examples.ts) is the single source for their text and styles: Margin notes and Midnight observatory. These clearly labeled illustrative passages ship with the app when deployed; they need no production database or provider share URLs. After changing the fixture, fetch these card routes from the normal local development origin:
+The homepage and two [README previews](readme.md#example-passages) share one authored four-message debugging conversation, **Why the test passed locally but failed in CI**. [lib/marketing-examples.ts](lib/marketing-examples.ts) is the single source for its text and styles: Margin notes and Midnight observatory. The homepage’s card links to the matching example reader; its caption conveys the topic at mobile sizes. Existing example IDs remain stable. These clearly labeled illustrative passages ship with the app when deployed; they need no production database or provider share URLs. After changing the fixture, fetch these card routes from the normal local development origin:
 
 | Route | README image |
 | --- | --- |

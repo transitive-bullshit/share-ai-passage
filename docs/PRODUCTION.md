@@ -2,11 +2,13 @@
 
 Deployment recorded September 11, 2026: Neon is configured and Vercel is deployed at [ai-chat-proxy-puce.vercel.app](https://ai-chat-proxy-puce.vercel.app). See the [MVP plan](MVP_PLAN.md#remaining-work) for remaining launch checks; this setup record does not establish hosted extraction or social-platform validation.
 
-## Planned production domain
+## Production domain
 
-On September 12, 2026, the owner reported purchasing **share-ai-passage.com** for the intended production address, [https://share-ai-passage.com](https://share-ai-passage.com). This is a planned destination; domain attachment, DNS, and HTTPS have not been verified, and it is not recorded as the live service yet.
+The production address is [https://www.share-ai-passage.com](https://www.share-ai-passage.com); the apex domain redirects there. On September 13, 2026, anonymous HTTPS checks passed for the homepage, the existing 37-message reader, and its WebP image. GitHub records a successful production deployment and CI run for `468d17c`. These reads establish public serving, not fresh hosted extraction, model generation, or actual social-platform unfurls.
 
-When deploying with this domain, add it to the existing Vercel project for Production and configure the DNS records supplied by its Domains settings, following [Vercel’s domain setup guide](https://vercel.com/docs/domains/working-with-domains/add-a-domain). Verify the domain and HTTPS, then redeploy. Confirm that `VERCEL_PROJECT_PRODUCTION_URL` names the intended host and that generated passage links and social metadata use it. Keep the automatic origin resolution below; set `PASSAGE_URL` to the verified service origin for CLI use after activation.
+Pre-deployment validation of the September 13 marketing, indexing, and JSON-LD update passed all 493 tests, formatting/lint/type checks, and separate preview and production builds. Local HTTP checks covered 13 page/image routes plus robots.txt in each environment, including canonical/social metadata, script escaping, and unavailable-content isolation; the removal smoke test passed for two synthetic publications in an isolated database. Desktop/mobile review, both updated marketing examples, and eight before/after card pairs passed visual checks. Repeat hosted metadata checks and actual platform unfurls after deployment.
+
+When changing domains, configure the existing Vercel project’s Production domains and the DNS records supplied by its Domains settings, following [Vercel’s domain setup guide](https://vercel.com/docs/domains/working-with-domains/add-a-domain). Verify HTTPS, then redeploy. Confirm that `VERCEL_PROJECT_PRODUCTION_URL` names the intended host and that generated passage links, canonicals, social images, and JSON-LD use it. Keep the automatic origin resolution below; set `PASSAGE_URL` to the verified service origin for CLI use.
 
 ## Recorded database configuration
 
@@ -62,6 +64,8 @@ Keep database and function regions together. Use separate data for preview deplo
 - Other runs use `http://localhost:${PORT || 3000}`. `APP_URL` is not read.
 
 Keep Vercel's system environment variables enabled. Redeploy after changing the production domain. Mutation origin validation compares the submitted origin to the actual request host, so alternate deployment URLs can accept their own same-origin requests.
+
+Indexing is enabled only when `NODE_ENV=production`, `VERCEL=1`, and the selected Vercel target is exactly `production`. `VERCEL_TARGET_ENV` overrides `VERCEL_ENV`; preview, custom/staging, missing/unknown, and local environments default to `noindex`. Available public pages and social images may index on production. Draft/API, missing, and disabled content remain `noindex`; images and saved readers retain `no-store` for removal behavior. The global response header blocks indexing on nonproduction builds, while page metadata handles unavailable readers on production. Keep robots.txt crawl access open so crawlers can see these directives.
 
 [Client-address trust](../lib/http.ts) depends on the actual proxy:
 

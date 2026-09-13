@@ -164,7 +164,7 @@
   color: var(--muted-foreground);
 }
 .hero {
-  padding: 102px 0 65px;
+  padding: 80px 0 45px;
   text-align: center;
 }
 .hero-copy {
@@ -185,6 +185,18 @@
   font-size: 17px;
   line-height: 1.75;
   color: var(--muted-foreground);
+}
+.hero-benefit {
+  max-width: 620px;
+  margin: 12px auto 0;
+  font-size: 14px;
+  line-height: 1.75;
+  color: var(--muted-foreground);
+  text-wrap: pretty;
+}
+.hero-example-link {
+  margin-top: 20px;
+  font-size: 13px;
 }
 .source-form {
   max-width: 640px;
@@ -251,14 +263,24 @@
   object-position: center 57%;
 }
 .example-window {
+  display: block;
   width: min(100%, 800px);
   overflow: hidden;
   border-radius: 12px;
   background: var(--card);
+  color: var(--foreground);
+  text-decoration: none;
   border: 1px solid #ffffffb3;
   box-shadow:
     0 22px 65px -20px #2e444838,
     0 3px 14px #2e444812;
+}
+.example-window:hover .example-window-footer {
+  color: var(--foreground);
+  text-decoration: underline;
+}
+.example-window:focus-visible {
+  outline-offset: 7px;
 }
 .example-toolbar {
   height: 45px;
@@ -292,6 +314,7 @@
 .example-label {
   width: 49px;
   text-align: right;
+  white-space: nowrap;
 }
 .example-window > img {
   width: 100%;
@@ -312,11 +335,23 @@
   gap: 8px;
 }
 .hero-example figcaption {
-  margin-top: 17px;
-  font-size: 12px;
+  max-width: 580px;
+  margin: 22px auto 0;
+  font-size: 13px;
   line-height: 1.7;
   color: var(--muted-foreground);
   text-align: center;
+}
+.hero-example figcaption strong {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--foreground);
+  font-size: 15px;
+  font-weight: 500;
+}
+.hero-example figcaption span {
+  display: block;
+  text-wrap: pretty;
 }
 .provider-section {
   text-align: center;
@@ -347,7 +382,8 @@
   stroke-width: 1.5;
 }
 .how-it-works,
-.agents-section {
+.agents-section,
+.help-section {
   display: grid;
   grid-template-columns: 0.95fr 1.05fr;
   gap: 100px;
@@ -467,6 +503,32 @@
 }
 .terminal-footer code {
   color: var(--foreground);
+}
+.help-list {
+  margin: 0;
+}
+.help-list > div {
+  padding: 24px 0;
+  border-top: 1px solid var(--border);
+  scroll-margin-top: 32px;
+}
+.help-list > div:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+.help-list > div:last-child {
+  padding-bottom: 0;
+}
+.help-list dt {
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.6;
+}
+.help-list dd {
+  margin: 9px 0 0;
+  font-size: 13px;
+  line-height: 1.85;
+  color: var(--muted-foreground);
 }
 .site-footer {
   padding-bottom: 30px;
@@ -1091,7 +1153,8 @@
     padding: 48px;
   }
   .how-it-works,
-  .agents-section {
+  .agents-section,
+  .help-section {
     gap: 55px;
     padding-inline: 10px;
   }
@@ -1141,6 +1204,10 @@
     max-width: 440px;
     margin-inline: auto;
   }
+  .hero-benefit {
+    max-width: 360px;
+    font-size: 13px;
+  }
   .desktop-break {
     display: none;
   }
@@ -1169,7 +1236,7 @@
     margin-top: 17px;
   }
   .showcase-landscape {
-    padding: 30px 22px;
+    padding: 26px 15px;
     border-radius: 12px;
   }
   .example-window {
@@ -1189,7 +1256,7 @@
     height: 4px;
   }
   .example-label {
-    width: 32px;
+    width: 45px;
   }
   .example-window-footer {
     padding: 10px 13px;
@@ -1203,8 +1270,8 @@
     height: 11px;
   }
   .hero-example figcaption {
-    font-size: 10px;
-    margin-top: 13px;
+    font-size: 13px;
+    margin-top: 18px;
   }
   .provider-section {
     padding: 45px 0 49px;
@@ -1225,7 +1292,8 @@
     height: 20px;
   }
   .how-it-works,
-  .agents-section {
+  .agents-section,
+  .help-section {
     grid-template-columns: 1fr;
     gap: 36px;
     padding: 50px 5px;

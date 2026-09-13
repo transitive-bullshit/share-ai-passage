@@ -188,39 +188,26 @@ describe.skipIf(!testUrl)('PostgreSQL persistence and concurrency', () => {
     expect(savedOriginal!.title).toBe('A useful conversation')
   })
 
-  it.each([null, {}, ['one', 'two', 'three', 'four']])(
-    'rejects invalid publication highlights: %j',
-    async (highlights) => {
-      const source = await createSource()
-      const snapshot = await createSnapshot(source.id)
-      await expect(
-        getDb()
-          .insert(publications)
-          .values({
-            sourceId: source.id,
-            snapshotId: snapshot.id,
-            fingerprint: randomUUID(),
-            title: 'A saved preview',
-            highlights: sql`${JSON.stringify(highlights)}::jsonb`
-          })
-      ).rejects.toThrow()
-    }
-  )
-
-  it('requires publication highlights', async () => {
+  it('rejects invalid or missing publication highlights', async () => {
     const source = await createSource()
     const snapshot = await createSnapshot(source.id)
-    await expect(
-      getDb()
-        .insert(publications)
-        .values({
+    const invalidHighlights = [
+      sql`NULL`,
+      ...[null, {}, ['one', 'two', 'three', 'four']].map(
+        (value) => sql`${JSON.stringify(value)}::jsonb`
+      )
+    ]
+    for (const highlights of invalidHighlights) {
+      await expect(
+        getDb().insert(publications).values({
           sourceId: source.id,
           snapshotId: snapshot.id,
           fingerprint: randomUUID(),
           title: 'A saved preview',
-          highlights: sql`NULL`
+          highlights
         })
-    ).rejects.toThrow()
+      ).rejects.toThrow()
+    }
   })
 
   it('migrates saved messages without changing text, order, roles, or existing content blocks', async () => {

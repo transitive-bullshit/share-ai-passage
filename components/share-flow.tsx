@@ -174,7 +174,8 @@ export function ShareFlow({ children }: { children?: ReactNode }) {
                   </Button>
                 </div>
                 <FieldDescription id='source-help'>
-                  ChatGPT, Codex &amp; Claude. No account needed.
+                  ChatGPT, Codex &amp; Claude. No account needed.{' '}
+                  <a href='#public-link-help'>How to get a public link</a>
                 </FieldDescription>
               </Field>
             </FieldGroup>

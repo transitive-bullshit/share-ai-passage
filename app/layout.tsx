@@ -12,38 +12,15 @@ import { BrandMark } from '@/components/brand-mark'
 import { Separator } from '@/components/ui/separator'
 import { brand } from '@/lib/brand'
 import { appUrl } from '@/lib/config'
-
-const title = `${brand.name} — ${brand.headline}`
-const socialImage = {
-  url: '/brand/social-preview.png',
-  width: 1200,
-  height: 630,
-  type: 'image/png',
-  alt: `${brand.name}: ${brand.headline}`
-}
+import { noindex } from '@/lib/seo'
 
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl()),
   title: {
-    default: title,
+    default: brand.name,
     template: `%s · ${brand.name}`
   },
-  description: brand.description,
-  openGraph: {
-    title,
-    description: brand.description,
-    type: 'website',
-    siteName: brand.name,
-    url: '/',
-    images: [socialImage]
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title,
-    description: brand.description,
-    images: [socialImage]
-  },
-  robots: { index: false, follow: false },
+  robots: noindex,
   applicationName: brand.name
 }
 

@@ -229,8 +229,8 @@ function validateReader(
   )?.[1]
   verify(summary, 'The reader must display the generated summary.')
   verify(
-    /<h2\b[^>]*>\s*AI summary\s*<\/h2>/i.test(summary),
-    'The generated takeaways must be labeled as an AI summary.'
+    /<h2\b[^>]*>\s*Highlights\s*<\/h2>/i.test(summary),
+    'The reviewed takeaways must be labeled as highlights.'
   )
   const highlights = [...summary.matchAll(/<li\b[^>]*>([\s\S]*?)<\/li>/gi)].map(
     (match) => decodeAttribute(match[1]!)
