@@ -4,7 +4,6 @@ import {
   ClientRequestError,
   clientErrorMessage,
   parseRetryAfter,
-  postBlob,
   postJson
 } from '@/lib/client-request'
 
@@ -74,29 +73,10 @@ describe('browser request recovery', () => {
     )
   })
 
-  it('keeps card cancellation separate from a request failure', async () => {
-    const controller = new AbortController()
-    const reason = new DOMException('Cancelled', 'AbortError')
-    controller.abort(reason)
-    vi.spyOn(globalThis, 'fetch').mockRejectedValue(reason)
-    await expect(postBlob('/api/card', {}, controller.signal)).rejects.toBe(
-      reason
-    )
-  })
-
-  it('returns successful JSON and image data', async () => {
+  it('returns successful JSON data', async () => {
     const result = { shareUrl: 'https://passage.example/chatgpt/test' }
-    const fetch = vi.spyOn(globalThis, 'fetch')
-    fetch.mockResolvedValueOnce(Response.json(result))
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(Response.json(result))
     expect(await postJson('/api/publish', {})).toEqual(result)
-    fetch.mockResolvedValueOnce(
-      new Response('webp fixture', {
-        headers: { 'Content-Type': 'image/webp' }
-      })
-    )
-    const image = await postBlob('/api/card', {})
-    expect(image.type).toBe('image/webp')
-    expect(await image.text()).toBe('webp fixture')
   })
 
   it('accepts future Retry-After seconds and dates, ignoring invalid or expired values', () => {

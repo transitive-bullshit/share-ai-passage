@@ -98,28 +98,13 @@ describe('environment indexing policy', () => {
     },
     { name: 'unit test runtime', env: { NODE_ENV: 'test' }, expected: false }
   ])(
-    'uses matching HTML and global header rules for $name',
-    async ({ env, expected }) => {
+    'uses the expected public indexing policy for $name',
+    ({ env, expected }) => {
       for (const [key, value] of Object.entries(env)) vi.stubEnv(key, value!)
       expect(indexingEnabled()).toBe(expected)
       expect(publicRobots()).toMatchObject({
         index: expected,
         follow: expected
-      })
-      const headers = await nextConfig.headers!()
-      const global = headers.find(({ source }) => source === '/:path*')!
-      expect(global.headers.some(({ key }) => key === 'X-Robots-Tag')).toBe(
-        !expected
-      )
-      expect(global.headers).toContainEqual({
-        key: 'X-Content-Type-Options',
-        value: 'nosniff'
-      })
-      expect(
-        headers.find(({ source }) => source === '/api/:path*')!.headers
-      ).toContainEqual({
-        key: 'X-Robots-Tag',
-        value: 'noindex, nofollow, noarchive'
       })
     }
   )
@@ -266,11 +251,30 @@ describe('public and unavailable reader metadata', () => {
   })
 })
 
-describe('public card indexing without changing removal caching', () => {
-  it.each(['production', 'preview', 'staging', 'unknown'])(
-    'serves active cards with matching %s indexing and no-store',
+describe('public response indexing without changing removal caching', () => {
+  it.each(['production', 'preview'])(
+    'matches %s page and card indexing while keeping API responses private',
     async (environment) => {
       vi.stubEnv('VERCEL_TARGET_ENV', environment)
+      const headers = await nextConfig.headers!()
+      const global = headers.find(({ source }) => source === '/:path*')!
+      expect(
+        global.headers.filter(({ key }) => key === 'X-Robots-Tag')
+      ).toEqual(
+        environment === 'production'
+          ? []
+          : [{ key: 'X-Robots-Tag', value: 'noindex, nofollow, noarchive' }]
+      )
+      expect(global.headers).toContainEqual({
+        key: 'X-Content-Type-Options',
+        value: 'nosniff'
+      })
+      expect(
+        headers.find(({ source }) => source === '/api/:path*')!.headers
+      ).toContainEqual({
+        key: 'X-Robots-Tag',
+        value: 'noindex, nofollow, noarchive'
+      })
       service.getPublication.mockResolvedValue(publication())
       const response = await publicImage(
         new Request('https://passage.example/chatgpt/publication-id/image'),

@@ -455,10 +455,11 @@ describe('observed sanitized provider payloads', () => {
 
   it('rejects oversize and explicitly truncated transcripts rather than losing turns', async () => {
     const input = await fixture('claude-code')
-    input.chat_messages[0].text = 'x'.repeat(1024 * 1024)
+    input.chat_messages[1].text = 'x'.repeat(1024 * 1024)
     expect(() => parseClaude(input, 200)).toThrow('1 MiB')
-    input.chat_messages[0].truncated = true
-    expect(() => parseClaude(input, 200)).toThrow('truncated')
+    const truncated = await fixture('claude-code')
+    truncated.chat_messages[0].truncated = true
+    expect(() => parseClaude(truncated, 200)).toThrow('truncated')
   })
 
   it('only confirms removal from the exact observed provider errors', async () => {

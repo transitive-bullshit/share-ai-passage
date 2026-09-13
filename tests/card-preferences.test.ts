@@ -47,9 +47,10 @@ describe('browser card preferences', () => {
       title: 'Conversation content'
     }
     saveCardPreferences(appearanceWithUnrelatedData, () => local)
-    expect(local.getItem(CARD_PREFERENCES_KEY)).toBe(
-      JSON.stringify({ version: 1, appearance: { templateId: 'friendly-lab' } })
-    )
+    expect(JSON.parse(local.getItem(CARD_PREFERENCES_KEY)!)).toEqual({
+      version: 1,
+      appearance: { templateId: 'friendly-lab' }
+    })
   })
 
   it.each([
