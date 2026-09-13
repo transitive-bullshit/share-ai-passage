@@ -6,6 +6,7 @@ import { after } from 'next/server'
 import { cache } from 'react'
 
 import { AvailabilityCheck } from '@/components/availability-check'
+import { ConversationPreviews } from '@/components/conversation-previews'
 import { CopyLink } from '@/components/copy-link'
 import { JsonLd } from '@/components/json-ld'
 import { SavedMessage } from '@/components/saved-message'
@@ -153,11 +154,11 @@ export default async function ReaderPage({ params }: Props) {
           <ArrowDown size={19} aria-hidden='true' />
         )}
       </div>
-      <section className='conversation' aria-label='Saved conversation'>
+      <ConversationPreviews key={`${provider}/${publicationId}`}>
         {snapshot.messages.map((message, index) => (
           <SavedMessage key={message.id} message={message} index={index} />
         ))}
-      </section>
+      </ConversationPreviews>
       <aside className='reader-end'>
         <div className='reader-end-heading'>
           <BookOpen size={18} aria-hidden='true' />

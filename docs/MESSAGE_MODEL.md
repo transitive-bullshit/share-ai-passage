@@ -10,3 +10,13 @@ The canonical types are [Message and MessageContent](../lib/domain.ts). Passage 
 [Message projections](../lib/messages.ts) derive reader Markdown with omission labels (`messageMarkdown`) and summary input containing only extracted text (`messageText`). Neither projection is stored as another copy of the message.
 
 [Migration 0004](../drizzle/0004_responses_message_content.sql) wraps older Markdown in text blocks while preserving identity, roles, and order. Historical omission labels already flattened into Markdown stay verbatim; structured omission metadata is available only from new captures.
+
+## Reader link previews
+
+Published readers enhance HTTP(S) links inside saved chat text with a compact preview on mouse hover (220 ms dwell) or keyboard focus. Escape, scrolling, blur, and navigation dismiss it; link destinations and native navigation remain unchanged. This enhancement is mounted only around the published conversation, not marketing examples or other site links.
+
+The Repaint-derived scheduler warms visible links after page load, 300 ms of input/resource quiet, and a CPU idle callback where supported. It attempts all visible metadata before sequential artwork preloads, cancels abandoned work, and pauses for hidden pages, offline, Save-Data, or 2g connections. Shared requests have independent cancellation, a three-job concurrency bound, and a 64-entry memory cache (10-minute success / 30-second failure TTL); each reader and cache allows one background job, with low-priority fetch hints. Hover joins and promotes shared speculative jobs. Cache lifetime is per browser bundle or server process, with no database persistence.
+
+The same-origin JSON endpoint parses inert Open Graph/Twitter/title metadata. It validates public DNS and pins sockets on every HTTP or immediate HTML redirect, forbids credentials, unusual ports and HTTPS downgrades, and bounds acquisition to five seconds, five redirects and 512 KiB of HTML. Repaint's conservative query policy strips tracking and retains known content IDs/locales; unknown queries use the original link without a preview. Unavailable pages fall back to link text and domain.
+
+Preview artwork and declared favicons use direct HTTPS image URLs with `no-referrer`, outside the Next.js image optimizer. Browser image caching is reused by idle preloads and hover; failed artwork leaves the text card. Destination HTML is never rendered or executed. These optional link metadata images are separate from the saved conversation's omitted media.

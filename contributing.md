@@ -72,7 +72,7 @@ The portable [passage-share skill](.agents/skills/passage-share/SKILL.md) includ
 ## Saved conversations
 
 - Passages retain their saved conversation, reviewed title/highlights, and chosen style. Draft edits leave the cached generated preview unchanged. Published wording is fixed; identical presentations reuse a link, while different wording or style creates a separate presentation.
-- The reader preserves extracted text, Markdown, code, tables, and safe links. Unsupported media, tools, and artifacts have explicit omission markers. Provider HTML is not executed and remote media is not loaded.
+- The reader preserves extracted text, Markdown, code, tables, and safe links. Unsupported media, tools, and artifacts have explicit omission markers. Provider HTML is not executed and saved conversation media is not loaded. Published chat links have optional hover previews with remote artwork; see the [message model](docs/MESSAGE_MODEL.md#reader-link-previews).
 - Removing public access at the provider initiates removal here. Availability checks run lazily after seven days or through the rate-limited manual check. Confirmed removal disables all existing passages and cards from that source; temporary failures leave them available.
 - External platforms may retain previews they already fetched. Disabled content remains stored but is not served. Old links stay disabled if the source returns.
 - There are no accounts, editors for published passages, private deletion links, or public discovery directory.
