@@ -1,3 +1,13 @@
+/** Only the explicitly identified hosted production environment may be indexed. */
+export function indexingEnabled() {
+  return (
+    process.env.NODE_ENV === 'production' &&
+    process.env.PASSAGE_PRODUCTION_LOCAL !== '1' &&
+    process.env.VERCEL === '1' &&
+    (process.env.VERCEL_TARGET_ENV || process.env.VERCEL_ENV) === 'production'
+  )
+}
+
 /** Use the platform's public URL; a proxy's listening PORT may be different. */
 export function appUrl() {
   const development = process.env.NODE_ENV === 'development'

@@ -78,7 +78,10 @@ function run(args: string[], passageUrl = baseUrl) {
     (resolve, reject) => {
       const child = spawn(process.execPath, [cliPath, ...args], {
         env: { ...process.env, PASSAGE_URL: passageUrl },
-        stdio: ['pipe', 'pipe', 'pipe']
+        stdio: ['pipe', 'pipe', 'pipe'],
+        // Reap a stuck CLI before Vitest times out and closes its local servers.
+        timeout: 5000,
+        killSignal: 'SIGKILL'
       })
       let stdout = ''
       let stderr = ''

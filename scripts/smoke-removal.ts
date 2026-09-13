@@ -72,11 +72,15 @@ function failureStatus(err: unknown) {
       : 'Unexpected failure'
 }
 
-function privateResponse(response: Response) {
+function noStore(response: Response) {
   verify(
     response.headers.get('cache-control')?.includes('no-store'),
     'The response must prohibit storing saved content.'
   )
+}
+
+function privateResponse(response: Response) {
+  noStore(response)
   verify(
     response.headers.get('x-robots-tag')?.includes('noindex'),
     'The response must prohibit indexing.'
@@ -106,13 +110,14 @@ function assertNoSavedContent(value: string) {
 
 async function readText(response: Response) {
   verify(response.status === 200, `Reader returned HTTP ${response.status}.`)
-  privateResponse(response)
+  noStore(response)
   return response.text()
 }
 
-async function webpDigest(response: Response) {
+async function webpDigest(response: Response, requireNoindex = true) {
   verify(response.status === 200, `Card returned HTTP ${response.status}.`)
-  privateResponse(response)
+  if (requireNoindex) privateResponse(response)
+  else noStore(response)
   verify(
     response.headers.get('content-type')?.startsWith('image/webp'),
     'The card must be served as image/webp.'
@@ -130,6 +135,14 @@ async function webpDigest(response: Response) {
 async function unavailableReader(route: string, init?: RequestInit) {
   const body = await readText(await request(route, init))
   assertNoSavedContent(body)
+  verify(
+    /<meta\s+name="robots"\s+content="[^"]*\bnoindex\b[^"]*"/i.test(body),
+    'The disabled reader must include noindex metadata.'
+  )
+  verify(
+    !body.includes('application/ld+json'),
+    'The disabled reader must not expose content structured data.'
+  )
   verify(
     body.toLowerCase().includes('unavailable'),
     'The disabled reader must explain that the original is unavailable.'
@@ -269,7 +282,7 @@ try {
       'The active RSC fixture must contain the authored transcript before removal.'
     )
     activeDigests.push(
-      await webpDigest(await request(`${sharePath(id)}/image`))
+      await webpDigest(await request(`${sharePath(id)}/image`), false)
     )
     const draftCardDigest = await webpDigest(
       await request('/api/card', {
@@ -326,7 +339,7 @@ try {
       })
       const head = await request(`${route}${suffix}`, { method: 'HEAD' })
       verify(head.status === 200, `Disabled HEAD returned HTTP ${head.status}.`)
-      privateResponse(head)
+      noStore(head)
       assertNoSavedContent(JSON.stringify([...head.headers]))
       verify(
         (await head.text()).length === 0,

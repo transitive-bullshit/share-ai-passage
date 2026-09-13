@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next'
 
 export default function robots(): MetadataRoute.Robots {
-  // Allow social crawlers to fetch metadata/images. Per-response noindex
-  // directives prevent indexing; disallowing all would hide those directives.
+  // Public production pages can be indexed. Other environments and unavailable
+  // pages remain crawlable so search engines can read their noindex directives.
   return { rules: { userAgent: '*', allow: '/' } }
 }

@@ -4,26 +4,41 @@ import { message } from './messages'
 
 // Authored product examples share one conversation and differ only in card style.
 const conversation = {
-  title: 'Share the good part of your AI chats',
+  title: 'Why the test passed locally but failed in CI',
   highlights: [
-    'Start with a public ChatGPT, Codex, or Claude conversation',
-    'Choose a card style and review its title and highlights',
-    'Publish one link with a beautiful preview and the saved conversation'
+    'A finished click does not mean the save request has finished',
+    'Wait for the save confirmation before reloading the page',
+    'Give each test its own record so parallel runs cannot overwrite it'
   ],
   messages: [
     message(
       'example-question',
       'user',
-      'What’s the best way to share a useful AI conversation so people want to open it?'
+      'Our browser test edits a note, clicks Save, then reloads the page to check the text. It passes locally but sometimes shows the old text in CI. Adding a two-second sleep helped, but I don’t want slower tests. What should we check?'
     ),
     message(
       'example-answer',
       'assistant',
-      `1. **Pick a conversation worth opening.** Choose a useful ChatGPT, Codex, or Claude exchange that solves a problem, explains something clearly, or offers an idea others can use. Copy its public link.
+      `The reload may be racing the save request. A completed click means the button was clicked; it does not establish that the server has saved the note.
 
-2. **Create a preview with Passage.** Paste in the link, review the generated title and concise highlights, then choose from five card styles to find the look you like.
+**Wait for the result the user sees.** If the app shows “Saved” only after the request succeeds, wait for that confirmation before reloading. A fixed sleep is a guess: it can be too long on your machine and too short in CI.
 
-3. **Publish and share the payoff.** Share your Passage link with a sentence like, “This helped me turn a vague idea into a practical plan.” The link includes a social preview and saved conversation, with access to the original source. No account needed.`
+Also check whether parallel tests edit the same note. A correct save can still be overwritten by another test.`
+    ),
+    message(
+      'example-follow-up',
+      'user',
+      'The app shows “Saving…” while the request is running and “Saved” after it succeeds. We also reuse the same seeded note in every test.'
+    ),
+    message(
+      'example-resolution',
+      'assistant',
+      `There are two things to separate:
+
+1. **Save completion.** Wait for the new save confirmation before reloading, then check the reloaded text. Remove the fixed sleep.
+2. **Test isolation.** Create a fresh note for each test and clean it up afterward, so parallel tests cannot change the same record.
+
+Run the test repeatedly on its own, then with the parallel suite. That helps distinguish a timing problem from shared test data. Keep a failure trace if it still flakes; these changes address the two likely causes, but the next run should verify them.`
     )
   ]
 }
@@ -48,6 +63,8 @@ export const marketingExamples: MarketingExample[] = [
     appearance: { templateId: 'midnight-observatory' }
   }
 ]
+
+export const featuredExample = marketingExamples[0]!
 
 export function getMarketingExample(id: string) {
   return marketingExamples.find((example) => example.id === id)

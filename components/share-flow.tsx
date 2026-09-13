@@ -1,6 +1,7 @@
 'use client'
 
-import { ArrowRight, Link2 } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, Link2 } from 'lucide-react'
+import Link from 'next/link'
 import {
   type FormEvent,
   type ReactNode,
@@ -131,6 +132,10 @@ export function ShareFlow({ children }: { children?: ReactNode }) {
             <span>{brand.headlineLines[1]}</span>
           </h1>
           <p className='hero-description'>{brand.description}</p>
+          <p className='hero-benefit'>
+            A clear title, highlights you can edit, and the saved
+            conversation—all in one link.
+          </p>
           <form onSubmit={prepare} className='source-form'>
             <FieldGroup>
               <Field data-invalid={Boolean(error)} data-disabled={pending}>
@@ -174,7 +179,8 @@ export function ShareFlow({ children }: { children?: ReactNode }) {
                   </Button>
                 </div>
                 <FieldDescription id='source-help'>
-                  ChatGPT, Codex &amp; Claude. No account needed.
+                  ChatGPT, Codex &amp; Claude. No account needed.{' '}
+                  <a href='#public-link-help'>How to get a public link</a>
                 </FieldDescription>
               </Field>
             </FieldGroup>
@@ -193,6 +199,13 @@ export function ShareFlow({ children }: { children?: ReactNode }) {
             <Link2 size={14} aria-hidden='true' />
             Preview first. Publish when you’re ready.
           </p>
+          <Link
+            className='hero-example-link text-link'
+            href='/examples/share-your-ai-chats'
+          >
+            Read an example passage
+            <ArrowUpRight size={15} aria-hidden='true' />
+          </Link>
         </div>
       </section>
       {children}

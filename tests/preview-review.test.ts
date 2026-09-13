@@ -172,18 +172,15 @@ it('ignores stale artwork readiness and publishes only the current reviewed styl
   await finishArtwork('friendly-lab')
   expect(publishButton().disabled).toBe(false)
   await act(async () => publishButton().click())
-  expect(requests).toHaveBeenCalledTimes(1)
-  expect(requests).toHaveBeenCalledWith(
+  expect(requests).toHaveBeenCalledExactlyOnceWith(
     '/api/publish',
-    expect.objectContaining({
-      method: 'POST',
-      body: JSON.stringify({
-        draftToken: draft.draftToken,
-        appearance: { templateId: 'friendly-lab' },
-        preview: draft.preview
-      })
-    })
+    expect.objectContaining({ method: 'POST' })
   )
+  expect(JSON.parse(requests.mock.calls[0]![1]!.body as string)).toEqual({
+    draftToken: draft.draftToken,
+    appearance: { templateId: 'friendly-lab' },
+    preview: draft.preview
+  })
   expect(container.textContent).toContain('Your passage is published.')
 })
 
@@ -237,19 +234,18 @@ it('edits each field locally and publishes the latest fitted wording, preserving
   expect(publishButton().disabled).toBe(false)
   await act(async () => publishButton().click())
   expect(title.disabled).toBe(true)
-  expect(requests).toHaveBeenCalledWith(
+  expect(requests).toHaveBeenCalledExactlyOnceWith(
     '/api/publish',
-    expect.objectContaining({
-      body: JSON.stringify({
-        draftToken: draft.draftToken,
-        appearance: { templateId: 'margin-notes' },
-        preview: {
-          title: 'A clearer way to share',
-          highlights: ['Keep the useful idea.', 'Make the next step clear.']
-        }
-      })
-    })
+    expect.objectContaining({ method: 'POST' })
   )
+  expect(JSON.parse(requests.mock.calls[0]![1]!.body as string)).toEqual({
+    draftToken: draft.draftToken,
+    appearance: { templateId: 'margin-notes' },
+    preview: {
+      title: 'A clearer way to share',
+      highlights: ['Keep the useful idea.', 'Make the next step clear.']
+    }
+  })
   await act(async () =>
     publication.resolve(
       Response.json({ shareUrl: 'http://localhost:3000/claude/edited' })

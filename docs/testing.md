@@ -4,6 +4,8 @@
 
 Be relaxed about adding and keeping fast, isolated unit tests. A small, deterministic test of meaningful behavior, an edge case, or a regression can earn its place even for a reversible, low-impact change. Keep setup and assertions simple; tests that merely repeat implementation details or check arbitrary constants add little confidence.
 
+When a feature path disappears, remove its obsolete tests and unused helpers together. Keep broad policy matrices at the cheapest useful layer, with representative wiring checks elsewhere.
+
 Be more judicious with heavyweight integration and end-to-end tests. They are essential for behavior that depends on real browsers, builds, storage, process boundaries, or interactions between components, but impose greater runtime, CI, debugging, and maintenance costs. Each test should cover an important failure mode that cheaper tests cannot adequately catch. Prefer focused scenarios and representative combinations; expand provider, card-template, viewport, and lifecycle matrices when the combinations expose distinct risks.
 
 Judge a test by its actual dependencies and cost, not its filename or runner. A test that renders images with native libraries, accesses PostgreSQL, launches a subprocess, or starts a server is an integration test even if it runs under the unit command. Use the cheapest layer that gives credible coverage. Keep real database tests for constraints, concurrency, and persistence; real CLI tests for process and file boundaries; and browser checks for rendering and native interaction that mocks cannot establish.
@@ -21,6 +23,8 @@ PostgreSQL suites require `TEST_DATABASE_URL` pointing to a migrated, disposable
 ## GitHub Actions budget
 
 Keep routine GitHub Actions usage limited to the [core test job](../.github/workflows/test.yml). Preserve its database, repository, and production-build checks. Additional browser jobs, schedules, shards, and platform matrices need a concrete validation gap rather than being incidental test maintenance.
+
+The Node 24 core job has a 15-minute timeout and cancels superseded runs of the same workflow and branch.
 
 Before proposing more automation, identify the gap and estimate run frequency, total runner time, and artifact storage. Count setup, builds, every matrix entry, and reruns; a shorter wall-clock duration does not necessarily mean lower cost. Avoid duplicate push/PR runs and repeated runs on unchanged code. Bound retries, job timeouts, and artifact retention, and cancel superseded runs where appropriate.
 

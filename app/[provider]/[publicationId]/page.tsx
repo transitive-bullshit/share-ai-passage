@@ -7,12 +7,18 @@ import { cache } from 'react'
 
 import { AvailabilityCheck } from '@/components/availability-check'
 import { CopyLink } from '@/components/copy-link'
+import { JsonLd } from '@/components/json-ld'
 import { SavedMessage } from '@/components/saved-message'
 import { Button } from '@/components/ui/button'
 import { appUrl } from '@/lib/config'
 import { providerNames } from '@/lib/domain'
 import { messageText } from '@/lib/messages'
 import { checkAvailability, getPublication } from '@/lib/service'
+import {
+  passageJsonLd,
+  publicPageMetadata,
+  unavailableMetadata
+} from '@/lib/seo'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
@@ -23,45 +29,19 @@ const readPublication = cache(getPublication)
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { provider, publicationId } = await params
   const record = await readPublication(provider, publicationId)
-  if (!record)
-    return {
-      title: 'Passage not found',
-      robots: { index: false, follow: false }
-    }
+  if (!record) return unavailableMetadata()
+  if (record.disabled)
+    return unavailableMetadata(
+      'This passage is unavailable',
+      'The original conversation is no longer publicly available.'
+    )
   const url = `${appUrl()}/${provider}/${publicationId}`
-  const title = record.disabled
-    ? 'This passage is unavailable'
-    : record.publication.title
-  const description = record.disabled
-    ? 'The original conversation is no longer publicly available.'
-    : record.preview.highlights.join(' ')
-  return {
-    title,
-    description,
-    robots: { index: false, follow: false, noarchive: true },
-    openGraph: {
-      title,
-      description,
-      type: 'article',
-      siteName: 'Passage',
-      url,
-      images: [
-        {
-          url: `${url}/image`,
-          width: 1200,
-          height: 630,
-          type: 'image/webp',
-          alt: title
-        }
-      ]
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title,
-      description,
-      images: [{ url: `${url}/image`, alt: title }]
-    }
-  }
+  return publicPageMetadata({
+    title: record.publication.title,
+    description: record.preview.highlights.join(' '),
+    url,
+    image: { url: `${url}/image`, type: 'image/webp' }
+  })
 }
 
 export default async function ReaderPage({ params }: Props) {
@@ -107,6 +87,14 @@ export default async function ReaderPage({ params }: Props) {
   }).format(snapshot.capturedAt)
   return (
     <main id='main' className='reader'>
+      <JsonLd
+        data={passageJsonLd({
+          title: publication.title,
+          description: preview.highlights.join(' '),
+          url: shareUrl,
+          sourceUrl: source.canonicalUrl
+        })}
+      />
       <header className='reader-header'>
         <div className='reader-meta'>
           <p className='eyebrow'>

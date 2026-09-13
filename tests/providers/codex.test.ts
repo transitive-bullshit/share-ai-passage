@@ -197,7 +197,13 @@ describe('public Codex snapshots', () => {
   it('enforces the shared normalized transcript limit', () => {
     expect(() =>
       parseCodex(
-        snapshot([{ type: 'agentMessage', text: 'x'.repeat(1024 * 1024) }]),
+        snapshot([
+          {
+            type: 'userMessage',
+            content: [{ type: 'text', text: 'A readable opening.' }]
+          },
+          { type: 'agentMessage', text: 'x'.repeat(1024 * 1024) }
+        ]),
         200
       )
     ).toThrow('1 MiB')
