@@ -78,7 +78,10 @@ export function parseCodex(payload: unknown, status: number): ProviderResult {
         case 'reasoning':
           if (typeof item.summary !== 'string') return invalidSnapshot()
           // Preserve only the summary explicitly published in the public snapshot.
-          messages.push(message(id, 'assistant', item.summary))
+          messages.push({
+            ...message(id, 'assistant', item.summary),
+            kind: 'reasoning_summary'
+          })
           break
 
         case 'fileChange':
@@ -125,7 +128,7 @@ export function parseCodex(payload: unknown, status: number): ProviderResult {
     conversation: finishConversation(
       data.title,
       messages,
-      'codex-public-json-v2'
+      'codex-public-json-v3'
     )
   }
 }

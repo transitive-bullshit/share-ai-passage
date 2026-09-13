@@ -1,9 +1,13 @@
 import { createElement } from 'react'
+import { Window } from 'happy-dom'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 
 import { SavedMessage } from '../components/saved-message'
+import { SavedConversation } from '../components/saved-conversation'
 import { type Message } from '../lib/domain'
+import { message } from '../lib/messages'
+import { groupReaderMessages } from '../lib/reader'
 
 function renderMessage(markdown: string, options: Partial<Message> = {}) {
   return renderToStaticMarkup(
@@ -29,6 +33,41 @@ function renderMessage(markdown: string, options: Partial<Message> = {}) {
 }
 
 describe('safe, faithful conversation reader', () => {
+  it('displays a complete Codex delegation as a prompt with provenance while preserving stored text', () => {
+    const source =
+      '<codex_delegation>\n  <source_thread_id></source_thread_id>\n  <input>Compare **these examples**.\n\nKeep &lt;script&gt; literal.</input>\n</codex_delegation>'
+    const entry = message('codex-0-0', 'user', source)
+    const html = renderMessage('', entry)
+    expect(html).toContain('Sent from another task')
+    expect(html).toContain('Compare <strong>these examples</strong>')
+    expect(html).toContain('Keep &lt;script&gt; literal.')
+    expect(html).not.toContain('codex_delegation')
+    expect(entry.content).toEqual([{ type: 'input_text', text: source }])
+
+    // The same text in an ordinary message, or an incomplete envelope, stays literal.
+    expect(renderMessage(source, { role: 'user' })).toContain(
+      '&lt;codex_delegation&gt;'
+    )
+    expect(
+      renderMessage(source.slice(0, -20), { id: 'codex-0-0', role: 'user' })
+    ).toContain('&lt;codex_delegation&gt;')
+  })
+
+  it('marks unavailable local files without turning them into broken navigation links', () => {
+    const html = renderMessage(
+      '[hello.ts](/Users/example/outputs/hello.ts) [data.json](sandbox:/mnt/data/data.json)'
+    )
+    const document = new Window().document
+    document.body.innerHTML = html
+    expect(
+      Array.from(document.querySelectorAll('.unavailable-file'), (file) =>
+        file.textContent?.replace(/\u2060/g, '')
+      )
+    ).toEqual(['hello.ts', 'data.json'])
+    expect(document.querySelectorAll('a')).toHaveLength(0)
+    expect(html).not.toContain('/Users/example')
+  })
+
   it('shows raw HTML and script content as escaped text instead of executing or omitting it', () => {
     const html = renderMessage(
       [
@@ -105,18 +144,22 @@ describe('safe, faithful conversation reader', () => {
       ].join('\n\n')
     )
     expect(html).toContain('<h1>A useful example</h1>')
-    expect(html).toContain('<pre><code class="language-typescript">')
-    expect(html).toContain(
-      'const tag = &quot;&lt;script&gt;example&lt;/script&gt;&quot;'
+    expect(html).toContain('<code class="hljs language-typescript">')
+    expect(html).toContain('class="hljs-keyword"')
+    expect(html).toContain('TypeScript code')
+    const document = new Window().document
+    document.body.innerHTML = html
+    expect(document.querySelector('pre code')?.textContent).toBe(
+      'const tag = "<script>example</script>"\nconst greeting = "你好 🌱"\n'
     )
     expect(html).toContain('你好 🌱')
     expect(html).toContain('<table>')
     expect(html).toContain('<th>Topic</th>')
     expect(html).toContain('<td>Preserved</td>')
     expect(html.indexOf('The first point 🦊.')).toBeLessThan(
-      html.indexOf('<pre>')
+      html.indexOf('<pre ')
     )
-    expect(html.indexOf('<pre>')).toBeLessThan(html.indexOf('<table>'))
+    expect(html.indexOf('<pre ')).toBeLessThan(html.indexOf('<table>'))
     expect(html.indexOf('<table>')).toBeLessThan(
       html.indexOf('The final point.')
     )
@@ -133,7 +176,7 @@ describe('safe, faithful conversation reader', () => {
         { type: 'omitted', kind: 'file', reason: 'unsupported' }
       ]
     })
-    expect(html).toContain('aria-label="Human, message 1"')
+    expect(html).toContain('aria-label="User, message 1"')
     expect(html).toContain('[2 images omitted]')
     expect(html).toContain('[Attachment omitted]')
     expect(html.indexOf('Compare these examples.')).toBeLessThan(
@@ -155,5 +198,49 @@ describe('safe, faithful conversation reader', () => {
     expect(html).toContain('aria-label="Developer, message 1"')
     expect(html).toContain('data-speaker="developer"')
     expect(html).toContain('Answer with a short explanation.')
+  })
+
+  it('renders unknown code languages safely without losing their text', () => {
+    const html = renderMessage(
+      '```an-unregistered-language\n<literal> & original\n```'
+    )
+    expect(html).toContain('&lt;literal&gt; &amp; original')
+    expect(html).toContain('Copy code')
+  })
+
+  it('uses local favicon glyphs without requesting sites in the transcript', () => {
+    const html = renderMessage(
+      '[GitHub](https://github.com/openai) [Web](https://example.com)'
+    )
+    expect(html.match(/link-favicon/g)).toHaveLength(2)
+    expect(html).not.toContain('<img')
+    expect(html).not.toContain('src=')
+  })
+
+  it('preserves all activity in closed disclosures and leaves the answer visible', () => {
+    const messages = [
+      message('codex-0-0', 'user', 'A question'),
+      {
+        ...message('codex-0-1', 'assistant', 'Public reasoning summary'),
+        kind: 'reasoning_summary' as const
+      },
+      message('codex-0-2', 'assistant', 'A progress update', 'commentary'),
+      message('codex-0-3', 'tool', 'Visible tool contribution'),
+      message('codex-0-4', 'assistant', 'The full final answer')
+    ]
+    const html = renderToStaticMarkup(
+      createElement(SavedConversation, {
+        groups: groupReaderMessages(messages)
+      })
+    )
+    const document = new Window().document
+    document.body.innerHTML = html
+    const activity = document.querySelector('details')!
+    expect(activity.hasAttribute('open')).toBe(false)
+    expect(activity.querySelectorAll('article')).toHaveLength(3)
+    expect(activity.textContent).toContain('Public reasoning summary')
+    expect(document.querySelectorAll('.conversation > article')).toHaveLength(2)
+    expect(document.querySelector('#message-5')?.closest('details')).toBeNull()
+    expect(document.querySelectorAll('article')).toHaveLength(messages.length)
   })
 })

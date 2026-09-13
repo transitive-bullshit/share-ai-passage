@@ -1,19 +1,18 @@
-import { ArrowDown, ArrowUpRight, BookOpen } from 'lucide-react'
+import { ArrowDown, ArrowUpRight } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { after } from 'next/server'
 import { cache } from 'react'
 
-import { AvailabilityCheck } from '@/components/availability-check'
-import { ConversationPreviews } from '@/components/conversation-previews'
 import { CopyLink } from '@/components/copy-link'
 import { JsonLd } from '@/components/json-ld'
-import { SavedMessage } from '@/components/saved-message'
+import { SavedConversation } from '@/components/saved-conversation'
 import { Button } from '@/components/ui/button'
 import { appUrl } from '@/lib/config'
 import { providerNames } from '@/lib/domain'
 import { messageText } from '@/lib/messages'
+import { groupReaderMessages } from '@/lib/reader'
 import { checkAvailability, getPublication } from '@/lib/service'
 import {
   passageJsonLd,
@@ -73,9 +72,15 @@ export default async function ReaderPage({ params }: Props) {
   }
 
   const { source, snapshot, publication, preview } = record
-  const lastReplyIndex = snapshot.messages.findLastIndex(
-    (message) => message.role === 'assistant' && messageText(message).trim()
-  )
+  const groups = groupReaderMessages(snapshot.messages, snapshot.parserVersion)
+  const visibleMessages = groups
+    .filter((group) => group.type === 'message')
+    .flatMap((group) => group.entries)
+  const lastReplyIndex =
+    visibleMessages.findLast(
+      ({ message }) =>
+        message.role === 'assistant' && messageText(message).trim()
+    )?.index ?? -1
   after(async () => {
     try {
       await checkAvailability(source.id, 'automatic')
@@ -108,16 +113,20 @@ export default async function ReaderPage({ params }: Props) {
         </div>
         <h1>{publication.title}</h1>
         {highlights.length > 0 ? (
-          <section className='reader-summary' aria-labelledby='summary-heading'>
-            <h2 id='summary-heading' className='eyebrow'>
-              Highlights
-            </h2>
+          <details className='reader-summary'>
+            <summary>
+              Highlights{' '}
+              <span>
+                {highlights.length}{' '}
+                {highlights.length === 1 ? 'takeaway' : 'takeaways'}
+              </span>
+            </summary>
             <ul>
               {highlights.map((highlight, index) => (
                 <li key={index}>{highlight}</li>
               ))}
             </ul>
-          </section>
+          </details>
         ) : null}
         <div className='reader-source-bar'>
           <div className='reader-actions'>
@@ -132,49 +141,28 @@ export default async function ReaderPage({ params }: Props) {
               </a>
             </Button>
             <CopyLink url={shareUrl} />
+            {lastReplyIndex > 0 ? (
+              <Button asChild variant='ghost' size='sm'>
+                <a href={`#message-${lastReplyIndex + 1}`}>
+                  Jump to answer
+                  <ArrowDown data-icon='inline-end' />
+                </a>
+              </Button>
+            ) : null}
           </div>
           <p className='snapshot-note'>
-            Saved {captured} · {snapshot.messages.length} messages
+            Saved {captured} · {visibleMessages.length} messages
           </p>
         </div>
       </header>
-      <div className='conversation-heading' id='conversation'>
-        <div className='conversation-heading-copy'>
-          <h2>The conversation</h2>
-          <p>The complete saved conversation.</p>
-        </div>
-        {lastReplyIndex > 3 ? (
-          <Button asChild variant='ghost' size='sm'>
-            <a href={`#message-${lastReplyIndex + 1}`}>
-              Jump to last reply
-              <ArrowDown data-icon='inline-end' />
-            </a>
-          </Button>
-        ) : (
-          <ArrowDown size={19} aria-hidden='true' />
-        )}
-      </div>
-      <ConversationPreviews key={`${provider}/${publicationId}`}>
-        {snapshot.messages.map((message, index) => (
-          <SavedMessage key={message.id} message={message} index={index} />
-        ))}
-      </ConversationPreviews>
-      <aside className='reader-end'>
-        <div className='reader-end-heading'>
-          <BookOpen size={18} aria-hidden='true' />
-          <h2>Saved with its source.</h2>
-        </div>
-        <p>
-          This is a saved copy of a public conversation. Availability checks
-          leave these words unchanged. If the original stops being public, the
-          saved conversation and its preview are disabled here.
-        </p>
-        <AvailabilityCheck provider={provider} publicationId={publicationId} />
-        <p className='cache-note'>
-          Checks are limited to once an hour. Other platforms may retain
-          previously fetched previews.
-        </p>
-      </aside>
+      <h2 className='sr-only' id='conversation'>
+        The conversation
+      </h2>
+      <SavedConversation
+        key={`${provider}/${publicationId}`}
+        groups={groups}
+        linkPreviews
+      />
     </main>
   )
 }

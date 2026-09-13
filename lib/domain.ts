@@ -43,6 +43,8 @@ export type Message = {
   content: MessageContent[]
   /** Publicly exposed Codex commentary or final-answer phase. */
   phase?: 'commentary' | 'final_answer'
+  /** A reasoning summary explicitly exposed by the public source. */
+  kind?: 'reasoning_summary'
 }
 
 export type SourceReference = {

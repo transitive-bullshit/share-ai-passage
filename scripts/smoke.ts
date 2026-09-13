@@ -259,11 +259,18 @@ function validateReader(
     'The reader must preserve every prepared message in order.'
   )
   let previousOffset = -1
+  // React useId values depend on the surrounding server tree, and streaming
+  // adds empty text-boundary comments absent from static markup.
+  const normalizeControlIds = (markup: string) =>
+    markup
+      .replace(/(id|aria-controls)="_[Rr]_[^"]+"/g, '$1="reader-control"')
+      .replaceAll('<!-- -->', '')
+  const normalizedHtml = normalizeControlIds(html)
   for (const [index, message] of messages.entries()) {
-    const expectedArticle = renderToStaticMarkup(
-      createElement(SavedMessage, { message, index })
+    const expectedArticle = normalizeControlIds(
+      renderToStaticMarkup(createElement(SavedMessage, { message, index }))
     )
-    const offset = html.indexOf(expectedArticle)
+    const offset = normalizedHtml.indexOf(expectedArticle)
     verify(
       offset > previousOffset,
       'The reader must render each complete saved message in its original order.'
