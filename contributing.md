@@ -64,7 +64,7 @@ The anonymous CLI remains supported; authenticated CLI credentials and account-d
 
 Google rejects `.localhost` subdomains. Follow the [Portless Google OAuth guide](https://github.com/vercel-labs/portless/tree/main/examples/google-oauth) using a hostname under the owned domain. The isolated accounts setup below preserves the normal development proxy and routes HTTPS port 8443 to the accounts backend on `127.0.0.1:3107`.
 
-The exact Vercel DNS record `share-ai-passage-accounts-afc0.local` under `share-ai-passage.com` is an **A** record pointing to `127.0.0.1`, TTL **60**. DNS resolution and trusted HTTPS serving have been verified. This does not establish that a Google client or its sign-in flow is ready.
+The exact Vercel DNS record `share-ai-passage-accounts-afc0.local` under `share-ai-passage.com` is an **A** record pointing to `127.0.0.1`, TTL **60**. DNS resolution and trusted HTTPS serving have been verified. Current client provisioning and completed sign-in checks are recorded in the [production guide](docs/PRODUCTION.md#google-development-with-portless).
 
 Run from the accounts checkout:
 
