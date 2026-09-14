@@ -3,7 +3,7 @@ import '@fontsource/inter/500.css'
 import '@fontsource/inter/600.css'
 import './globals.css'
 
-import { SquarePen } from 'lucide-react'
+import { ExternalLink } from 'lucide-react'
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 import { Analytics } from '@vercel/analytics/next'
@@ -99,7 +99,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               >
                 <a href='/'>
                   {brand.cta}
-                  <SquarePen data-icon='inline-end' aria-hidden='true' />
+                  <ExternalLink data-icon='inline-end' aria-hidden='true' />
                 </a>
               </Button>
             </div>

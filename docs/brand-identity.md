@@ -56,7 +56,7 @@ Use the existing semantic CSS tokens. Brand controls are neutral. Error and succ
 
 In saved conversations, blue (`#326DA8`) identifies source links, with small local favicon glyphs (GitHub’s mark or a web/email symbol). Syntax colors distinguish code tokens. These functional reading cues leave brand controls neutral. Keep prose around 46rem wide; dense desktop tables may extend to 66rem, with wider expansion and contained scrolling on small screens. Questions use the secondary surface, while answers remain on white without repeated visible role labels.
 
-Header and footer creation CTAs use rounded shadcn outline buttons with a trailing pen-in-square icon. The header uses the default size; the footer uses the more compact small size.
+Header and footer creation CTAs use rounded shadcn outline buttons with a trailing Lucide external-link icon. The header uses the default size; the footer uses the more compact small size.
 
 The site footer pairs the Passage wordmark with adjacent X and GitHub icon links and the creation CTA. Use shadcn ghost icon buttons, inherited muted color, neutral hover and focus states, accessible link labels, and a new tab for external destinations.
 
