@@ -10,6 +10,20 @@ Pre-deployment validation of the September 13 marketing, indexing, and JSON-LD u
 
 When changing domains, configure the existing Vercel project’s Production domains and the DNS records supplied by its Domains settings, following [Vercel’s domain setup guide](https://vercel.com/docs/domains/working-with-domains/add-a-domain). Verify HTTPS, then redeploy. Confirm that `VERCEL_PROJECT_PRODUCTION_URL` names the intended host and that generated passage links, canonicals, social images, and JSON-LD use it. Keep the automatic origin resolution below; set `PASSAGE_URL` to the verified service origin for CLI use.
 
+## Account email setup
+
+Resend verified `accounts.share-ai-passage.com` on September 14, 2026 in `us-east-1` (North Virginia). Vercel manages DNS. The exact Resend DKIM TXT at `resend._domainkey.accounts`, SPF TXT at `send.accounts`, and return-path MX at `send.accounts` resolve publicly; existing DNS records were preserved. Receiving is disabled and no click/open tracking is configured. Keep tracking disabled for authentication emails.
+
+Separate `Passage development` and `Passage production` API keys have Sending access restricted to this domain. The following values are saved privately in the Vercel project's Development and Production environments and in the main checkout's ignored, owner-only `.env.local` and `.env.prod.local`, respectively. Preview is not configured for email.
+
+| Variable            | Value                                           |
+| ------------------- | ----------------------------------------------- |
+| `RESEND_API_KEY`    | Separate private key for each environment       |
+| `RESEND_FROM_EMAIL` | `Passage <hello@accounts.share-ai-passage.com>` |
+| `RESEND_REPLY_TO`   | `passage@transitivebullsh.it`                   |
+
+The sender is a sending identity, not a receiving mailbox. The owner reports creating a Google Workspace group alias for Reply-To that forwards to `travis@transitivebullsh.it`; external delivery has not been tested. Authentication-email integration is still pending: the app does not yet consume these variables or send verification/password-reset emails. Vercel environment changes apply to subsequent deployments.
+
 ## Recorded database configuration
 
 | Setting | Value |
