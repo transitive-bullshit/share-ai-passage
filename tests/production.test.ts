@@ -2,6 +2,7 @@ import { EventEmitter, once } from 'node:events'
 import { createServer } from 'node:net'
 import { createInterface } from 'node:readline'
 import { fileURLToPath } from 'node:url'
+import { promisify } from 'node:util'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { appUrl } from '../lib/config'
@@ -64,6 +65,20 @@ const configuration = (overrides: Record<string, string> = {}) =>
     .map(([name, value]) => `${name}=${value}`)
     .join('\n')
 
+const accountSettings = [
+  'BETTER_AUTH_SECRET',
+  'BETTER_AUTH_URL',
+  'GOOGLE_CLIENT_ID',
+  'GOOGLE_CLIENT_SECRET',
+  'GITHUB_CLIENT_ID',
+  'GITHUB_CLIENT_SECRET',
+  'RESEND_API_KEY',
+  'RESEND_FROM_EMAIL',
+  'RESEND_REPLY_TO',
+  'EMAIL_FROM',
+  'EMAIL_REPLY_TO'
+]
+
 function productionAppUrl(env: NodeJS.ProcessEnv) {
   for (const name of [
     'NODE_ENV',
@@ -112,6 +127,104 @@ afterEach(() => {
 })
 
 describe('explicit production configuration', () => {
+  it.each([
+    { name: 'missing account settings', settings: {} },
+    {
+      name: 'explicit canonical settings',
+      settings: {
+        BETTER_AUTH_SECRET: 'production-auth-fixture-secret-with-32-characters',
+        BETTER_AUTH_URL: 'http://localhost:3001/',
+        GOOGLE_CLIENT_ID: 'production-google-id',
+        GOOGLE_CLIENT_SECRET: 'production-google-secret',
+        GITHUB_CLIENT_ID: 'production-github-id',
+        GITHUB_CLIENT_SECRET: 'production-github-secret',
+        RESEND_API_KEY: 'production-email-key',
+        RESEND_FROM_EMAIL: 'Passage <production@example.invalid>',
+        RESEND_REPLY_TO: 'reply@example.invalid'
+      }
+    },
+    {
+      name: 'explicit supported email aliases',
+      settings: {
+        RESEND_API_KEY: 'production-alias-email-key',
+        EMAIL_FROM: 'Passage <alias@example.invalid>',
+        EMAIL_REPLY_TO: 'alias-reply@example.invalid'
+      }
+    }
+  ])(
+    'isolates $name from both inherited values and actual Next env-file loading',
+    async ({ settings }) => {
+      const explicit = settings as Record<string, string>
+      const development = Object.fromEntries(
+        accountSettings.map((name) => [name, `development-${name}`])
+      )
+      const plan = productionPlan(
+        ['start'],
+        configuration(explicit),
+        development
+      )
+      const expected = Object.fromEntries(
+        accountSettings.map((name) => [name, explicit[name] ?? ''])
+      )
+      expect(plan.env).toMatchObject(expected)
+
+      // Exercise Next's loader in an isolated process, with in-memory fixtures.
+      // No private env files, production connections, or providers are accessed.
+      const { execFile } =
+        await vi.importActual<typeof import('node:child_process')>(
+          'node:child_process'
+        )
+      const script = `
+        const { processEnv } = require('@next/env')
+        processEnv([{
+          path: '.env.local',
+          contents: ${JSON.stringify(
+            Object.entries(development)
+              .map(([name, value]) => `${name}=${value}`)
+              .join('\n')
+          )}
+        }])
+        console.log(JSON.stringify(Object.fromEntries(
+          ${JSON.stringify(accountSettings)}.map(name => [name, process.env[name]])
+        )))
+      `
+      const { stdout, stderr } = await promisify(execFile)(
+        process.execPath,
+        ['-e', script],
+        {
+          cwd: fileURLToPath(new URL('..', import.meta.url)),
+          env: plan.env
+        }
+      )
+      expect(stderr).toBe('')
+      expect(JSON.parse(stdout)).toEqual(expected)
+    }
+  )
+
+  it('accepts an explicit auth URL for the selected local port and keeps database-only actions independent of that port', () => {
+    const contents = configuration({
+      BETTER_AUTH_URL: 'http://localhost:3101/'
+    })
+    const plan = productionPlan(['dev', '--port', '3101'], contents, {})
+    expect(plan.env.BETTER_AUTH_URL).toBe('http://localhost:3101/')
+    expect(productionAppUrl(plan.env)).toBe('http://localhost:3101')
+    expect(() => productionPlan(['migrate'], contents, {})).not.toThrow()
+  })
+
+  it.each([
+    'https://www.share-ai-passage.com',
+    'http://localhost:3101',
+    'http://localhost:3001/api/auth',
+    'http://localhost:3001?next=other',
+    'http://private-fixture:secret@localhost:3001',
+    'not-a-url'
+  ])('rejects a conflicting or malformed local auth override: %s', (url) => {
+    const attempt = () =>
+      productionPlan(['start'], configuration({ BETTER_AUTH_URL: url }), {})
+    expect(attempt).toThrow('must match http://localhost:3001')
+    expect(attempt).not.toThrow(url)
+  })
+
   it('uses only file credentials and local app settings despite inherited deployment/test values', () => {
     const inherited = {
       PATH: '/tools',

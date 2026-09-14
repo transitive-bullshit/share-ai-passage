@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto'
+import { resolveActor } from '@/lib/actors'
 import { after } from 'next/server'
 import { z } from 'zod'
 
@@ -27,7 +29,11 @@ export async function POST(request: Request) {
       .safeParse(await readJson(request))
     if (!parsed.success)
       throw new AppError('Paste a public ChatGPT, Claude, or Passage URL.')
-    const result = await prepareSource(parsed.data.url)
+    const result = await prepareSource(parsed.data.url, {
+      actor: await resolveActor(request),
+      requestKey:
+        request.headers.get('idempotency-key')?.slice(0, 128) || randomUUID()
+    })
     after(async () => {
       try {
         await cleanupPreparations()

@@ -1,3 +1,4 @@
+import { resolveActor } from '@/lib/actors'
 import { z } from 'zod'
 
 import { renderCard, renderCardPreview } from '@/lib/card'
@@ -41,7 +42,10 @@ export async function POST(request: Request) {
       throw new AppError(
         edited.error.issues[0]?.message ?? 'Enter a valid preview summary.'
       )
-    const draft = await getDraft(parsed.data.draftToken)
+    const draft = await getDraft(
+      parsed.data.draftToken,
+      await resolveActor(request)
+    )
     const preview = edited?.data ?? draft.preview
     const render =
       parsed.data.format === 'html' ? renderCardPreview : renderCard

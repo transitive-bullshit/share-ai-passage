@@ -52,6 +52,14 @@ The app derives its public origin from Portless in development, Vercel system va
 
 The public `/llms.txt` is served from `public/llms.txt`. Keep its product summary, supported link formats, and documentation links aligned with current behavior.
 
+## Accounts development
+
+Apply pending migrations before running the accounts app. Better Auth uses the existing database with `BETTER_AUTH_SECRET` (or the stable `APP_SECRET` fallback) and an optional explicit `BETTER_AUTH_URL` matching the local or hosted origin. Google/GitHub require their client IDs and secrets; email signup, verification and recovery require `RESEND_API_KEY` and a verified `RESEND_FROM_EMAIL`. See [.env.example](.env.example) and the [service setup checklist](docs/THIRD_PARTY_SETUP.md). The earlier `EMAIL_FROM`/`EMAIL_REPLY_TO` names remain accepted as aliases. Missing providers are visibly unavailable; guest creation still works with local PostgreSQL and no email credentials.
+
+Use `/account` for account settings and `/passages` for saved work. The browser starts its guest session only on creation. Authenticated draft endpoints live under `/api/drafts`; mutations require the same origin and JSON. `GET /api/account/usage` returns `allowance`, `used`, `reserved`, `remaining` and `resetAt`. New summaries consume the guest/Free calendar-month allowance; cached work and publishing remain available at exhaustion. Generation limit errors include `code` (`SUMMARY_LIMIT` or `FREE_BUDGET_LIMIT`) and `resetAt`.
+
+The anonymous CLI remains supported; authenticated CLI credentials and account-default custom templates belong to the paid phase after feedback. New metered model calls require the supported `gpt-5.4-nano` task bounds. Changing a model or prompt/input limit requires updating its conservative cost policy before exposing it through the app.
+
 ## CLI and agent skill
 
 Install the portable [passage-share skill](.agents/skills/passage-share/SKILL.md) with the [skills CLI](https://skills.sh):
@@ -85,7 +93,7 @@ API clients can send an optional `preview: { title, highlights }` with the exist
 
 ## Fork an existing passage
 
-Paste a Passage reader URL into the same creation form or pass it to the CLI's `prepare` command. The server reads the existing publication from its database and prepares a fork with the saved title, highlights, and card style. It reuses that publication's exact snapshot, even if a newer source capture exists, and preserves the original provider link. No provider or AI request runs.
+Paste a Passage reader URL into the same creation form or pass it to the CLI's `prepare` command. The server reads the existing publication from its database and prepares a fork with the saved title and highlights. Owned revisions and legacy anonymous CLI forks preserve the saved card style; browser forks of someone else’s passage use the new sharer’s defaults. It reuses that publication's exact snapshot, even if a newer source capture exists, and preserves the original provider link. No provider or AI request runs.
 
 Edit and publish normally. Even an unchanged fork receives a distinct URL from its parent; repeated publication of the same fork is idempotent. Missing or disabled passages cannot be forked, and source removal affects forks too. Production www/apex links and the configured application origin are accepted; the referenced publication must exist in the current deployment's database.
 
@@ -97,7 +105,7 @@ For API consumers, preparation returns an optional `appearance` for a fork. Omit
 - The reader preserves extracted text and Markdown, folds reasoning/activity by default, highlights and copies fenced code, and supports wide desktop tables with contained mobile scrolling. Links use local favicon glyphs. Unsupported media, tools, and artifacts retain explicit omission markers. Provider HTML is not executed and saved conversation media is not loaded. Published chat links have optional hover previews with remote artwork; see the [message model](docs/MESSAGE_MODEL.md#reader-link-previews).
 - Removing public access at the provider initiates removal here. Availability checks run lazily after seven days or through the rate-limited manual check. Confirmed removal disables all existing passages and cards from that source; temporary failures leave them available.
 - External platforms may retain previews they already fetched. Disabled content remains stored but is not served. Old links stay disabled if the source returns.
-- There are no accounts, editors for published passages, private deletion links, or public discovery directory.
+- Accounts provide saved drafts, My passages, curated preference sync and owner deletion. Published passages remain immutable; revise them into a new URL. Public discovery and private deletion links are not part of this release.
 - Available production passages and their public cards may appear in search results. Preview/staging/local builds, drafts, and unavailable content stay `noindex`. Page canonicals, social metadata, and safely serialized JSON-LD describe the same saved presentation. See [hosting configuration](docs/PRODUCTION.md#hosting-configuration) for the environment policy.
 
 See [product behavior and limits](docs/MVP_PLAN.md), [supported extraction](docs/EXTRACTION.md), and the [message model](docs/MESSAGE_MODEL.md).

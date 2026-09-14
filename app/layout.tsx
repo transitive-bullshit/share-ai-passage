@@ -8,6 +8,7 @@ import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 import { Analytics } from '@vercel/analytics/next'
 
+import { AccountNav } from '@/components/account-nav'
 import { HeaderCreateLink } from '@/components/header-create-link'
 import { BrandMark } from '@/components/brand-mark'
 import { Button } from '@/components/ui/button'
@@ -43,6 +44,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <a href='/#how-it-works'>How it works</a>
               <a href='/#for-agents'>For agents</a>
               <HeaderCreateLink />
+              <div className='header-account'>
+                <AccountNav />
+              </div>
             </nav>
           </header>
           {children}

@@ -104,6 +104,28 @@ export function productionPlan(
     throw new ConfigurationError(
       `AI_PROVIDER in ${configurationFile} must be openai.`
     )
+  const authUrl = values.BETTER_AUTH_URL?.trim()
+  if (
+    authUrl &&
+    (action === 'dev' || action === 'build' || action === 'start')
+  ) {
+    const localOrigin = `http://localhost:${port}`
+    let matchesLocalOrigin = false
+    try {
+      const parsed = new URL(authUrl)
+      matchesLocalOrigin =
+        parsed.origin === localOrigin &&
+        !parsed.username &&
+        !parsed.password &&
+        parsed.pathname === '/' &&
+        !parsed.search &&
+        !parsed.hash
+    } catch {}
+    if (!matchesLocalOrigin)
+      throw new ConfigurationError(
+        `BETTER_AUTH_URL in ${configurationFile} must match ${localOrigin}, or be omitted for the local origin default.`
+      )
+  }
 
   const env: NodeJS.ProcessEnv = {
     NODE_ENV: action === 'dev' ? 'development' : 'production'
@@ -155,6 +177,23 @@ export function productionPlan(
     AI_GATEWAY_API_KEY: '',
     VERCEL_OIDC_TOKEN: ''
   })
+  // Empty values also block Next from loading development credentials or aliases
+  // from .env.local while this child is connected to the production database.
+  for (const name of [
+    'BETTER_AUTH_SECRET',
+    'BETTER_AUTH_URL',
+    'GOOGLE_CLIENT_ID',
+    'GOOGLE_CLIENT_SECRET',
+    'GITHUB_CLIENT_ID',
+    'GITHUB_CLIENT_SECRET',
+    'RESEND_API_KEY',
+    'RESEND_FROM_EMAIL',
+    'RESEND_REPLY_TO',
+    'EMAIL_FROM',
+    'EMAIL_REPLY_TO'
+  ]) {
+    env[name] = values[name]?.trim() || ''
+  }
   const steps: Step[] = []
   if (action === 'dev' || action === 'build') {
     steps.push({

@@ -50,6 +50,20 @@
       "when": 1789306240747,
       "tag": "0006_short_vertigo",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1789397220348,
+      "tag": "0007_hard_black_crow",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1789398722997,
+      "tag": "0008_silly_mephisto",
+      "breakpoints": true
     }
   ]
 }

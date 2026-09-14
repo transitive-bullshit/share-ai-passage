@@ -2,8 +2,15 @@
 
 import { ArrowLeft, ArrowUpRight, Check } from 'lucide-react'
 import Link from 'next/link'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore
+} from 'react'
 
+import { DraftGenerationControls } from '@/components/draft-generation-controls'
 import { CopyLink } from '@/components/copy-link'
 import {
   SocialCardPreview,
@@ -16,6 +23,12 @@ import { Button } from '@/components/ui/button'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
+import { authHref } from '@/lib/auth-navigation'
+import {
+  createDraftAutosave,
+  type DraftSaveSnapshot
+} from '@/lib/draft-autosave'
+import { draftRequest, saveDraft, type SavedDraft } from '@/lib/draft-client'
 import type { CardAppearance } from '@/lib/card-appearance'
 import { clientErrorMessage, postJson } from '@/lib/client-request'
 import { parseGeneratedPreview } from '@/lib/summary'
@@ -25,7 +38,18 @@ import {
   providerNames
 } from '@/lib/domain'
 
+const legacySaveSnapshot: DraftSaveSnapshot = {
+  status: 'saved',
+  revision: 0,
+  error: ''
+}
+const legacySaveSubscribe = () => () => {}
+const getLegacySaveSnapshot = () => legacySaveSnapshot
+
 export type PreparedDraft = {
+  draftId?: string
+  revision?: number
+  status?: 'ready'
   /** Capability to publish this reviewed snapshot and preview. */
   draftToken: string
   /** Service hosting the original conversation. */
@@ -44,7 +68,8 @@ export function PreviewReview({
   onAppearanceChange,
   preferencesReady,
   preferencesAvailable,
-  onBack
+  onBack,
+  registered = false
 }: {
   draft: PreparedDraft
   appearance: CardAppearance
@@ -52,10 +77,27 @@ export function PreviewReview({
   preferencesReady: boolean
   preferencesAvailable: boolean
   onBack: () => void
+  registered?: boolean
 }) {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
   const [preview, setPreview] = useState(draft.preview)
+  const [generating, setGenerating] = useState(false)
+  const [autosave] = useState(() =>
+    draft.draftId && draft.revision !== undefined
+      ? createDraftAutosave(
+          { preview: draft.preview, appearance, revision: draft.revision },
+          (revision, content) => saveDraft(draft.draftId!, revision, content)
+        )
+      : null
+  )
+  const save = useSyncExternalStore(
+    autosave?.subscribe ?? legacySaveSubscribe,
+    autosave?.getSnapshot ?? getLegacySaveSnapshot,
+    autosave?.getSnapshot ?? getLegacySaveSnapshot
+  )
+  const editingDisabled = pending || generating
+
   const validation = useMemo(() => parseGeneratedPreview(preview), [preview])
   const cardPreview = validation.success ? validation.data : preview
   const [card, setCard] = useState<CardPreviewStatus | null>(null)
@@ -83,28 +125,73 @@ export function PreviewReview({
     window.scrollTo({ top: 0, behavior: 'instant' })
   }, [shareUrl])
 
+  useEffect(() => {
+    if (!autosave || save.status === 'saved') return
+    function protectUnsaved(event: BeforeUnloadEvent) {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', protectUnsaved)
+    return () => window.removeEventListener('beforeunload', protectUnsaved)
+  }, [autosave, save.status])
+
+  useEffect(() => () => autosave?.dispose(), [autosave])
+
+  async function back() {
+    if (editingDisabled) return
+    try {
+      await autosave?.flush()
+      onBack()
+    } catch (err) {
+      setError(clientErrorMessage(err))
+    }
+  }
+
+  function changeAppearance(next: CardAppearance) {
+    if (editingDisabled || shareUrl) return
+    onAppearanceChange(next)
+    autosave?.change({ preview, appearance: next })
+  }
+
+  function acceptDraft(next: SavedDraft) {
+    setPreview(next.preview)
+    onAppearanceChange(next.appearance)
+    autosave?.accept(next)
+    setCardAttempt((attempt) => attempt + 1)
+    setError('')
+  }
+
   function retryCard() {
     setCardAttempt((attempt) => attempt + 1)
   }
 
   function changePreview(next: GeneratedPreview) {
-    if (pending || shareUrl) return
+    if (editingDisabled || shareUrl) return
     setPreview(next)
+    autosave?.change({ preview: next, appearance: activeAppearance })
     setCardAttempt((attempt) => attempt + 1)
     setError('')
   }
 
   async function publish() {
-    if (!publishReady || !validation.success || pending || shareUrl) return
+    if (!publishReady || !validation.success || editingDisabled || shareUrl)
+      return
     setLockedAppearance(activeAppearance)
     setPending(true)
     setError('')
     try {
-      const result = await postJson<{ shareUrl: string }>('/api/publish', {
-        draftToken: draft.draftToken,
-        appearance: activeAppearance,
-        preview: validation.data
-      })
+      const revision = await autosave?.flush()
+      const result = draft.draftId
+        ? await draftRequest<{ shareUrl: string }>(
+            `/api/drafts/${draft.draftId}/publish`,
+            'POST',
+            { revision }
+          )
+        : await postJson<{ shareUrl: string }>('/api/publish', {
+            draftToken: draft.draftToken,
+            appearance: activeAppearance,
+            preview: validation.data
+          })
       setShareUrl(result.shareUrl)
     } catch (err) {
       setLockedAppearance(null)
@@ -154,7 +241,7 @@ export function PreviewReview({
             </Link>
           </Button>
         </div>
-        <Button variant='ghost' onClick={onBack}>
+        <Button variant='ghost' onClick={() => void back()}>
           Create another passage
         </Button>
       </section>
@@ -164,11 +251,27 @@ export function PreviewReview({
   return (
     <section className='review-section'>
       <div className='review-navigation'>
-        <Button variant='ghost' size='sm' onClick={onBack} disabled={pending}>
+        <Button
+          variant='ghost'
+          size='sm'
+          onClick={() => void back()}
+          disabled={editingDisabled}
+        >
           <ArrowLeft data-icon='inline-start' />
           Back
         </Button>
         <span>Preview &amp; publish</span>
+        {autosave && (
+          <span className='draft-status' role='status'>
+            {save.status === 'saved'
+              ? 'Saved'
+              : save.status === 'waiting' || save.status === 'saving'
+                ? 'Saving…'
+                : save.status === 'conflict'
+                  ? 'Newer draft available'
+                  : 'Changes not saved'}
+          </span>
+        )}
       </div>
       <div className='review-heading'>
         <div>
@@ -191,10 +294,61 @@ export function PreviewReview({
           <SummaryEditor
             preview={preview}
             issues={validation.error?.issues ?? []}
-            disabled={pending}
+            disabled={editingDisabled}
             onChange={changePreview}
           />
 
+          {draft.draftId && autosave && (
+            <DraftGenerationControls
+              draftId={draft.draftId}
+              preview={preview}
+              disabled={pending || save.status === 'conflict'}
+              flush={autosave.flush}
+              onAccept={acceptDraft}
+              onBusy={setGenerating}
+              registered={registered}
+            />
+          )}
+          {autosave &&
+            (save.status === 'error' || save.status === 'conflict') && (
+              <Alert variant='destructive'>
+                <AlertDescription>
+                  {save.status === 'conflict'
+                    ? 'This draft was changed in another tab or device. Your edits are still here. Copy anything you want to keep before reloading the saved draft.'
+                    : 'Your latest changes haven’t been saved yet.'}
+                  <div className='account-actions'>
+                    {save.status === 'conflict' ? (
+                      <Button asChild size='sm' variant='outline'>
+                        <a href={`/?draft=${draft.draftId}`}>
+                          Reload saved draft
+                        </a>
+                      </Button>
+                    ) : (
+                      <Button
+                        type='button'
+                        size='sm'
+                        variant='outline'
+                        onClick={() => void autosave.flush().catch(() => {})}
+                      >
+                        Try saving again
+                      </Button>
+                    )}
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
+          {draft.draftId && !registered && (
+            <p className='draft-status'>
+              Your draft is saved for this browser.{' '}
+              <a
+                className='auth-text-link'
+                href={authHref('/sign-up', `/?draft=${draft.draftId}`)}
+              >
+                Create an account
+              </a>{' '}
+              to keep your passages together.
+            </p>
+          )}
           {error ? (
             <Alert variant='destructive'>
               <AlertDescription>{error}</AlertDescription>
@@ -204,7 +358,9 @@ export function PreviewReview({
             <Button
               size='lg'
               onClick={publish}
-              disabled={!publishReady || pending}
+              disabled={
+                !publishReady || editingDisabled || save.status === 'conflict'
+              }
             >
               {pending ? <Spinner data-icon='inline-start' /> : null}
               {pending ? 'Publishing…' : 'Publish passage'}
@@ -249,8 +405,8 @@ export function PreviewReview({
           <SocialTemplatePicker
             appearance={activeAppearance}
             provider={draft.provider}
-            onChange={onAppearanceChange}
-            disabled={pending || !preferencesReady}
+            onChange={changeAppearance}
+            disabled={editingDisabled || !preferencesReady}
             preferencesAvailable={preferencesAvailable}
           />
         </aside>
