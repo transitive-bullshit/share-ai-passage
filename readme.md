@@ -21,10 +21,10 @@ The same conversation shared on X before and after using Passage.
 
 ## For humans
 
-1. Share an AI chat publicly from within your preferred AI app.
+1. Share an AI chat thread publicly from within your preferred AI app (or use this [public example](https://chatgpt.com/s/cx_6aa28dbe9be88191a1022960d8fa67c0)).
 1. Paste the public chat link and select **Create a passage**.
-1. Edit the generated title and highlights, then choose from the built-in **social card style**.
-1. Select **Publish passage** and share your passage link on social media.
+1. Edit the generated title and highlights, then choose from the built-in **social card themes**.
+1. Select **Publish passage** and share your new passage link anywhere you like.
 
 ## For agents
 

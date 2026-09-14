@@ -25,9 +25,7 @@ export async function POST(request: Request) {
         draftToken: z.string().min(1).max(1024),
         preview: z.unknown().optional(),
         format: z.enum(['webp', 'html']).optional().default('webp'),
-        appearance: cardAppearanceSchema
-          .optional()
-          .default(DEFAULT_CARD_APPEARANCE)
+        appearance: cardAppearanceSchema.optional()
       })
       .strict()
       .safeParse(await readJson(request))
@@ -53,7 +51,7 @@ export async function POST(request: Request) {
         highlights: preview.highlights,
         provider: draft.source.provider
       },
-      parsed.data.appearance
+      parsed.data.appearance ?? draft.appearance ?? DEFAULT_CARD_APPEARANCE
     )
   } catch (err) {
     return errorResponse(err)

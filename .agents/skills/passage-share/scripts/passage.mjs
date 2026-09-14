@@ -137,11 +137,10 @@ function validatePrepared(value, exitCode = 1) {
     typeof value.draftToken !== 'string' ||
     value.draftToken.length > 1024 ||
     !isRecord(value.preview) ||
-    !validText(value.preview.title, 60) ||
+    !validText(value.preview.title, 600) ||
     !Array.isArray(value.preview.highlights) ||
-    value.preview.highlights.length < 1 ||
     value.preview.highlights.length > 3 ||
-    !value.preview.highlights.every((highlight) => validText(highlight, 100))
+    !value.preview.highlights.every((highlight) => validText(highlight, 1000))
   )
     throw new CliError(
       'The prepared draft has an invalid response shape.',

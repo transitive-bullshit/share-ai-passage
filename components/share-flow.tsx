@@ -87,6 +87,7 @@ export function ShareFlow({ children }: { children?: ReactNode }) {
         url: url.trim()
       })
       setRetry(null)
+      if (result.appearance) cardPreferences.change(result.appearance)
       setDraft(result)
     } catch (err) {
       setError(clientErrorMessage(err))

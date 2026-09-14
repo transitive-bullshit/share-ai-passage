@@ -211,6 +211,98 @@ describe.skipIf(!testUrl)('publication lifecycle with PostgreSQL', () => {
     await closeDatabase()
   })
 
+  it('copies a passage into a draft without ingestion and preserves its source, snapshot, text and style', async () => {
+    const url = sourceUrl()
+    const initial = await prepareSource(url)
+    const initialSnapshotId = readDraftToken(initial.draftToken).snapshotId
+    const edited = {
+      title: 'Reviewed wording',
+      highlights: ['A reviewed highlight']
+    }
+    const appearance: CardAppearance = { templateId: 'midnight-observatory' }
+    const published = await publishPreview(
+      initial.draftToken,
+      appearance,
+      edited
+    )
+    // Even stale content must reuse this publication's exact saved snapshot.
+    advance(limits.freshnessMs + 1)
+    upstream.fetchSource.mockResolvedValueOnce({
+      status: 'available',
+      conversation: changed
+    })
+    const latest = await prepareSource(url)
+    expect(readDraftToken(latest.draftToken).snapshotId).not.toBe(
+      initialSnapshotId
+    )
+    upstream.fetchSource.mockClear()
+    upstream.suggestPreview.mockClear()
+    const copied = await prepareSource(
+      `https://www.share-ai-passage.com/chatgpt/${published.publicationId}?copied=1`
+    )
+    expect(copied).toMatchObject({
+      sourceUrl: url,
+      preview: edited,
+      appearance
+    })
+    expect((await getDraft(copied.draftToken)).snapshot.id).toBe(
+      initialSnapshotId
+    )
+    expect((await getDraft(copied.draftToken)).preview).toEqual(edited)
+    const forked = await publishPreview(copied.draftToken)
+    expect(forked.publicationId).not.toBe(published.publicationId)
+    expect(await publishPreview(copied.draftToken)).toEqual(forked)
+    const sameFork = await prepareSource(
+      `https://share-ai-passage.com/chatgpt/${published.publicationId}`
+    )
+    expect(await publishPreview(sameFork.draftToken)).toEqual(forked)
+    const revised = await publishPreview(copied.draftToken, undefined, {
+      title: 'Another introduction',
+      highlights: []
+    })
+    expect(revised.publicationId).not.toBe(published.publicationId)
+    const record = await getPublication('chatgpt', revised.publicationId)
+    expect(record!.source.canonicalUrl).toBe(url)
+    expect(record!.snapshot.messages).toEqual(original.messages)
+    expect(record!.snapshot.preview).toEqual(generatedPreview)
+    expect(record!.publication.appearance).toEqual(appearance)
+    expect(
+      (await getPublication('chatgpt', published.publicationId))!.preview
+    ).toEqual(edited)
+    const copiedAgain = await prepareSource(revised.shareUrl)
+    expect(copiedAgain.sourceUrl).toBe(url)
+    expect(upstream.fetchSource).not.toHaveBeenCalled()
+    expect(upstream.suggestPreview).not.toHaveBeenCalled()
+  })
+
+  it('rejects missing, mismatched and disabled passages and revokes copied drafts on removal', async () => {
+    await expect(
+      prepareSource(`https://www.share-ai-passage.com/chatgpt/${randomUUID()}`)
+    ).rejects.toMatchObject({ status: 404 })
+    const { source, published } = await preparedPublication()
+    await expect(
+      prepareSource(
+        `https://www.share-ai-passage.com/claude/${published.publicationId}`
+      )
+    ).rejects.toMatchObject({ status: 404 })
+    const copied = await prepareSource(published.shareUrl)
+    advance(limits.cooldownMs + 1)
+    upstream.fetchSource.mockResolvedValue({
+      status: 'unavailable',
+      reason: 'removed'
+    })
+    await checkAvailability(source.id, 'manual')
+    await expect(prepareSource(published.shareUrl)).rejects.toMatchObject({
+      status: 410
+    })
+    await expect(getDraft(copied.draftToken)).rejects.toMatchObject({
+      status: 410
+    })
+    await expect(publishPreview(copied.draftToken)).rejects.toMatchObject({
+      status: 410
+    })
+  })
+
   it('allows one preparation and suggestion in flight, then reuses both', async () => {
     const url = sourceUrl()
     const entered = Promise.withResolvers<void>()

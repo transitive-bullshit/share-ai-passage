@@ -1,6 +1,5 @@
 import { z } from 'zod'
 
-import { DEFAULT_CARD_APPEARANCE } from '@/lib/card-appearance'
 import { cardAppearanceSchema } from '@/lib/card-appearance-schema'
 import { AppError } from '@/lib/errors'
 import {
@@ -16,7 +15,7 @@ import { parseGeneratedPreview } from '@/lib/summary'
 const schema = z.strictObject({
   draftToken: z.string().min(1).max(1024),
   preview: z.unknown().optional(),
-  appearance: cardAppearanceSchema.optional().default(DEFAULT_CARD_APPEARANCE)
+  appearance: cardAppearanceSchema.optional()
 })
 
 export async function POST(request: Request) {

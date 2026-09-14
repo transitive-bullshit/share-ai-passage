@@ -195,6 +195,28 @@ describe('portable Passage CLI', () => {
     expect(foreignRequests).toBe(0)
   })
 
+  it.each([{ highlights: [] }, { highlights: ['A'.repeat(1000)] }])(
+    'accepts a fork with reviewed text at current limits: %j',
+    async ({ highlights }) => {
+      const forkPreview = { title: 'T'.repeat(600), highlights }
+      const forkToken = `${Buffer.from(JSON.stringify({ publicationId, previewHash: createHash('sha256').update(JSON.stringify(forkPreview)).digest('hex') })).toString('base64url')}.test-signature`
+      respond = (_request, response) =>
+        json(response, {
+          ...prepared,
+          preview: forkPreview,
+          draftToken: forkToken
+        })
+      const result = await run([
+        'prepare',
+        `https://www.share-ai-passage.com/chatgpt/${publicationId}`,
+        '--json'
+      ])
+      expect(result.code).toBe(0)
+      expect(JSON.parse(result.stdout).preview).toEqual(forkPreview)
+      expect(JSON.parse(result.stdout).sourceUrl).toBe(sourceUrl)
+    }
+  )
+
   it('refuses a mismatched explicit publish server before sending the token', async () => {
     const file = await savedDraft('bound.json')
     const result = await run([

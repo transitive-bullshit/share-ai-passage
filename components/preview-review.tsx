@@ -34,6 +34,8 @@ export type PreparedDraft = {
   sourceUrl: string
   /** Generated title and highlights shown for review. */
   preview: GeneratedPreview
+  /** Saved style when preparing an existing passage. */
+  appearance?: CardAppearance
 }
 
 export function PreviewReview({

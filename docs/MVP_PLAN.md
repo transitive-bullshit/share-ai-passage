@@ -6,10 +6,10 @@ This document owns product scope and remaining work. See the [glossary](CONTEXT.
 
 ## Product behavior
 
-1. Paste a supported public conversation URL. Fetch or reuse its saved content and normalize the messages.
+1. Paste a supported public conversation URL. Fetch or reuse its saved content and normalize the messages. A Passage reader URL instead forks the existing publication into an editable draft, reusing its exact saved conversation, reviewed text, style, and original provider link without fetching or generation.
 2. Generate a concise title and up to three grounded highlights for an uncached snapshot; use fewer for short sources and omit highlights that only repeat the title. Aim for a 4–7 word title, roughly 10 words at most, with the most distinctive terms first. Highlights are paraphrases, not attributed quotations. Successful generation is required; failures return a retryable error.
 3. Review and edit the title, add or remove optional highlights, then choose one of five curated card styles in the in-page preview. Text and style changes update the card as you work. Publish stays disabled while text is invalid or artwork, fonts, and text fitting are not ready.
-4. Publish the reviewed wording and chosen style, then copy or open the share URL. Repeated publication of the same presentation reuses its link while available.
+4. Publish the reviewed wording and chosen style, then copy or open the share URL. Repeated publication of the same presentation reuses its link while available. Forks have a separate identity from their parent even when unchanged; repeated publication of the same fork reuses its link.
 5. Read the saved conversation with its original-source link. Questions use a distinct surface; reasoning summaries, commentary, and tool entries are folded into expandable activity disclosures. Highlights and long questions can be expanded. Preserve extracted text, ordering, roles, Markdown, syntax-highlighted code with copying, tables with desktop expansion and mobile scrolling, and safe links with local favicon glyphs. Known unsupported media, tools, and artifacts retain explicit omissions. See the [message model](MESSAGE_MODEL.md) for older-capture compatibility.
 
 The browser, CLI, and [agent skill](../.agents/skills/passage-share/SKILL.md) use the same prepare/publish operations. Install the skill with `npx skills add transitive-bullshit/share-ai-passage --skill passage-share`; its bundled CLI defaults to the hosted Passage service. Browser drafts support text editing before publication; the standalone CLI publishes its original saved draft without regenerating. Draft tokens authorize publication for 24 hours and stay private.
@@ -46,7 +46,7 @@ Generation currently uses OpenAI with a configurable model, defaulting to `gpt-5
 | Prepare / manual check | 10 / 5 attempts per client per hour |
 | Publish / card API | 60 / 120 attempts per client per hour |
 
-Accept only supported HTTPS provider shares, canonicalize copied query parameters/fragments away, and validate redirects and resolved public IPs. Keep compatibility within those rules; observed CDN paths, signing parameters, and MIME labels are not permanent provider contracts. See [extraction](EXTRACTION.md).
+Accept supported HTTPS provider shares and trusted Passage reader links (see the fork rules in the extraction guide), canonicalize copied query parameters/fragments away, and validate redirects and resolved public IPs. Keep compatibility within those rules; observed CDN paths, signing parameters, and MIME labels are not permanent provider contracts. See [extraction](EXTRACTION.md).
 
 Use validated POST mutations, configured proxy trust, atomic database budgets, escaped text, and safe Markdown. Provider content and model input are untrusted; neither can execute HTML, scripts, or tools. Keep transcript text, draft tokens, signed URLs, and credentials out of routine logs. Rendering uses local assets and does not load remote media.
 

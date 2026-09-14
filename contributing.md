@@ -83,6 +83,14 @@ API clients can send an optional `preview: { title, highlights }` with the exist
 
 `node .agents/skills/passage-share/scripts/passage.mjs share '<public-url>'` displays the preview and asks before publishing in a terminal. Noninteractive use prepares only unless `--yes` is supplied. Use `--json` for structured output and `node .agents/skills/passage-share/scripts/passage.mjs --help` for options.
 
+## Fork an existing passage
+
+Paste a Passage reader URL into the same creation form or pass it to the CLI's `prepare` command. The server reads the existing publication from its database and prepares a fork with the saved title, highlights, and card style. It reuses that publication's exact snapshot, even if a newer source capture exists, and preserves the original provider link. No provider or AI request runs.
+
+Edit and publish normally. Even an unchanged fork receives a distinct URL from its parent; repeated publication of the same fork is idempotent. Missing or disabled passages cannot be forked, and source removal affects forks too. Production www/apex links and the configured application origin are accepted; the referenced publication must exist in the current deployment's database.
+
+For API consumers, preparation returns an optional `appearance` for a fork. Omitting appearance on `/api/card` or `/api/publish` preserves the parent style; omitting preview preserves its reviewed text. Ordinary provider drafts retain the existing generated-preview and default-style behavior.
+
 ## Saved conversations
 
 - Passages retain their saved conversation, reviewed title/highlights, and chosen style. Draft edits leave the cached generated preview unchanged. Published wording is fixed; identical presentations reuse a link, while different wording or style creates a separate presentation.

@@ -20,7 +20,7 @@ export function parseSourceUrl(input: string): SourceReference {
   try {
     url = new URL(input.trim())
   } catch {
-    throw new Error('Paste a complete public ChatGPT or Claude share URL.')
+    throw new Error('Paste a complete public ChatGPT, Claude, or Passage URL.')
   }
   if (url.protocol !== 'https:' || url.username || url.password || url.port) {
     throw new Error(
@@ -34,9 +34,7 @@ export function parseSourceUrl(input: string): SourceReference {
         ? 'claude'
         : undefined
   if (!provider)
-    throw new Error(
-      'Only public shares from chatgpt.com and claude.ai are supported.'
-    )
+    throw new Error('Use a public ChatGPT, Claude, or Passage share link.')
   // Copied links may include tracking parameters or a fragment. They are not
   // part of source identity and are never forwarded to the provider endpoint.
   const codexMatch = provider === 'chatgpt' && codexSharePath.exec(url.pathname)

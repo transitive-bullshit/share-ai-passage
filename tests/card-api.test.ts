@@ -36,6 +36,7 @@ const service = vi.hoisted(() => ({
   getDraft: vi.fn<
     () => Promise<{
       preview: typeof savedPreview
+      appearance?: CardAppearance
       source: { provider: 'claude' }
     }>
   >(),
@@ -120,6 +121,23 @@ describe('saved social-card appearance routes', () => {
     expect(service.getPublication).toHaveBeenCalledExactlyOnceWith(
       'claude',
       'publication-id'
+    )
+  })
+
+  it('preserves a forked passage style when the preview request omits appearance', async () => {
+    const appearance: CardAppearance = { templateId: 'midnight-observatory' }
+    service.getDraft.mockResolvedValue({
+      preview: savedPreview,
+      source: { provider: 'claude' },
+      appearance
+    })
+    const response = await previewImage(
+      request({ draftToken: 'forked-preview' })
+    )
+    expect(response.status).toBe(200)
+    expect(renderCard).toHaveBeenCalledExactlyOnceWith(
+      { ...savedPreview, provider: 'claude' },
+      appearance
     )
   })
 

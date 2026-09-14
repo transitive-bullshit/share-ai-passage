@@ -19,6 +19,7 @@ import { limits, type ProviderResult } from './domain'
 import { createDraftToken, previewHash, readDraftToken } from './drafts'
 import { AppError } from './errors'
 import { fetchSource, parseSourceUrl } from './providers'
+import { parsePassageUrl } from './passage-urls'
 import { suggestPreview } from './suggestions'
 import { parseGeneratedPreview, validateGeneratedPreview } from './summary'
 
@@ -98,6 +99,25 @@ async function safelyFetch(source: Source): Promise<ProviderResult> {
 }
 
 export async function prepareSource(input: string) {
+  const passage = parsePassageUrl(input, appUrl())
+  if (passage) {
+    const record = await getPublication(passage.provider, passage.publicationId)
+    if (!record) throw new AppError('This passage was not found.', 404)
+    if (record.disabled) throw new AppError('This passage is unavailable.', 410)
+    return {
+      draftToken: createDraftToken(
+        record.snapshot.id,
+        record.source.publicationGeneration,
+        record.preview,
+        Date.now(),
+        record.publication.id
+      ),
+      provider: record.source.provider,
+      sourceUrl: record.source.canonicalUrl,
+      preview: record.preview,
+      appearance: record.publication.appearance ?? DEFAULT_CARD_APPEARANCE
+    }
+  }
   let reference
   try {
     reference = parseSourceUrl(input)
@@ -357,24 +377,38 @@ export async function getDraft(token: string) {
       410
     )
   }
-  const preview = validateGeneratedPreview(record.snapshot.preview)
+  const copied = draft.publicationId
+    ? await getPublication(record.source.provider, draft.publicationId)
+    : null
+  if (
+    draft.publicationId &&
+    (!copied || copied.disabled || copied.snapshot.id !== draft.snapshotId)
+  ) {
+    throw new AppError('This passage is unavailable.', 410)
+  }
+  const preview =
+    copied?.preview ?? validateGeneratedPreview(record.snapshot.preview)
   if (previewHash(preview) !== draft.previewHash) {
     throw new AppError(
       'This preview has changed. Please prepare the source again.',
       410
     )
   }
-  return { ...record, draft, preview }
+  return {
+    ...record,
+    draft,
+    preview,
+    appearance: copied?.publication.appearance ?? DEFAULT_CARD_APPEARANCE
+  }
 }
 
 export async function publishPreview(
   token: string,
-  selectedAppearance: CardAppearance = DEFAULT_CARD_APPEARANCE,
+  selectedAppearance?: CardAppearance,
   selectedPreview?: unknown
 ) {
-  const parsed = cardAppearanceSchema.safeParse(selectedAppearance)
+  const parsed = cardAppearanceSchema.optional().safeParse(selectedAppearance)
   if (!parsed.success) throw new AppError('Choose a supported card template.')
-  const appearance = parsed.data
   const edited =
     selectedPreview === undefined
       ? undefined
@@ -383,13 +417,20 @@ export async function publishPreview(
     throw new AppError(
       edited.error.issues[0]?.message ?? 'Enter a valid preview summary.'
     )
-  const { draft, snapshot, preview: generated } = await getDraft(token)
+  const {
+    draft,
+    snapshot,
+    preview: generated,
+    appearance: savedAppearance
+  } = await getDraft(token)
+  const appearance = parsed.data ?? savedAppearance
   const preview = edited?.data ?? generated
   const db = getDb()
   const fingerprint = createHash('sha256')
     .update(
       JSON.stringify({
         snapshotId: snapshot.id,
+        parentPublicationId: draft.publicationId,
         ...preview,
         appearance,
         cardVersion: 4

@@ -1,10 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { POST } from '@/app/api/publish/route'
-import {
-  DEFAULT_CARD_APPEARANCE,
-  type CardAppearance
-} from '@/lib/card-appearance'
+import { type CardAppearance } from '@/lib/card-appearance'
 import type { GeneratedPreview } from '@/lib/domain'
 import { AppError } from '@/lib/errors'
 import { socialTemplateIds } from '@/lib/social-templates'
@@ -42,12 +39,12 @@ describe('reviewed preview publication API', () => {
     })
   })
 
-  it('publishes the saved draft capability with the default appearance', async () => {
+  it('publishes the saved draft capability with its saved appearance by default', async () => {
     const response = await POST(request({ draftToken: 'signed-preview' }))
     expect(response.status).toBe(200)
     expect(service.publishPreview).toHaveBeenCalledExactlyOnceWith(
       'signed-preview',
-      DEFAULT_CARD_APPEARANCE,
+      undefined,
       undefined
     )
   })
@@ -81,7 +78,7 @@ describe('reviewed preview publication API', () => {
     expect(response.status).toBe(200)
     expect(service.publishPreview).toHaveBeenCalledExactlyOnceWith(
       'signed-preview',
-      DEFAULT_CARD_APPEARANCE,
+      undefined,
       { title: 'Café habits', highlights: ['Start small.', 'Repeat each day.'] }
     )
   })
@@ -97,7 +94,7 @@ describe('reviewed preview publication API', () => {
     expect(response.status).toBe(200)
     expect(service.publishPreview).toHaveBeenCalledExactlyOnceWith(
       'signed-preview',
-      DEFAULT_CARD_APPEARANCE,
+      undefined,
       preview
     )
   })

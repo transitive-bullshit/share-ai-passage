@@ -26,7 +26,7 @@ export async function POST(request: Request) {
       .object({ url: z.string().min(1).max(2048) })
       .safeParse(await readJson(request))
     if (!parsed.success)
-      throw new AppError('Paste a public ChatGPT or Claude conversation URL.')
+      throw new AppError('Paste a public ChatGPT, Claude, or Passage URL.')
     const result = await prepareSource(parsed.data.url)
     after(async () => {
       try {
