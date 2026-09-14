@@ -16,6 +16,7 @@ export function CopyLink({ url }: { url: string }) {
       setCopied(true)
       setFailed(false)
     } catch {
+      setCopied(false)
       setFailed(true)
     }
   }
@@ -31,11 +32,7 @@ export function CopyLink({ url }: { url: string }) {
         {copied ? 'Link copied' : 'Copy passage link'}
       </Button>
       <span role='status' aria-live='polite'>
-        {failed
-          ? 'Select the link below to copy it manually.'
-          : copied
-            ? 'Copied to clipboard.'
-            : ''}
+        {failed ? 'Select the link below to copy it manually.' : ''}
       </span>
       {failed ? (
         <Input

@@ -4,6 +4,7 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
+import { CopyLink } from '../components/copy-link'
 import { SavedMessage } from '../components/saved-message'
 import { message } from '../lib/messages'
 
@@ -77,4 +78,32 @@ it('keeps the code readable and gives recovery guidance when clipboard access fa
     'Couldn’t copy. Select and copy the text.'
   )
   expect(container.textContent).not.toContain('Copied to clipboard')
+})
+
+it('confirms a copied passage inside the button without inserting a status row', async () => {
+  const url = 'https://passage.example/chatgpt/example'
+  await act(async () => root.render(createElement(CopyLink, { url })))
+  await act(async () => container.querySelector('button')!.click())
+  expect(writeText).toHaveBeenCalledWith(url)
+  expect(container.querySelector('button')?.textContent).toBe('Link copied')
+  expect(container.querySelector('[role="status"]')?.textContent || '').toBe('')
+  expect(container.querySelector('.copy-control')?.textContent).toBe(
+    'Link copied'
+  )
+})
+
+it('offers a manual passage link when copying fails and clears it after a successful retry', async () => {
+  const url = 'https://passage.example/chatgpt/example'
+  writeText.mockRejectedValueOnce(new Error('Clipboard denied'))
+  await act(async () => root.render(createElement(CopyLink, { url })))
+  await act(async () => container.querySelector('button')!.click())
+  expect(container.querySelector('input')?.value).toBe(url)
+  expect(container.querySelector('[role="status"]')?.textContent).toContain(
+    'copy it manually'
+  )
+  await act(async () => container.querySelector('button')!.click())
+  expect(container.querySelector('input')).toBeNull()
+  expect(container.querySelector('.copy-control')?.textContent).toBe(
+    'Link copied'
+  )
 })

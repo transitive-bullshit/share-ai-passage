@@ -105,12 +105,6 @@ export default async function ReaderPage({ params }: Props) {
         })}
       />
       <header className='reader-header'>
-        <div className='reader-meta'>
-          <p className='eyebrow'>
-            A conversation with {providerNames[source.provider]}
-          </p>
-          <span>Saved on Passage</span>
-        </div>
         <h1>{publication.title}</h1>
         {highlights.length > 0 ? (
           <details className='reader-summary'>
@@ -150,9 +144,7 @@ export default async function ReaderPage({ params }: Props) {
               </Button>
             ) : null}
           </div>
-          <p className='snapshot-note'>
-            Saved {captured} · {visibleMessages.length} messages
-          </p>
+          <p className='snapshot-note'>Saved {captured}</p>
         </div>
       </header>
       <h2 className='sr-only' id='conversation'>
