@@ -94,7 +94,7 @@ Use the strongest visual expression on the landing page, announcements, and the 
 
 The Markdown is the source for proposed decisions and exact copy. [render-data.json](render-data.json) is the explicit rendering projection for names, copy, palette, font roles, hero paths, and alt text; [build.ts](build.ts) validates the rendered copy and palette values against the candidate specifications before export. The build reads this JSON projection; it does not parse the full Markdown into a design. No canonical identity or rollout is authorized by this candidate.
 
-Regenerate from `/Users/tfischer/dev/modules/ai-chat-proxy` with `pnpm exec tsx docs/brand-exploration/round-01/build.ts`. The project already supplies `tsx`, Satori, and Resvg. Local WOFF font copies and their license files are preserved in [assets/fonts](assets/fonts). The editable SVGs embed the WOFF inputs and raster imagery. For PNG output, the build outlines text from the same WOFF fonts through Satori's transitive OpenType dependency, then renders with Resvg. See the [round README](README.md) for the full build and verification record.
+Regenerate from `/Users/tfischer/dev/modules/ai-chat-proxy` with `pnpm exec tsx docs/brand-exploration/round-01/build.ts`. The project already supplies `tsx`, `@shuding/opentype.js`, and Resvg. Local WOFF font copies and their license files are preserved in [assets/fonts](assets/fonts). The editable SVGs embed the WOFF inputs and raster imagery. For PNG output, the build outlines text from the same WOFF fonts through the direct `@shuding/opentype.js` dependency, then renders with Resvg. See the [round README](README.md) for the full build and verification record.
 
 | Purpose | Local asset | Format/status |
 | --- | --- | --- |

@@ -55,6 +55,6 @@ pnpm exec tsx docs/brand-exploration/round-04/build.ts
 
 The [build source](build.ts) reads the explicit [render projection](render-data.json) and checks required copy and palette values against the four candidate Markdown files. It does not derive the full design by parsing Markdown. Layout, typography application, and retained mark geometry remain programmatic; raster artwork is embedded inside the SVG compositions.
 
-The project already supplies Node.js, pnpm, tsx, Resvg, and Satori’s transitive OpenType dependency. Editable SVGs retain native geometry and text with embedded local WOFF/image inputs. PNGs use glyph outlines derived from the same fonts for reliable rendering. Regenerating the assembled artifacts does not submit further image jobs.
+The project already supplies Node.js, pnpm, tsx, Resvg, and the direct `@shuding/opentype.js` dependency. Editable SVGs retain native geometry and text with embedded local WOFF/image inputs. PNGs use glyph outlines derived from the same fonts for reliable rendering. Regenerating the assembled artifacts does not submit further image jobs.
 
 The completed desktop review checked composition, hierarchy, readable shared content, copy, crops, and the baseline icon’s requested accent color. The user’s next feedback decides which elements to retain; this round does not turn a prior partial preference into acceptance of the whole brand.

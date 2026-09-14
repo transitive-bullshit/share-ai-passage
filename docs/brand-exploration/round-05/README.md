@@ -46,6 +46,6 @@ pnpm exec tsx docs/brand-exploration/round-05/build.ts
 
 The [build source](build.ts) reads [render-data.json](render-data.json), an explicit projection of the two Markdown identity specs. Folio uses the shared descriptor; Passage uses its own source-derived descriptor. The projection’s copy and palette values must match the corresponding document. The build does not derive the entire layout by parsing Markdown.
 
-The project supplies Node.js, pnpm, tsx, Resvg, and Satori’s transitive OpenType dependency. Native geometry and editable text use local WOFF/image inputs; PNGs are produced from outlines derived from the same fonts. The Passage card and poster are native compositions informed by the audited current source, with their comparative content adaptation disclosed above.
+The project supplies Node.js, pnpm, tsx, Resvg, and the direct `@shuding/opentype.js` dependency. Native geometry and editable text use local WOFF/image inputs; PNGs are produced from outlines derived from the same fonts. The Passage card and poster are native compositions informed by the audited current source, with their comparative content adaptation disclosed above.
 
 The completed desktop review checked Passage against the live homepage and source, retained Folio’s chosen elements, and checked comparison content, readable hierarchy, imagery, marks, and output files. No claim of broader product validation is made by this design comparison. Continue from the user’s concrete preferences between these two identities; rejected rounds remain history.

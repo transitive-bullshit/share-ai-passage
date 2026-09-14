@@ -57,6 +57,6 @@ pnpm exec tsx docs/brand-exploration/round-06/build.ts
 
 The [build](build.ts) reads [render-data.json](render-data.json), an explicit projection checked against the four Markdown specs. Original Passage uses its own descriptor and creation label; Folio and both hybrids use Folio’s shared copy. `markStyle` records `outline` or `page-turn`, keeping mark geometry independent of the Folio product name.
 
-The project supplies Node.js, pnpm, tsx, Resvg, and Satori’s transitive OpenType dependency. Native SVG compositions use local font/image inputs; PNG rendering uses glyph outlines derived from the same WOFF files. Regeneration submits no image jobs and makes no runtime font requests.
+The project supplies Node.js, pnpm, tsx, Resvg, and the direct `@shuding/opentype.js` dependency. Native SVG compositions use local font/image inputs; PNG rendering uses glyph outlines derived from the same WOFF files. Regeneration submits no image jobs and makes no runtime font requests.
 
 The completed review checked original references, Folio labels in both hybrids, Inter roles, neutral marks, recognizable landscape framing, consistent content, and readable desktop hierarchy. The user’s feedback will select or refine the next direction; no final identity, AGENTS.md brand pointer, or canonical export set is created here.

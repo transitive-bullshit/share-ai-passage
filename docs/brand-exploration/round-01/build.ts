@@ -8,9 +8,7 @@ import { Resvg } from '@resvg/resvg-js'
 const here = dirname(fileURLToPath(import.meta.url))
 const root = resolve(here, '../../..')
 const req = createRequire(import.meta.url)
-const openType = createRequire(req.resolve('satori'))(
-  '@shuding/opentype.js'
-) as {
+const openType = req('@shuding/opentype.js') as {
   parse: (buffer: ArrayBuffer) => Promise<Font>
 }
 type Font = {
@@ -814,7 +812,7 @@ await writeFile(
       ),
       editableSvgTypography: 'Text elements with embedded WOFF fonts',
       rasterTypography:
-        'Outlines from the same WOFF fonts via the installed Satori OpenType dependency'
+        'Outlines from the same WOFF fonts via the direct @shuding/opentype.js dependency'
     },
     null,
     2

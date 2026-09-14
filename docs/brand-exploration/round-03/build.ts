@@ -16,9 +16,9 @@ type Font = {
     size: number
   ) => { toPathData: (precision: number) => string }
 }
-const openType = createRequire(req.resolve('satori'))(
-  '@shuding/opentype.js'
-) as { parse: (bytes: ArrayBuffer) => Promise<Font> }
+const openType = req('@shuding/opentype.js') as {
+  parse: (bytes: ArrayBuffer) => Promise<Font>
+}
 type FontKey = string
 type Direction = {
   id: 'folio-pages' | 'folio-ribbon' | 'waymark' | 'along'

@@ -109,7 +109,7 @@ Regenerate from the repository root:
 pnpm exec tsx docs/brand-assets/build.ts
 ```
 
-The build uses tsx and the development-only Resvg/Satori dependencies; OpenType is resolved through Satori. Application cards use the separate Takumi renderer. It checks the JSON render projection and shared site copy against this guide. SVG one-pager/social outputs retain editable text with embedded font and image inputs; PNG output outlines the same fonts. The command also updates the application favicon files and `public/brand/social-preview.png`.
+The build uses tsx and the development-only Resvg and `@shuding/opentype.js` dependencies. Application cards use the separate Takumi renderer. It checks the JSON render projection and shared site copy against this guide. SVG one-pager/social outputs retain editable text with embedded font and image inputs; PNG output outlines the same fonts. The command also updates the application favicon files and `public/brand/social-preview.png`.
 
 The README shows two clearly labeled illustrative passages, using Margin notes and Midnight observatory. Their shared debugging conversation lives in [marketing-examples.ts](../lib/marketing-examples.ts); the homepage links to the first example and uses its image route. The same card renderer exports the README WebP images. These examples ship with the app and do not depend on production database records or provider share URLs. Their footer uses the brand mantra. Place links to try Passage, read an example, and run locally before the README images. Link the site’s agent section to its setup instructions and skill. See [maintenance instructions](../contributing.md#marketing-examples).
 

@@ -75,6 +75,7 @@
   "devDependencies": {
     "@fisch0920/config": "^2.1.4",
     "@resvg/resvg-js": "^2.6.2",
+    "@shuding/opentype.js": "1.4.0-beta.0",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^26.4.1",
     "@types/react": "^19.2.18",
@@ -87,7 +88,6 @@
     "oxlint": "^1.81.0",
     "oxlint-tsgolint": "^7.0.2001",
     "portless": "^0.15.6",
-    "satori": "^0.33.4",
     "simple-git-hooks": "^2.14.0",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.23.13",

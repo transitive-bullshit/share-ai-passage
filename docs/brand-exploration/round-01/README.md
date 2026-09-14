@@ -48,7 +48,7 @@ pnpm exec tsx docs/brand-exploration/round-01/build.ts
 
 This command has been run successfully. It regenerates the eight SVG/PNG poster and card pairs, the four native SVG marks, the contact sheet, and [build-report.json](build-report.json). It makes no network or paid generation requests.
 
-Runtime and dependencies are already in the project: Node.js, pnpm, tsx, @resvg/resvg-js, the three @fontsource families, and Satori's installed @shuding/opentype.js dependency. The latter is resolved through Satori and supplies font measurement/outlines. Use the repository's pnpm lockfile. No package or lockfile change was needed.
+Runtime and dependencies are already in the project: Node.js, pnpm, tsx, @resvg/resvg-js, the three @fontsource families, and the direct @shuding/opentype.js dependency. The latter parses fonts and supplies font measurement/outlines. Use the repository's pnpm lockfile. No package or lockfile change was needed.
 
 The source is [build.ts](build.ts), with an explicit projection in [render-data.json](render-data.json). It does not parse Markdown to produce the design. Before export it checks the projection's names, territories, main lines, mantras, character, descriptor, sample text, CTA, and palette values against the four Markdown specs. The projection's line breaks and file paths drive layout; each spec is the source of proposed brand decisions.
 

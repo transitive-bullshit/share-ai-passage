@@ -7,9 +7,7 @@ import { Resvg } from '@resvg/resvg-js'
 const here = dirname(fileURLToPath(import.meta.url))
 const round = join(here, '../..')
 const require = createRequire(import.meta.url)
-const openType = createRequire(require.resolve('satori'))(
-  '@shuding/opentype.js'
-) as {
+const openType = require('@shuding/opentype.js') as {
   parse: (bytes: ArrayBuffer) => Promise<{
     getPath: (
       text: string,

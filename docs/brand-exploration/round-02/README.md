@@ -26,7 +26,7 @@ Run from the repository root:
 pnpm exec tsx docs/brand-exploration/round-02/build.ts
 ```
 
-This command was run successfully. It uses the existing `tsx`, `@resvg/resvg-js`, and Satori’s `@shuding/opentype.js` dependency. No dependencies were added. Fonts and imagery are local. [build.ts](build.ts) reads [render-data.json](render-data.json) as a rendering projection, validates its main copy and palette against the five Markdown specs, and creates 1600×1300 editable SVG/PNG posters, 1200×630 SVG/PNG share cards, native SVG marks, and a contact sheet. The SVGs embed imagery and font data. PNGs use glyph outlines from the same font files for reliable rendering. This is not a Markdown parser.
+This command was run successfully. It uses the existing `tsx`, `@resvg/resvg-js`, and the direct `@shuding/opentype.js` dependency. No dependencies were added. Fonts and imagery are local. [build.ts](build.ts) reads [render-data.json](render-data.json) as a rendering projection, validates its main copy and palette against the five Markdown specs, and creates 1600×1300 editable SVG/PNG posters, 1200×630 SVG/PNG share cards, native SVG marks, and a contact sheet. The SVGs embed imagery and font data. PNGs use glyph outlines from the same font files for reliable rendering. This is not a Markdown parser.
 
 Serve the review locally:
 

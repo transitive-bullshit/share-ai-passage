@@ -55,6 +55,6 @@ pnpm exec tsx docs/brand-exploration/round-03/build.ts
 
 The [build source](build.ts) reads [render-data.json](render-data.json), an explicit projection of the four Markdown specs. It checks names, territories, headlines, mantras, the shared descriptor, sample copy, CTA, and palette values against those documents before export. The script does not turn the full Markdown directly into a layout.
 
-The project already supplies Node.js, pnpm, tsx, Resvg, and Satori’s transitive OpenType dependency. Local WOFF inputs provide deterministic measurement and outlines. Editable SVGs retain vector geometry and text with embedded font/image inputs; PNGs are rendered from outlines derived from the same fonts. The build requires no new generation request or runtime font download.
+The project already supplies Node.js, pnpm, tsx, Resvg, and the direct `@shuding/opentype.js` dependency. Local WOFF inputs provide deterministic measurement and outlines. Editable SVGs retain vector geometry and text with embedded font/image inputs; PNGs are rendered from outlines derived from the same fonts. The build requires no new generation request or runtime font download.
 
 The immediate review should confirm the four fixed compositions, consistent copy, readable desktop hierarchy, and the new mark shapes. Claims of broader production validation are not part of this exercise. Continue with concrete element-level feedback; liking one mark, name, or typeface does not accept a whole direction.

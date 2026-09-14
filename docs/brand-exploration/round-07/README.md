@@ -31,7 +31,7 @@ From `/Users/tfischer/dev/modules/ai-chat-proxy`:
 pnpm exec tsx docs/brand-exploration/round-07/build.ts
 ```
 
-The main build also runs the isolated [icon-study renderer](assets/marks/build-studies.ts), exports the selected icon as `passage-mark.svg`, and writes both poster and passage SVG/PNG files. It reads the JSON projection and checks its copy, palette, typography label, image path, and selected mark against [passage.md](passage.md). It does not parse the Markdown into a design. Dependencies are the existing pnpm/tsx runtime, Resvg, Satori's transitive OpenType parser, and the local font files; none were added.
+The main build also runs the isolated [icon-study renderer](assets/marks/build-studies.ts), exports the selected icon as `passage-mark.svg`, and writes both poster and passage SVG/PNG files. It reads the JSON projection and checks its copy, palette, typography label, image path, and selected mark against [passage.md](passage.md). It does not parse the Markdown into a design. Dependencies are the existing pnpm/tsx runtime, Resvg, the direct `@shuding/opentype.js` parser, and the local font files; none were added.
 
 **Complete:** the command ran successfully, with nine bounded text measurements and no overflow assertion. All three PNG dimensions were verified. The poster, passage, and icon overview were visually inspected; the three desktop views were exercised and all SVG assets loaded at their expected sizes. The preview asset URLs include the round number to avoid stale images when the local server switches rounds. Formatting and focused renderer lint passed.
 

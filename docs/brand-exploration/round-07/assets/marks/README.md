@@ -24,7 +24,7 @@ From the project root:
 pnpm exec tsx docs/brand-exploration/round-07/assets/marks/build-studies.ts
 ```
 
-The renderer uses the existing `tsx`, `@resvg/resvg-js`, and Satori's existing `@shuding/opentype.js` dependency, plus the round's local Inter 400 and 500 WOFF files. No dependencies were added.
+The renderer uses the existing `tsx`, `@resvg/resvg-js`, and the direct `@shuding/opentype.js` dependency, plus the round's local Inter 400 and 500 WOFF files. No dependencies were added.
 
 The command writes the three editable mark masters and the 1600 × 1080 overview SVG and PNG. The SVG contains embedded Inter font data and editable labels; the PNG render uses outlined text for consistent typography. The overview shows each mark large, in a Passage wordmark, at actual 16 / 24 / 32 px sizes, and reversed on charcoal.
 
