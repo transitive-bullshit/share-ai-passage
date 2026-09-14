@@ -2,7 +2,7 @@
 
 **Your AI chats, worth sharing**
 
-Turn your AI chats into links you’ll be proud to share
+Turn your AI chats into links you’ll be proud to share.
 
 Give a public ChatGPT, Codex, or Claude conversation a clear introduction, a beautiful share card, and a readable saved conversation. No account needed.
 

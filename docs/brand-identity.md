@@ -10,14 +10,14 @@
 | --- | --- |
 | Brand name | Passage |
 | Headline | Your AI chats, worth sharing |
-| Descriptive one-liner | Turn your AI chats into links you’ll be proud to share |
+| Descriptive one-liner | Turn your AI chats into links you’ll be proud to share. |
 | Main CTA | Create a passage |
 | Mantra | Good conversations deserve to travel. |
 | Artifact | a passage; plural passages |
 | Reader action | Read the passage |
 | Character | Clear. Thoughtful. Welcoming. |
 
-Preserve the headline and descriptor without a trailing period. The headline may break after the comma: **Your AI chats,** / **worth sharing**. Use title case for the brand and lowercase for the artifact. **Publication** remains the internal domain term; customer-facing copy uses **passage**. See the [glossary](CONTEXT.md).
+Preserve the headline without a trailing period. End the descriptor with a period. The headline may break after the comma: **Your AI chats,** / **worth sharing**. Use title case for the brand and lowercase for the artifact. **Publication** remains the internal domain term; customer-facing copy uses **passage**. See the [glossary](CONTEXT.md).
 
 The production domain is **share-ai-passage.com**, purchased by the owner on September 12, 2026. Its canonical production URL is **https://www.share-ai-passage.com**; the apex redirects there. Anonymous HTTPS serving was verified on September 13. The application continues deriving its origin from its runtime configuration. See [production guidance](PRODUCTION.md).
 
@@ -86,7 +86,7 @@ Write plainly, warmly, and with respect for the work being shared. Apply [ISO 24
 
 The editor uses “Review your passage” without a period. Style choices show visual thumbnails with accessible names, without visible theme names or preview captions. Title guidance is roughly 10 words at most (usually 4–7), leading with the most distinctive terms; highlights recommend 100 characters. These are soft recommendations, with hard caps of 600 title characters and 1,000 characters per highlight. Sharers can add or remove up to three highlights; blank highlights and empty highlights sections are omitted.
 
-Share card titles occupy at most two lines, with an ellipsis when the title overflows. Keep the full title in the saved summary and reader. Card footers show the source attribution or example mantra. Reserve **Read the passage** for the interactive link that opens a published passage; omit it from card templates and their exported images.
+Share card titles use balanced text wrapping and occupy at most two lines, with an ellipsis when the title overflows. Keep the full title in the saved summary and reader. Card footers show the source attribution or example mantra. Reserve **Read the passage** for the interactive link that opens a published passage; omit it from card templates and their exported images.
 
 Margin notes, Electric risograph, Maker’s workbench, and Friendly lab use 16 px footer text with the footer rule at y = 566 on the 1200 × 630 canvas. Midnight observatory uses 14 px text with its rule at y = 558.
 
