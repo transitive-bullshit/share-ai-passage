@@ -318,6 +318,93 @@ describe.skipIf(!testUrl)('Paid generation accounting in PostgreSQL', () => {
     expect(saved?.actualCostMicros).toBe(15000)
   })
 
+  it('reuses the accepted revision-zero image under concurrent initial recovery despite changed configuration', async () => {
+    const user = await account()
+    const input = await image(user)
+    const accepted = (await reserveImage(input)).operation
+    const recoveries = await Promise.all(
+      Array.from({ length: 4 }, () =>
+        reserveImage({
+          ...input,
+          requestKey: input.draftId,
+          inputHash: 'changed-current-input-hash',
+          model: 'changed-current-model',
+          configVersion: 'changed-current-config',
+          config: { changed: true }
+        })
+      )
+    )
+    expect(recoveries.map((result) => result.operation.id)).toEqual(
+      Array(4).fill(accepted.id)
+    )
+    expect(recoveries.every((result) => !result.created)).toBe(true)
+    expect(await getImageUsage(user.id, user.now)).toMatchObject({
+      used: 0,
+      reserved: 1,
+      remaining: 9
+    })
+    const operations = await getDb()
+      .select()
+      .from(imageOperations)
+      .where(eq(imageOperations.draftId, input.draftId))
+    expect(operations).toHaveLength(1)
+    expect(operations[0]).toMatchObject({
+      inputHash: input.inputHash,
+      model: input.model,
+      config: input.config
+    })
+  })
+
+  it('initial recovery under the reservation lock prefers the newest explicit operation over its failed original key', async () => {
+    const user = await account()
+    const input = await image(user)
+    const initial = (
+      await reserveImage({ ...input, requestKey: input.draftId })
+    ).operation
+    await claimImageOperation(initial.id)
+    await failImageOperation(initial.id, {
+      actualCostMicros: 0,
+      errorCode: 'FIXTURE_CONFIRMED_FAILURE'
+    })
+    const reroll = (
+      await reserveImage({
+        ...input,
+        requestKey: randomUUID(),
+        inputHash: 'explicit-reroll-input',
+        now: new Date(user.now.getTime() + 1000)
+      })
+    ).operation
+    const before = await getImageUsage(
+      user.id,
+      new Date(user.now.getTime() + 2000)
+    )
+    const recovered = await reserveImage({
+      ...input,
+      requestKey: input.draftId,
+      inputHash: 'changed-initial-config',
+      config: { changed: true },
+      now: new Date(user.now.getTime() + 2000)
+    })
+    expect(recovered).toMatchObject({
+      created: false,
+      operation: {
+        id: reroll.id,
+        status: 'reserved',
+        inputHash: 'explicit-reroll-input'
+      }
+    })
+    expect(
+      await getImageUsage(user.id, new Date(user.now.getTime() + 2000))
+    ).toEqual(before)
+    expect(before).toMatchObject({ used: 0, reserved: 1, remaining: 9 })
+    expect(
+      await getDb()
+        .select()
+        .from(imageOperations)
+        .where(eq(imageOperations.draftId, input.draftId))
+    ).toHaveLength(2)
+  })
+
   it('replenishes annual included credits monthly without moving a prior reservation', async () => {
     const user = await account()
     const input = await image(user)

@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { and, eq, isNull, lte, or } from 'drizzle-orm'
+import { and, desc, eq, isNull, lte, or } from 'drizzle-orm'
 
 import { requireRegisteredActor, type Actor } from './actors'
 import {
@@ -48,7 +48,8 @@ export async function requestImageJob(
   requestKey: string
 ) {
   requireRegisteredActor(actor)
-  const [existing] = await getDb()
+  const initialRecovery = revision === 0 && requestKey === draftId
+  const [replayed] = await getDb()
     .select()
     .from(imageOperations)
     .where(
@@ -57,12 +58,33 @@ export async function requestImageJob(
         eq(imageOperations.requestKey, requestKey)
       )
     )
+  if (
+    replayed &&
+    (replayed.draftId !== draftId || replayed.draftRevision !== revision)
+  )
+    throw new AppError(
+      'This image request was already used for another draft revision.',
+      409
+    )
+  // Reopening an untouched draft follows its latest accepted image intent,
+  // including an explicit replacement. Recovery itself never buys a reroll.
+  const existing = initialRecovery
+    ? (
+        await getDb()
+          .select()
+          .from(imageOperations)
+          .where(
+            and(
+              eq(imageOperations.ownerId, actor.userId),
+              eq(imageOperations.draftId, draftId),
+              eq(imageOperations.draftRevision, 0)
+            )
+          )
+          .orderBy(desc(imageOperations.createdAt))
+          .limit(1)
+      )[0]
+    : replayed
   if (existing) {
-    if (existing.draftId !== draftId || existing.draftRevision !== revision)
-      throw new AppError(
-        'This image request was already used for another draft revision.',
-        409
-      )
     await readOwnedImageJob(actor, existing.id)
     return existing
   }

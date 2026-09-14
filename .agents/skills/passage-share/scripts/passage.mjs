@@ -510,7 +510,9 @@ async function continueAccountDraft(saved, file, command) {
   } else {
     const path = `/api/drafts/${draft.draftId}`
     const response =
-      command === 'resume' && draft.status !== 'prepared'
+      command === 'resume' &&
+      (draft.status !== 'prepared' ||
+        (!draft.imageJobId && !draft.imageRequestKey))
         ? await post(draft.baseUrl, `${path}/resume`, {})
         : await post(draft.baseUrl, path, undefined, 'GET')
     draft = accountResult(draft, response)
@@ -699,7 +701,7 @@ async function main() {
       const deadline = Date.now() + 5 * 60_000
       while (draft.imageJobId && Date.now() < deadline) {
         await new Promise((resolve) => setTimeout(resolve, 3000))
-        draft = await continueAccountDraft(draft, options.out, 'resume')
+        draft = await continueAccountDraft(draft, options.out, 'status')
         if (['failed', 'cancelled'].includes(draft.imageStatus)) break
       }
     }

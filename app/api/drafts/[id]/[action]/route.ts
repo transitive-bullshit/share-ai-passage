@@ -1,4 +1,7 @@
 import { z } from 'zod'
+import { start } from 'workflow/api'
+import { generatePassageBackground } from '@/workflows/generate-background'
+import { startInitialDraftImage } from '@/lib/initial-image'
 import { accountRequest } from '@/lib/account-http'
 import {
   applyDraftGeneration,
@@ -30,7 +33,10 @@ export function POST(request: Request, context: Context) {
     const body = await readJson(request)
     if (action === 'resume') {
       await enforceBudget(`prepare:${clientKey(request)}`, 10)
-      return resumeSavedDraft(actor, id)
+      const draft = await resumeSavedDraft(actor, id)
+      return startInitialDraftImage(actor, draft, (operationId) =>
+        start(generatePassageBackground, [operationId])
+      )
     }
     if (action === 'publish') {
       await enforceBudget(`publish:${clientKey(request)}`, 60)

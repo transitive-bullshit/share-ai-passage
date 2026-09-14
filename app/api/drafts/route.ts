@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { start } from 'workflow/api'
-import { ensureImageEnqueued, requestImageJob } from '@/lib/image-jobs'
+import { startInitialDraftImage } from '@/lib/initial-image'
 import { generatePassageBackground } from '@/workflows/generate-background'
 import { accountRequest } from '@/lib/account-http'
 import { createSavedDraft } from '@/lib/account-drafts'
@@ -28,33 +28,8 @@ export function POST(request: Request) {
         'Paste a public conversation URL and start a new draft.'
       )
     const draft = await createSavedDraft(actor, input.data)
-    if (
-      draft.status === 'ready' &&
-      draft.revision === 0 &&
-      draft.design?.recipe.background.mode === 'generated' &&
-      !draft.design.generatedImage
-    ) {
-      try {
-        const operation = await requestImageJob(
-          actor,
-          draft.draftId,
-          draft.revision,
-          draft.draftId
-        )
-        await ensureImageEnqueued(operation.id, (id) =>
-          start(generatePassageBackground, [id])
-        )
-        return { ...draft, imageJobId: operation.id }
-      } catch (err) {
-        return {
-          ...draft,
-          imageGenerationError:
-            err instanceof AppError
-              ? err.message
-              : 'The background could not start. Your summary is saved.'
-        }
-      }
-    }
-    return draft
+    return startInitialDraftImage(actor, draft, (id) =>
+      start(generatePassageBackground, [id])
+    )
   })
 }

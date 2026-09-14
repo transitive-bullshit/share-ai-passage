@@ -32,9 +32,15 @@ import {
 } from '@/lib/image-jobs'
 import {
   generateBackgroundImage,
+  getImageGenerationConfig,
   ImageGenerationError
 } from '@/lib/image-model'
-import { getImageUsage } from '@/lib/image-usage'
+import {
+  claimImageOperation,
+  failImageOperation,
+  getImageUsage,
+  markImageUncertain
+} from '@/lib/image-usage'
 import { recoverImageResult, runImageGeneration } from '@/lib/image-worker'
 import { defaultTemplateRecipe, type DraftDesign } from '@/lib/paid-design'
 import { putImmutableAsset } from '@/lib/r2'
@@ -79,12 +85,14 @@ vi.mock('@/lib/image-model', async (original) => {
   const actual = await original<typeof import('@/lib/image-model')>()
   return {
     ...actual,
-    getImageGenerationConfig: () =>
-      actual.getImageGenerationConfig({
-        IMAGE_GENERATION_ENABLED: '1',
-        IMAGE_AI_MONTHLY_BUDGET_USD: '2000',
-        IMAGE_GENERATION_CONCURRENCY: '32'
-      }),
+    getImageGenerationConfig: vi.fn<typeof actual.getImageGenerationConfig>(
+      () =>
+        actual.getImageGenerationConfig({
+          IMAGE_GENERATION_ENABLED: '1',
+          IMAGE_AI_MONTHLY_BUDGET_USD: '2000',
+          IMAGE_GENERATION_CONCURRENCY: '32'
+        })
+    ),
     generateBackgroundImage: vi.fn<typeof actual.generateBackgroundImage>()
   }
 })
@@ -148,7 +156,7 @@ async function fixture() {
 }
 async function request(
   f: Awaited<ReturnType<typeof fixture>>,
-  requestKey = randomUUID()
+  requestKey: string = randomUUID()
 ) {
   const operation = await requestImageJob(
     f.actor,
@@ -224,9 +232,80 @@ describe.skipIf(!testUrl)('durable image orchestration', () => {
     }
     await closeDatabase()
   })
+  it.each(['reserved', 'uncertain', 'failed'] as const)(
+    'reuses an explicit %s image operation for initial-template recovery without reserving another credit',
+    async (status) => {
+      const f = await fixture(),
+        operation = await request(f)
+      if (status !== 'reserved') {
+        await claimImageOperation(operation.id)
+        if (status === 'uncertain') await markImageUncertain(operation.id)
+        else
+          await failImageOperation(operation.id, {
+            actualCostMicros: 0,
+            errorCode: 'FIXTURE_CONFIRMED_FAILURE'
+          })
+      }
+      const before = await getImageUsage(f.userId)
+      const recovered = await requestImageJob(
+        f.actor,
+        f.draft.id,
+        0,
+        f.draft.id
+      )
+      if (!operationIds.includes(recovered.id)) operationIds.push(recovered.id)
+      expect(recovered).toMatchObject({ id: operation.id, status })
+      expect(await getImageUsage(f.userId)).toEqual(before)
+      const priorConfig = vi
+        .mocked(getImageGenerationConfig)
+        .getMockImplementation()!
+      const disabledConfig = { ...getImageGenerationConfig(), enabled: false }
+      vi.mocked(getImageGenerationConfig).mockReturnValue(disabledConfig)
+      try {
+        expect(
+          await requestImageJob(f.actor, f.draft.id, 0, f.draft.id)
+        ).toMatchObject({ id: operation.id, status })
+        expect(await getImageUsage(f.userId)).toEqual(before)
+      } finally {
+        vi.mocked(getImageGenerationConfig).mockImplementation(priorConfig)
+      }
+      expect(generateBackgroundImage).not.toHaveBeenCalled()
+      expect(
+        await getDb()
+          .select()
+          .from(imageOperations)
+          .where(eq(imageOperations.draftId, f.draft.id))
+      ).toHaveLength(1)
+    }
+  )
+  it('initial recovery selects the latest explicit reroll instead of its older failed original key', async () => {
+    const f = await fixture()
+    const initial = await request(f, f.draft.id)
+    await claimImageOperation(initial.id)
+    await failImageOperation(initial.id, {
+      actualCostMicros: 0,
+      errorCode: 'FIXTURE_CONFIRMED_FAILURE'
+    })
+    const reroll = await request(f)
+    await claimImageOperation(reroll.id)
+    await markImageUncertain(reroll.id)
+    const before = await getImageUsage(f.userId)
+    const recovered = await requestImageJob(f.actor, f.draft.id, 0, f.draft.id)
+    expect(recovered).toMatchObject({ id: reroll.id, status: 'uncertain' })
+    expect(await getImageUsage(f.userId)).toEqual(before)
+    expect(before).toMatchObject({ used: 0, reserved: 1, remaining: 9 })
+    expect(
+      await getDb()
+        .select()
+        .from(imageOperations)
+        .where(eq(imageOperations.draftId, f.draft.id))
+    ).toHaveLength(2)
+    expect(generateBackgroundImage).not.toHaveBeenCalled()
+  })
+
   it('deduplicates queue delivery and concurrent Workflow invocations before the provider boundary', async () => {
     const f = await fixture(),
-      requestKey = randomUUID()
+      requestKey: string = randomUUID()
     const operations = await Promise.all([
       request(f, requestKey),
       request(f, requestKey)

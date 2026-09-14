@@ -47,8 +47,33 @@ export function DraftLoader({
           undefined
         )
         if (!active) return
-        if (result.status === 'ready') onReady(result)
-        else {
+        if (result.status === 'ready') {
+          let ready = result
+          if (
+            result.revision === 0 &&
+            result.design?.recipe.background.mode === 'generated' &&
+            !result.design.generatedImage &&
+            !result.imageJobId
+          ) {
+            // The original request may have saved its summary just before the
+            // handler stopped. Resume that same template request explicitly;
+            // the GET above remains a read and the server deduplicates its image.
+            try {
+              const resumed = await draftRequest<DraftResult>(
+                `/api/drafts/${encodeURIComponent(draftId)}/resume`,
+                'POST',
+                {}
+              )
+              if (resumed.status === 'ready') ready = resumed
+            } catch (err) {
+              ready = {
+                ...result,
+                imageGenerationError: clientErrorMessage(err)
+              }
+            }
+          }
+          if (active) onReady(ready)
+        } else {
           setStatus(result.generationBlock ? 'blocked' : result.status)
           setGenerationBlock(result.generationBlock)
           setError(result.errorMessage ?? resumeError.current)
