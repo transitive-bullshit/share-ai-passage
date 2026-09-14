@@ -1,8 +1,12 @@
 import type { NextConfig } from 'next'
 
-import { indexingEnabled } from './lib/config'
+import { appUrl, indexingEnabled } from './lib/config'
 
 const config: NextConfig = {
+  allowedDevOrigins:
+    process.env.NODE_ENV === 'development' && process.env.PORTLESS_URL?.trim()
+      ? [new URL(appUrl()).hostname]
+      : undefined,
   // Explicit local production runs keep their build separate from development.
   distDir:
     process.env.PASSAGE_PRODUCTION_LOCAL === '1' ? '.next-prod' : '.next',

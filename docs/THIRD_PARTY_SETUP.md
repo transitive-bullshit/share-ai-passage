@@ -76,6 +76,6 @@ Store secrets in the appropriate Vercel environment, a password manager, or igno
 | Chosen sender           | `RESEND_FROM_EMAIL`                        |
 | Optional reply address  | `RESEND_REPLY_TO`                          |
 
-These names are the implementation handoff contract; the current app has not yet been wired to read them. The implementation can generate/configure the Better Auth secret and environment-specific base URL. Keep the existing `APP_SECRET` stable. Stripe/R2 runtime variable names and least-privilege permissions will be added with their Phase 2 modules; having the provider resources ready is enough now.
+The accounts implementation reads these settings. Configure the Better Auth secret and environment-specific base URL; see the [production guide](PRODUCTION.md) for current provider setup status and the [local HTTPS instructions](../contributing.md#google-sign-in-with-local-https) for Google development with Portless. Keep the existing `APP_SECRET` stable. Stripe/R2 runtime variable names and least-privilege permissions will be added with their Phase 2 modules; having the provider resources ready is enough now.
 
 There is no need to sign up for another image provider, a separate auth SaaS, or a separate workflow vendor. Image access/evaluation and Vercel Workflows configuration follow the existing plan after the accounts feedback gate. The $20 image benchmark remains deferred until then.

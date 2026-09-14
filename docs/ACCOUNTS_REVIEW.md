@@ -2,7 +2,7 @@
 
 Status: Phase 1 implemented and validated locally; live service checks and accounts feedback remain open. This is not a production deployment or a passed accounts feedback gate. Phase 2 has not started.
 
-Implementation branch: `codex/accounts-first-launch`, rebased onto `main` at `70aeefb` to incorporate the committed OAuth/Resend setup and logo asset. Development uses a dedicated local PostgreSQL instance on port 55437, database `passage_accounts_afc0`; tests use the separate disposable `passage_accounts_afc0_test`. The review app is `http://share-ai-passage-accounts-afc0.localhost:1355`, routed to the isolated backend on port 3107. Use that origin for authentication; the main checkout retains its separate development route. The review instance uses the provisioned development Resend and GitHub configuration. Google and fresh OpenAI generation await development credentials. Automated validation used fixtures and disabled external credentials.
+Implementation branch: `codex/accounts-first-launch`, rebased onto `main` at `70aeefb` to incorporate the committed OAuth/Resend setup and logo asset. Development uses a dedicated local PostgreSQL instance on port 55437, database `passage_accounts_afc0`; tests use the separate disposable `passage_accounts_afc0_test`. The review app is `https://share-ai-passage-accounts-afc0.local.share-ai-passage.com:8443`, routed to the isolated backend on port 3107. Use that origin for authentication; the main checkout retains its separate development route. The review instance uses separate development Google, GitHub and Resend configuration. Fresh OpenAI generation still awaits a development key. Automated validation used fixtures and disabled external credentials.
 
 ## Implemented
 
@@ -32,6 +32,8 @@ Final validation on September 14, 2026, after integration with the OAuth/Resend 
 
 Local HTTP, CLI and backup/restore reports are under `work/accounts-review/`. The repair CLI has focused tests and a disposable-database smoke covering repeated cost settlement without extra provider calls. Card review artifacts use the offline authored baseline under `work/share-card-review/accounts-drafts-20260914/`; no paid model calls are part of these checks. Synthetic local review fixture identities are recorded in `work/library-review/fixture.json`.
 
+The Google development follow-up also verified DNS to loopback, trusted TLS and the configured HTTPS callback. Next.js now allows its configured Portless hostname in development: the real font-resource request changed from 403 to 200, while an unrelated origin still receives 403. Scoped formatting, lint and TypeScript checks pass. This does not replace the outstanding live OAuth roundtrip.
+
 ## Migration and rollback
 
 Production remains at `0006`; nothing has been applied there. Apply the full pending `0007`–`0008` batch using the repository Drizzle migration command. The installed PostgreSQL migrator wraps all pending migrations in one transaction. Do not deploy only the intermediate `0007` schema.
@@ -42,8 +44,8 @@ Tested local migration does not establish a production backup or restore. Obtain
 
 ## Outstanding external checks and feedback gate
 
-- GitHub development credentials are integrated. The real GitHub authorization page recognizes the exact worktree callback and requests read-only profile/email access; completing consent and the callback/session roundtrip awaits user authorization. The main development callback remains registered, with wildcard matching disabled on both callbacks.
-- Google production credentials are provisioned in Vercel and the private production environment. Development remains unconfigured: Google rejects the Portless `.localhost` callback, and the setup task is awaiting a compatible development-hostname choice before creating a separate client. Production credentials must not be reused for local review.
+- GitHub development credentials are integrated. The real GitHub authorization page recognizes the exact worktree callback and requests read-only profile/email access; completing consent and the callback/session roundtrip awaits user authorization. The main and earlier worktree callbacks remain registered; the new HTTPS callback is also saved, with wildcard matching disabled on all three.
+- Google development is configured in the separate `share-ai-passage-development` project. Its exact owned-domain HTTPS callback is accepted, credentials are integrated privately, and real sign-in reaches the identity-only Google consent screen. Adding the selected tester and completing consent/callback/session verification await explicit approval. Production credentials remain separate.
 - Development Resend credentials, sender and Reply-To are integrated and recognized by the review app. Verify actual delivery and the email/reset roundtrip; no live email was sent by automated validation.
 - Supply a development `OPENAI_API_KEY` for fresh-summary end-to-end checks. Cached creation and generation bookkeeping have passed fixture-backed tests.
 - Use isolated hosted preview data and verify the target origin, callbacks, session cookies and account removal there. Confirm production backup/recovery before deployment.

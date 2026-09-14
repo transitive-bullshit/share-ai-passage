@@ -60,6 +60,36 @@ Use `/account` for account settings and `/passages` for saved work. The browser 
 
 The anonymous CLI remains supported; authenticated CLI credentials and account-default custom templates belong to the paid phase after feedback. New metered model calls require the supported `gpt-5.4-nano` task bounds. Changing a model or prompt/input limit requires updating its conservative cost policy before exposing it through the app.
 
+### Google sign-in with local HTTPS
+
+Google rejects `.localhost` subdomains. Follow the [Portless Google OAuth guide](https://github.com/vercel-labs/portless/tree/main/examples/google-oauth) using a hostname under the owned domain. The isolated accounts setup below preserves the normal development proxy and routes HTTPS port 8443 to the accounts backend on `127.0.0.1:3107`.
+
+The exact Vercel DNS record `share-ai-passage-accounts-afc0.local` under `share-ai-passage.com` is an **A** record pointing to `127.0.0.1`, TTL **60**. DNS resolution and trusted HTTPS serving have been verified. This does not establish that a Google client or its sign-in flow is ready.
+
+Run from the accounts checkout:
+
+```sh
+(
+  export PORTLESS_STATE_DIR="$HOME/.portless-passage-accounts-https"
+  export PORTLESS_PORT=8443 PORTLESS_HTTPS=1 PORTLESS_LAN=0 PORTLESS_SYNC_HOSTS=0
+  pnpm exec portless proxy start --port 8443 --https --tld local.share-ai-passage.com
+  pnpm exec portless alias share-ai-passage-accounts-afc0 3107
+)
+```
+
+Portless generates a local CA and attempts to trust it; approve the macOS authorization dialog if requested. Keep hosts sync disabled: separate proxies otherwise replace the same managed `/etc/hosts` block. DNS supplies the mapping here. Do not stop the shared proxy or run global hosts sync/cleanup for this setup.
+
+The static alias does not configure the backend's origin. Set both values in this checkout's ignored `.env.local`, alongside its isolated development database and separate **development** OAuth credentials:
+
+```dotenv
+PORTLESS_URL=https://share-ai-passage-accounts-afc0.local.share-ai-passage.com:8443
+BETTER_AUTH_URL=https://share-ai-passage-accounts-afc0.local.share-ai-passage.com:8443
+```
+
+Restart only that backend with these settings. To start it after preparing the bundled fonts, use `pnpm exec next dev --hostname 127.0.0.1 --port 3107`. Keep the main checkout on its existing `pnpm dev` workflow.
+
+Register the HTTPS origin above as the development Google client's authorized JavaScript origin. Its exact redirect URI is that origin plus `/api/auth/callback/google`; add `/api/auth/callback/github` to the development GitHub app when enabling GitHub on this origin too. Keep the scheme, hostname and port identical to the backend settings, and verify each complete sign-in roundtrip. Use [service setup notes](docs/PRODUCTION.md) for current provisioning status; production credentials stay in production.
+
 ## CLI and agent skill
 
 Install the portable [passage-share skill](.agents/skills/passage-share/SKILL.md) with the [skills CLI](https://skills.sh):
