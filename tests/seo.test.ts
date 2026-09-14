@@ -236,7 +236,7 @@ describe('public and unavailable reader metadata', () => {
     for (const text of [savedTitle, savedHighlight, transcript, sourceUrl])
       expect(output).not.toContain(text)
     expect(html).not.toContain('application/ld+json')
-    expect(output).not.toContain('/brand/social-preview.png')
+    expect(output).not.toContain('/brand/social-preview.jpg')
   })
 
   it('does not inherit homepage cards or indexing for a missing publication', async () => {

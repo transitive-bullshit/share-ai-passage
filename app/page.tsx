@@ -13,7 +13,7 @@ export function generateMetadata() {
       title,
       description: brand.productDescription,
       url,
-      image: { url: `${url}/brand/social-preview.png`, type: 'image/png' },
+      image: { url: `${url}/brand/social-preview.jpg`, type: 'image/jpeg' },
       type: 'website'
     }),
     title: { absolute: title }

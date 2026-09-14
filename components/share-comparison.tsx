@@ -4,7 +4,7 @@ import Link from 'next/link'
 
 import { featuredExample } from '@/lib/marketing-examples'
 import landingCard from '@/public/images/landing-passage-card.webp'
-import landscape from '@/public/images/passage-landscape.png'
+import landscape from '@/public/images/passage-landscape.jpg'
 
 // X logo: https://about.x.com/en/who-we-are/brand-toolkit
 // Repost path verified against X's post controls on September 14, 2026.

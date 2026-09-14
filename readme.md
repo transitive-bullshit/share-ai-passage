@@ -16,11 +16,9 @@ Give a public ChatGPT, Codex, or Claude conversation a clear introduction, a bea
 
 **Give your public AI chats a facelift.** Clear highlights, five card styles, and the saved conversation with its original source.
 
-One real conversation about sharing with Passage, published in two card styles. Select a card to read it.
+See the same conversation before and after sharing with Passage. Select the image to try Passage.
 
-[![Give your public AI chats a facelift — Margin notes example](docs/readme-assets/example-passage-01.webp)](https://www.share-ai-passage.com/chatgpt/89a0a919-ec9e-49a3-a966-67e5bff95e0e)
-
-[![Give your public AI chats a facelift — Midnight observatory example](docs/readme-assets/example-passage-02.webp)](https://www.share-ai-passage.com/chatgpt/029dd79b-4c27-4971-b2ad-1f865fefe783)
+[![The same AI conversation shared as a generic chat link and with Passage](public/images/passage-before-after.jpg)](https://www.share-ai-passage.com)
 
 ## For agents
 

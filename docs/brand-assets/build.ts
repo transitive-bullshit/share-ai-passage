@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path'
 import { createRequire } from 'node:module'
 import assert from 'node:assert/strict'
 import { Resvg } from '@resvg/resvg-js'
+import sharp from 'sharp'
 import { brand } from '../../lib/brand'
 
 const here = dirname(fileURLToPath(import.meta.url))
@@ -646,8 +647,10 @@ await mkdir(join(here, '../../public/brand'), { recursive: true })
 await writeFile(join(here, '../../app/icon.svg'), favicon)
 await writeFile(join(here, '../../app/favicon.ico'), ico)
 await writeFile(
-  join(here, '../../public/brand/social-preview.png'),
-  await readFile(join(here, 'social-preview.png'))
+  join(here, '../../public/brand/social-preview.jpg'),
+  await sharp(join(here, 'social-preview.png'))
+    .jpeg({ quality: 85, progressive: true })
+    .toBuffer()
 )
 await writeFile(
   join(here, 'build-report.json'),
