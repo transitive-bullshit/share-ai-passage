@@ -1,6 +1,6 @@
 # Accounts implementation review
 
-Status: Phase 1 implemented and validated locally; live development Google, GitHub, password recovery/sign-in and summary generation checks pass. Accounts feedback and hosted environment checks remain open. This is not a production deployment or a passed accounts feedback gate. Phase 2 has not started.
+Status: Phase 1 implemented and validated locally; live development Google, GitHub, password recovery/sign-in and summary generation checks pass. The owner approved the accounts feedback gate on September 15, 2026 and directed Phase 2 to proceed after committing this work. Hosted environment checks remain open; accounts are not deployed.
 
 Implementation branch: `codex/accounts-first-launch`, rebased onto `main` at `70aeefb` to incorporate the committed OAuth/Resend setup and logo asset. Development uses a dedicated local PostgreSQL instance on port 55437, database `passage_accounts_afc0`; tests use the separate disposable `passage_accounts_afc0_test`. The review app is `https://share-ai-passage-accounts-afc0.local.share-ai-passage.com:8443`, routed to the isolated backend on port 3107. Use that origin for authentication; the main checkout retains its separate development route. The review instance uses separate development Google, GitHub and Resend configuration. With explicit owner approval, OpenAI development uses the existing normal API key; fresh summary generation has passed a live check. Automated validation used fixtures and disabled external credentials.
 
@@ -56,6 +56,6 @@ Tested local migration does not establish a production backup or restore. Obtain
 
 - Fresh signup verification delivery and the external Reply-To mailbox remain untested live; development password-reset delivery and subsequent email sign-in pass.
 - Use isolated hosted preview data and verify the target origin, callbacks, session cookies and account removal there. Confirm production backup/recovery before deployment.
-- Review the working accounts experience and explicitly direct continuation before any billing, R2, custom templates, generated artwork or paid CLI implementation.
+- Gate A is approved: the owner explicitly directed “commit first and then proceed with phase 2” after reviewing the committed accounts work.
 
-Live development checks now establish Google/GitHub sign-in, password recovery/sign-in and model generation. They do not establish hosted preview or production readiness. Review the local accounts experience at Gate A; hosted checks and backup/recovery remain required before deployment, and Phase 2 still requires explicit direction after feedback.
+Live development checks now establish Google/GitHub sign-in, password recovery/sign-in and model generation. They do not establish hosted preview or production readiness. Review the local accounts experience at Gate A; hosted checks and backup/recovery remain required before deployment, and the owner has now explicitly authorized Phase 2 after feedback.
