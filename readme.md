@@ -6,7 +6,7 @@ Turn your AI chats into links you’ll be proud to share
 
 Give a public ChatGPT, Codex, or Claude conversation a clear introduction, a beautiful share card, and a readable saved conversation. No account needed.
 
-[**Try Passage ↗**](https://www.share-ai-passage.com) · [Read an example](https://www.share-ai-passage.com/chatgpt/7ba655a3-e940-4ce2-ad8d-d6a981640d29) · [Run locally](contributing.md#run-locally)
+[**Try Passage ↗**](https://www.share-ai-passage.com) · [Read an example](https://www.share-ai-passage.com/chatgpt/89a0a919-ec9e-49a3-a966-67e5bff95e0e) · [Run locally](contributing.md#run-locally)
 
 1. Paste a public conversation link and choose **Create a passage**.
 2. Edit the generated title and highlights, then choose from **five card styles**.
@@ -14,13 +14,13 @@ Give a public ChatGPT, Codex, or Claude conversation a clear introduction, a bea
 
 ## Example passages
 
-**Give your AI conversations a better introduction.** Clear highlights, five card styles, and the saved conversation with its original source.
+**Give your public AI chats a facelift.** Clear highlights, five card styles, and the saved conversation with its original source.
 
 One real conversation about sharing with Passage, published in two card styles. Select a card to read it.
 
-[![Give your AI conversations a better introduction — Margin notes example](docs/readme-assets/example-passage-01.webp)](https://www.share-ai-passage.com/chatgpt/7ba655a3-e940-4ce2-ad8d-d6a981640d29)
+[![Give your public AI chats a facelift — Margin notes example](docs/readme-assets/example-passage-01.webp)](https://www.share-ai-passage.com/chatgpt/89a0a919-ec9e-49a3-a966-67e5bff95e0e)
 
-[![Give your AI conversations a better introduction — Midnight observatory example](docs/readme-assets/example-passage-02.webp)](https://www.share-ai-passage.com/chatgpt/15f45335-dcb1-494c-951d-feb00dcacd00)
+[![Give your public AI chats a facelift — Midnight observatory example](docs/readme-assets/example-passage-02.webp)](https://www.share-ai-passage.com/chatgpt/029dd79b-4c27-4971-b2ad-1f865fefe783)
 
 ## For agents
 

@@ -90,7 +90,7 @@ Share card titles occupy at most two lines, with an ellipsis when the title over
 
 Margin notes, Electric risograph, Maker’s workbench, and Friendly lab use 16 px footer text with the footer rule at y = 566 on the 1200 × 630 canvas. Midnight observatory uses 14 px text with its rule at y = 558.
 
-The one-pager’s example is **A calmer way to build with AI**, with “Start with a clear question.”, “Make the tradeoffs visible.”, and “Keep the reasoning close.” These are illustrative design content, not a required title or fixed highlights in the product. The website and README feature **Give your AI conversations a better introduction**, a real conversation about sharing with Passage. Its three reviewed highlights reinforce a clear introduction, five card styles, and the saved conversation with its original source. Highlights have no trailing periods.
+The one-pager’s example is **A calmer way to build with AI**, with “Start with a clear question.”, “Make the tradeoffs visible.”, and “Keep the reasoning close.” These are illustrative design content, not a required title or fixed highlights in the product. The website and README feature **Give your public AI chats a facelift**, a real conversation about sharing with Passage. Its three reviewed highlights reinforce a clear introduction, five card styles, and the saved conversation with its original source. Highlights have no trailing periods.
 
 ## Assets and maintenance
 
