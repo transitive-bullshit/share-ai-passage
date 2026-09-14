@@ -20,6 +20,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { authClient } from '@/lib/auth-client'
 import { useAccountSession } from '@/components/account-session'
 import { authHref } from '@/lib/auth-navigation'
+import { maxPasswordLength, minPasswordLength } from '@/lib/password-policy'
 
 type User = {
   id: string
@@ -506,7 +507,7 @@ function AccountDetails({
                     type='password'
                     autoComplete='current-password'
                     required
-                    maxLength={128}
+                    maxLength={maxPasswordLength}
                     value={currentPassword}
                     onChange={(event) => setCurrentPassword(event.target.value)}
                     disabled={Boolean(pending)}
@@ -522,14 +523,14 @@ function AccountDetails({
                     type='password'
                     autoComplete='new-password'
                     required
-                    minLength={8}
-                    maxLength={128}
+                    minLength={minPasswordLength}
+                    maxLength={maxPasswordLength}
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
                     disabled={Boolean(pending)}
                   />
                   <FieldDescription>
-                    Use at least 8 characters.
+                    Use at least {minPasswordLength} characters.
                   </FieldDescription>
                 </Field>
                 <Field data-invalid={Boolean(fieldError)}>
@@ -542,7 +543,7 @@ function AccountDetails({
                     type='password'
                     autoComplete='new-password'
                     required
-                    maxLength={128}
+                    maxLength={maxPasswordLength}
                     value={confirmation}
                     onChange={(event) => {
                       setConfirmation(event.target.value)

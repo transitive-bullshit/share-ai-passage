@@ -21,6 +21,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { authClient } from '@/lib/auth-client'
 import { useAccountSession } from '@/components/account-session'
 import { authHref, safeReturnTo } from '@/lib/auth-navigation'
+import { maxPasswordLength, minPasswordLength } from '@/lib/password-policy'
 
 type AuthMode =
   | 'sign-in'
@@ -428,15 +429,17 @@ export function AuthForm({
                         mode === 'sign-in' ? 'current-password' : 'new-password'
                       }
                       required
-                      minLength={mode === 'sign-in' ? undefined : 8}
-                      maxLength={128}
+                      minLength={
+                        mode === 'sign-in' ? undefined : minPasswordLength
+                      }
+                      maxLength={maxPasswordLength}
                       value={password}
                       onChange={(event) => setPassword(event.target.value)}
                       disabled={Boolean(pending)}
                     />
                     {mode !== 'sign-in' && (
                       <FieldDescription>
-                        Use at least 8 characters.
+                        Use at least {minPasswordLength} characters.
                       </FieldDescription>
                     )}
                   </Field>
@@ -452,7 +455,7 @@ export function AuthForm({
                       type='password'
                       autoComplete='new-password'
                       required
-                      maxLength={128}
+                      maxLength={maxPasswordLength}
                       value={confirmation}
                       onChange={(event) => {
                         setConfirmation(event.target.value)

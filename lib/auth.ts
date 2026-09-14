@@ -13,6 +13,7 @@ import {
   authVerifications
 } from '@/lib/db/schema'
 import { isEmailConfigured, sendAuthEmail } from '@/lib/email'
+import { maxPasswordLength, minPasswordLength } from '@/lib/password-policy'
 
 function authEnvironment() {
   const configuredSecret = process.env.BETTER_AUTH_SECRET?.trim()
@@ -157,6 +158,8 @@ function createAuth() {
     disabledPaths: ['/delete-anonymous-user'],
     emailAndPassword: {
       enabled: status.emailAndPassword,
+      minPasswordLength,
+      maxPasswordLength,
       requireEmailVerification: true,
       revokeSessionsOnPasswordReset: true,
       sendResetPassword: ({ user, url }) =>

@@ -24,7 +24,7 @@ Public pages supply canonical URLs, crawler-readable initial Open Graph and larg
 
 ## Accounts and saved work
 
-Better Auth provides email/password, Google, and GitHub authentication. Email accounts must verify before receiving registered benefits; password reset and connected-method management use the standard auth flows. A guest session starts on creation, not reader or landing-page visits. Signup and existing-account login import that guest’s work and consumption once; account preferences win when already saved.
+Better Auth provides email/password, Google, and GitHub authentication. Passwords accept 4–128 characters across signup, reset, and change-password flows. Email accounts must verify before receiving registered benefits; password reset and connected-method management use the standard auth flows. A guest session starts on creation, not reader or landing-page visits. Signup and existing-account login import that guest’s work and consumption once; account preferences win when already saved.
 
 My passages shows private drafts and owned published passages with pagination. Autosave uses revision checks; another tab cannot silently replace reviewed work. Rerolls are separate charged operations whose results never mutate a shared snapshot’s initial preview. Recovered results can be applied explicitly. Revising an owned passage creates a new draft with its saved text/style; publication remains immutable and produces a new URL.
 

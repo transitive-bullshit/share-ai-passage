@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 
+import { maxPasswordLength, minPasswordLength } from '@/lib/password-policy'
+
 export type AuthConfig = {
   available: boolean
   providers: { google: boolean; github: boolean }
@@ -67,7 +69,7 @@ export function authErrorMessage(
       return 'That sign-in method is already connected to an account.'
     case 'PASSWORD_TOO_SHORT':
     case 'PASSWORD_TOO_LONG':
-      return 'Use a password between 8 and 128 characters.'
+      return `Use a password between ${minPasswordLength} and ${maxPasswordLength} characters.`
     default:
       return 'That didn’t go through. Please try again.'
   }

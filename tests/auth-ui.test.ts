@@ -197,6 +197,40 @@ it('keeps password errors on the form and offers verification without losing the
   expect(mocks.replace).not.toHaveBeenCalled()
 })
 
+it.each(['sign-up', 'reset-password'] as const)(
+  'shows the four-character minimum and server validation feedback for %s',
+  async (mode) => {
+    mocks.signUp.mockResolvedValue({ error: { code: 'PASSWORD_TOO_SHORT' } })
+    mocks.reset.mockResolvedValue({ error: { code: 'PASSWORD_TOO_SHORT' } })
+    await act(async () =>
+      root.render(
+        createElement(AuthForm, {
+          mode,
+          returnTo: '/account',
+          token: 'reset-token'
+        })
+      )
+    )
+    const password =
+      container.querySelector<HTMLInputElement>('#auth-password')!
+    expect(password.minLength).toBe(4)
+    expect(password.maxLength).toBe(128)
+    expect(container.textContent).toContain('Use at least 4 characters.')
+    if (mode === 'sign-up') {
+      await input('auth-name', 'Reader')
+      await input('auth-email', 'reader@example.com')
+    }
+    await input('auth-password', 'abc')
+    await input('auth-confirmation', 'abc')
+    // Direct submit exercises API-error feedback independently of native validation.
+    await submit()
+    expect(container.textContent).toContain(
+      'Use a password between 4 and 128 characters.'
+    )
+    expect(mocks.replace).not.toHaveBeenCalled()
+  }
+)
+
 it('does not submit mismatched reset passwords or offer an unavailable provider', async () => {
   await act(async () =>
     root.render(
