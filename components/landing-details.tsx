@@ -1,57 +1,12 @@
-import { ArrowUpRight, Check, Link2, Terminal } from 'lucide-react'
-import Image from 'next/image'
-import Link from 'next/link'
+import { ArrowUpRight, Check, Terminal } from 'lucide-react'
+import { ShareComparison } from '@/components/share-comparison'
 
 import { brand } from '@/lib/brand'
-import { featuredExample } from '@/lib/marketing-examples'
-import landscape from '@/public/images/passage-landscape.png'
 
 export function LandingDetails() {
   return (
     <>
-      <figure className='hero-example' aria-label='Example passage'>
-        <div className='showcase-landscape'>
-          <Image
-            className='showcase-artwork'
-            src={landscape}
-            alt=''
-            fill
-            sizes='(max-width: 760px) calc(100vw - 36px), (max-width: 1200px) calc(100vw - 56px), 1120px'
-            placeholder='blur'
-            loading='eager'
-          />
-          <Link
-            className='example-window'
-            href={featuredExample.shareUrl}
-            aria-label={`Read the example passage: ${featuredExample.title}`}
-          >
-            <div className='example-toolbar'>
-              <span className='window-dots' aria-hidden='true'>
-                <i />
-                <i />
-                <i />
-              </span>
-              <span>
-                <Link2 size={12} aria-hidden='true' /> Example passage
-              </span>
-              <span className='example-label'>Read it ↗</span>
-            </div>
-            <img
-              src={`/examples/${featuredExample.id}/image`}
-              width={1200}
-              height={630}
-              alt={`Example passage card: ${featuredExample.title}`}
-              fetchPriority='high'
-            />
-            <div className='example-window-footer'>
-              <span>
-                <Check size={14} aria-hidden='true' /> Read the passage
-              </span>
-              <ArrowUpRight size={16} aria-hidden='true' />
-            </div>
-          </Link>
-        </div>
-      </figure>
+      <ShareComparison />
 
       <section
         className='provider-section'
