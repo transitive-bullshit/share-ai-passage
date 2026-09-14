@@ -197,31 +197,24 @@ export function LandingDetails() {
           <div id='public-link-help'>
             <dt>How do I get a public conversation link?</dt>
             <dd>
-              Use the Share option in ChatGPT, Codex, or Claude to create a
-              public link, then paste it here. A private conversation address or
-              workspace-only link won’t work. Check that the source opens while
-              signed out.
+              Choose Share in ChatGPT, Codex, or Claude, then paste the public
+              link here. Check that it opens without signing in.
             </dd>
           </div>
           <div>
             <dt>What will my passage include?</dt>
             <dd>
-              A title and highlights you can edit, your chosen card style, and
-              the saved conversation text with a link to the original. Code,
-              tables, and formatting are preserved where supported. Missing
-              media, tools, and artifacts are marked. Anyone with the passage
-              link can read it; public passages can appear in search results.
+              A share card, title, highlights, and saved conversation with a
+              link to the original. Anyone can read it, and it may appear in
+              search results.
             </dd>
           </div>
           <div>
             <dt>Can I edit or remove it later?</dt>
             <dd>
-              Review your wording before publishing; published passages stay
-              fixed. To disable a passage, remove public access to the original
-              and use “Check original availability” in the reader. Confirmed
-              removal disables its passages and cards here. Checks are limited
-              to once an hour, and other platforms may retain previews they
-              already fetched.
+              You can’t edit a published passage. To remove it, stop sharing the
+              original conversation. Passage disables its copy once removal is
+              confirmed. Previews on other sites may remain.
             </dd>
           </div>
         </dl>

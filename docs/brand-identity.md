@@ -12,7 +12,7 @@
 | Headline | Your AI chats, worth sharing |
 | Descriptive one-liner | Turn your AI chats into links you’ll be proud to share |
 | Main CTA | Create a passage |
-| Mantra / footer | Good conversations deserve to travel. |
+| Mantra | Good conversations deserve to travel. |
 | Artifact | a passage; plural passages |
 | Reader action | Read the passage |
 | Character | Clear. Thoughtful. Welcoming. |
@@ -56,6 +56,8 @@ Use the existing semantic CSS tokens. Brand controls are neutral. Error and succ
 
 In saved conversations, blue (`#326DA8`) identifies source links, with small local favicon glyphs (GitHub’s mark or a web/email symbol). Syntax colors distinguish code tokens. These functional reading cues leave brand controls neutral. Keep prose around 46rem wide; dense desktop tables may extend to 66rem, with wider expansion and contained scrolling on small screens. Questions use the secondary surface, while answers remain on white without repeated visible role labels.
 
+The site footer pairs the Passage wordmark with adjacent X and GitHub icon links and the creation CTA. Use shadcn ghost icon buttons, inherited muted color, neutral hover and focus states, accessible link labels, and a new tab for external destinations.
+
 Use **Inter 400** for body copy and highlights, **500** for headings/actions, and **600** for the wordmark. The site headline scales to 68 px with 1.055 line-height and tight tracking; supporting copy is 17 px/1.75. Keep the existing responsive scale, generous white space, and pill-shaped primary form. The gray second headline line creates hierarchy without another font. The one-pager scales this system to its larger canvas.
 
 Local Inter WOFF inputs and the [license](brand-assets/fonts/inter-LICENSE.txt) are included in the asset set. The application uses its existing Fontsource imports. System sans-serif is the fallback.
@@ -70,7 +72,7 @@ The landscape is the existing 1672 × 941 application image, retained unchanged.
 
 ## Voice and product language
 
-Write plainly, warmly, and with respect for the work being shared. Name the action and its result. Use **conversation** for the AI exchange, **passage** for the shareable artifact, and **link** for its address. Keep process stages explicit: **Preparing…**, **Review your passage**, **Publish passage**, and **Your passage is published**.
+Write plainly, warmly, and with respect for the work being shared. Apply [ISO 24495-1 plain-language principles](https://www.iso.org/standard/78907.html): answer the reader’s question first, use familiar words and concrete actions, and retain the limits needed to make an informed choice. Keep FAQ answers short; leave technical details in the supporting documentation. Name the action and its result. Use **conversation** for the AI exchange, **passage** for the shareable artifact, and **link** for its address. Keep process stages explicit: **Preparing…**, **Review your passage**, **Publish passage**, and **Your passage is published**.
 
 | Use | Purpose |
 | --- | --- |
