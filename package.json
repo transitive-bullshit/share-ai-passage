@@ -38,13 +38,18 @@
     "build:prod": "node --import tsx scripts/production.ts build",
     "start:prod": "node --import tsx scripts/production.ts start",
     "db:migrate:prod": "node --import tsx scripts/production.ts migrate",
-    "db:check:prod": "node --import tsx scripts/production.ts check"
+    "db:check:prod": "node --import tsx scripts/production.ts check",
+    "reconcile:image": "tsx scripts/reconcile-image.ts",
+    "reconcile:billing": "tsx scripts/reconcile-billing.ts",
+    "cleanup:assets": "tsx scripts/cleanup-assets.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.62",
     "@aws-sdk/client-s3": "^3.1133.0",
     "@aws-sdk/s3-request-presigner": "^3.1133.0",
+    "@better-auth/api-key": "1.7.4",
     "@better-auth/drizzle-adapter": "^1.7.4",
+    "@better-auth/stripe": "1.7.4",
     "@fontsource/dm-sans": "^5.3.0",
     "@fontsource/inter": "^5.3.0",
     "@fontsource/newsreader": "^5.3.0",
@@ -72,8 +77,10 @@
     "remark-parse": "^11.0.0",
     "resend": "^6.28.0",
     "sharp": "^0.35.4",
+    "stripe": "22.6.2",
     "takumi-js": "^2.13.7",
     "unified": "^11.0.5",
+    "workflow": "4.8.8",
     "zod": "^4.5.4"
   },
   "devDependencies": {

@@ -244,7 +244,7 @@ function AccountDetails({
       </div>
       <div className='account-overview'>
         <div>
-          <strong>Free account</strong>
+          <strong>Your Passage account</strong>
           <p>
             Your drafts, shared passages, and preferred card style stay with
             your account.
@@ -257,6 +257,14 @@ function AccountDetails({
           </a>
         </Button>
       </div>
+      <nav aria-label='Account tools' className='flex flex-wrap gap-3'>
+        <Button asChild variant='outline'>
+          <a href='/account/billing'>Plans and billing</a>
+        </Button>
+        <Button asChild variant='outline'>
+          <a href='/account/keys'>API keys</a>
+        </Button>
+      </nav>
       {error && (
         <Alert variant='destructive'>
           <AlertDescription>

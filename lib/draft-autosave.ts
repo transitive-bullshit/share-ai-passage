@@ -1,3 +1,4 @@
+import type { DraftDesign } from '@/lib/paid-design'
 import type { CardAppearance } from '@/lib/card-appearance'
 import { ClientRequestError, clientErrorMessage } from '@/lib/client-request'
 import type { GeneratedPreview } from '@/lib/domain'
@@ -5,6 +6,7 @@ import type { GeneratedPreview } from '@/lib/domain'
 export type DraftContent = {
   preview: GeneratedPreview
   appearance: CardAppearance
+  design?: DraftDesign | null
 }
 export type DraftSaveSnapshot = {
   status: 'saved' | 'waiting' | 'saving' | 'error' | 'conflict'

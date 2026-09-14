@@ -4,6 +4,13 @@ import { and, eq, exists, isNull, lt, notExists, or, sql } from 'drizzle-orm'
 
 import type { Actor } from './actors'
 import { requireOwnedActor } from './actors'
+import {
+  freezeCardPresentation,
+  loadCardArtwork,
+  resolveOwnedCardDesign
+} from './assets'
+import { requirePaidAccount } from './billing'
+import { renderCard } from './card'
 import { lockUsageSubjects } from './usage'
 import { generateSummary } from './summary-generation'
 import { DEFAULT_CARD_APPEARANCE, type CardAppearance } from './card-appearance'
@@ -20,10 +27,11 @@ import {
   rateLimits,
   snapshots,
   sources,
+  type SavedDraft,
   type Snapshot,
   type Source
 } from './db/schema'
-import { limits, type ProviderResult } from './domain'
+import { limits, type GeneratedPreview, type ProviderResult } from './domain'
 import { createDraftToken, previewHash, readDraftToken } from './drafts'
 import { AppError } from './errors'
 import { fetchSource, parseSourceUrl } from './providers'
@@ -515,6 +523,7 @@ export async function getDraft(token: string, actor?: Actor) {
     draft,
     saved,
     preview,
+    design: saved?.design ?? null,
     appearance:
       saved?.appearance ??
       copied?.publication.appearance ??
@@ -560,6 +569,10 @@ export async function publishPreview(
       'Save your reviewed changes before publishing this draft.',
       409
     )
+  }
+  if (saved?.design) {
+    if (!actor) throw new AppError('Sign in to publish this saved design.', 401)
+    return publishPaidPreview(saved, snapshot, preview, appearance, actor)
   }
   const db = getDb()
   const contentFingerprint = createHash('sha256')
@@ -665,6 +678,164 @@ export async function publishPreview(
   }
 }
 
+async function publishPaidPreview(
+  saved: SavedDraft,
+  snapshot: Snapshot,
+  preview: GeneratedPreview,
+  appearance: CardAppearance,
+  actor: Actor
+) {
+  requireOwnedActor(actor)
+  if (!saved.design || saved.ownerId !== actor.userId)
+    throw new AppError('Draft not found.', 404)
+  const db = getDb()
+  async function lockCurrent(tx: Transaction) {
+    await lockUsageSubjects(tx, actor.subjectKey)
+    await requirePaidAccount(saved.ownerId, tx)
+    const [current] = await tx
+      .select()
+      .from(savedDrafts)
+      .where(eq(savedDrafts.id, saved.id))
+      .for('update')
+    if (!current || current.deletedAt || current.ownerId !== actor.userId)
+      throw new AppError('Draft not found.', 404)
+    if (
+      current.revision !== saved.revision ||
+      current.snapshotId !== snapshot.id ||
+      !current.design
+    )
+      throw new AppError('This draft changed. Reload before publishing.', 409)
+    const source = await lockSource(tx, snapshot.sourceId)
+    if (
+      source.availability !== 'available' ||
+      source.publicationGeneration !== saved.sourceGeneration
+    )
+      throw new AppError(
+        'The original is no longer publicly available. Please prepare the source again.',
+        410
+      )
+    return source
+  }
+  const resolved = await db.transaction(async (tx) => {
+    await lockCurrent(tx)
+    return resolveOwnedCardDesign(saved.ownerId, saved.design!, {
+      tx,
+      frozen: saved.resolvedDesign
+    })
+  })
+  const contentFingerprint = createHash('sha256')
+    .update(
+      JSON.stringify({
+        snapshotId: snapshot.id,
+        parentPublicationId: saved.parentPublicationId,
+        ...preview,
+        appearance,
+        recipe: saved.design.recipe,
+        resolvedDesign: resolved,
+        cardVersion: 5
+      })
+    )
+    .digest('hex')
+  const fingerprint = `${saved.namespace}:${contentFingerprint}`
+  async function findExisting(tx: Transaction) {
+    const [publication] = await tx
+      .select()
+      .from(publications)
+      .where(
+        and(
+          eq(publications.dedupeScope, saved.namespace),
+          eq(publications.sourceId, snapshot.sourceId),
+          eq(publications.generation, saved.sourceGeneration!),
+          eq(publications.fingerprint, fingerprint),
+          isNull(publications.deletedAt)
+        )
+      )
+    if (publication?.disabledAt)
+      throw new AppError('This passage is unavailable.', 410)
+    return publication
+  }
+  const reused = await db.transaction(async (tx) => {
+    const source = await lockCurrent(tx)
+    const publication = await findExisting(tx)
+    if (!publication) return null
+    if (!publication.cardAssetId)
+      throw new AppError('This saved card is temporarily unavailable.', 503)
+    await tx
+      .update(savedDrafts)
+      .set({ publishedPublicationId: publication.id })
+      .where(eq(savedDrafts.id, saved.id))
+    return {
+      publicationId: publication.id,
+      shareUrl: `${appUrl()}/${source.provider}/${publication.id}`
+    }
+  })
+  if (reused) return reused
+  const card = await freezeCardPresentation({
+    userId: saved.ownerId,
+    presentationHash: contentFingerprint,
+    render: async () => {
+      const artwork = await loadCardArtwork(saved.ownerId, resolved)
+      const [source] = await db
+        .select({ provider: sources.provider })
+        .from(sources)
+        .where(eq(sources.id, snapshot.sourceId))
+      if (!source)
+        throw new AppError('The original is no longer available.', 410)
+      const response = await renderCard(
+        { ...preview, provider: source.provider },
+        appearance,
+        resolved,
+        artwork
+      )
+      return new Uint8Array(await response.arrayBuffer())
+    }
+  })
+  const result = await db.transaction(async (tx) => {
+    const source = await lockCurrent(tx)
+    await resolveOwnedCardDesign(saved.ownerId, saved.design!, {
+      tx,
+      frozen: resolved
+    })
+    const [created] = await tx
+      .insert(publications)
+      .values({
+        ownerId: saved.ownerId,
+        dedupeScope: saved.namespace,
+        sourceId: snapshot.sourceId,
+        snapshotId: snapshot.id,
+        fingerprint,
+        generation: saved.sourceGeneration!,
+        title: preview.title,
+        highlights: preview.highlights,
+        appearance,
+        design: saved.design,
+        resolvedDesign: resolved,
+        cardAssetId: card.id,
+        cardVersion: 5
+      })
+      .onConflictDoNothing({
+        target: [
+          publications.sourceId,
+          publications.generation,
+          publications.fingerprint
+        ]
+      })
+      .returning()
+    const publication = created ?? (await findExisting(tx))
+    if (!publication || publication.disabledAt)
+      throw new AppError('This passage is unavailable.', 410)
+    await tx
+      .update(savedDrafts)
+      .set({ publishedPublicationId: publication.id })
+      .where(eq(savedDrafts.id, saved.id))
+    return {
+      publicationId: publication.id,
+      shareUrl: `${appUrl()}/${source.provider}/${publication.id}`
+    }
+  })
+  return result
+}
+
 export async function getPublication(provider: string, id: string) {
   if (!uuidPattern.test(id) || !['chatgpt', 'claude'].includes(provider))
     return null
@@ -683,7 +854,8 @@ export async function getPublication(provider: string, id: string) {
     title: record.publication.title,
     highlights: record.publication.highlights
   })
-  return { ...record, preview, disabled }
+  const { design: _privateDesign, ...publication } = record.publication
+  return { ...record, publication, preview, disabled }
 }
 
 export async function checkAvailability(

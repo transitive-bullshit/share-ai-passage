@@ -4,6 +4,7 @@ export type PreparationRequest = {
   url: string
   requestKey: string
   appearance: CardAppearance
+  templateId?: string
 }
 const key = 'passage:pending-preparation:v1'
 const listeners = new Set<() => void>()
@@ -61,9 +62,19 @@ export function parsePreparationRequest(
     const url = new URL(value.url)
     if (url.protocol !== 'https:') return null
     const appearance = parseCardAppearance(value.appearance)
-    return appearance
-      ? { url: value.url, requestKey: value.requestKey, appearance }
-      : null
+    if (!appearance) return null
+    const request: PreparationRequest = {
+      url: value.url,
+      requestKey: value.requestKey,
+      appearance
+    }
+    if (
+      'templateId' in value &&
+      typeof value.templateId === 'string' &&
+      /^[a-f\d-]{36}$/i.test(value.templateId)
+    )
+      request.templateId = value.templateId
+    return request
   } catch {
     return null
   }

@@ -28,8 +28,8 @@ export function validateCostMicros(value: number) {
 }
 
 export function validateSummaryAllowance(allowance: number) {
-  if (allowance !== 5 && allowance !== 25) {
-    throw new Error('Phase 1 summary allowance must be 5 or 25.')
+  if (![5, 25, 100, 300].includes(allowance)) {
+    throw new Error('Summary allowance must match a supported plan.')
   }
 }
 
@@ -42,7 +42,8 @@ export function usageLimitError(endsAt: Date, now: Date, global = false) {
     Math.max(1, Math.ceil((endsAt.getTime() - now.getTime()) / 1000)),
     {
       code: global ? 'FREE_BUDGET_LIMIT' : 'SUMMARY_LIMIT',
-      resetAt: endsAt.toISOString()
+      resetAt: endsAt.toISOString(),
+      billingUrl: '/account/billing'
     }
   )
 }

@@ -182,6 +182,9 @@ export function productionPlan(
     AI_MODEL: values.AI_MODEL?.trim() || '',
     // Defined values take precedence over every automatically loaded Next .env file.
     PASSAGE_PRODUCTION_LOCAL: '1',
+    WORKFLOW_TARGET_WORLD: 'local',
+    WORKFLOW_LOCAL_DATA_DIR: '.next-prod/workflow-data',
+    WORKFLOW_LOCAL_BASE_URL: `http://localhost:${port}`,
     PORT: String(port),
     PORTLESS_URL: '',
     TRUST_PROXY: 'none',
@@ -209,7 +212,26 @@ export function productionPlan(
     'RESEND_FROM_EMAIL',
     'RESEND_REPLY_TO',
     'EMAIL_FROM',
-    'EMAIL_REPLY_TO'
+    'EMAIL_REPLY_TO',
+    'STRIPE_SECRET_KEY',
+    'STRIPE_WEBHOOK_SECRET',
+    'STRIPE_PLUS_MONTHLY_PRICE_ID',
+    'STRIPE_PLUS_ANNUAL_PRICE_ID',
+    'STRIPE_PRO_MONTHLY_PRICE_ID',
+    'STRIPE_PRO_ANNUAL_PRICE_ID',
+    'STRIPE_IMAGE_PACK_PRICE_ID',
+    'STRIPE_LIVE_CHECKOUT_ENABLED',
+    'R2_ACCOUNT_ID',
+    'R2_ACCESS_KEY_ID',
+    'R2_SECRET_ACCESS_KEY',
+    'R2_PUBLIC_BUCKET',
+    'R2_PRIVATE_BUCKET',
+    'R2_PUBLIC_URL',
+    'R2_ENDPOINT',
+    'IMAGE_AI_MODEL',
+    'IMAGE_GENERATION_ENABLED',
+    'IMAGE_AI_MONTHLY_BUDGET_USD',
+    'IMAGE_GENERATION_CONCURRENCY'
   ]) {
     env[name] = values[name]?.trim() || ''
   }

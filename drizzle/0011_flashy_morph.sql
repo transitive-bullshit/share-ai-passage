@@ -1,0 +1,5 @@
+ALTER TABLE "image_credit_grants" DROP CONSTRAINT "image_credit_grants_nonnegative";--> statement-breakpoint
+ALTER TABLE "image_credit_grants" ADD COLUMN "debt_applied" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE "image_credit_grants" ADD COLUMN "debt_recovered" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE "image_operations" ADD COLUMN "prompt" text;--> statement-breakpoint
+ALTER TABLE "image_credit_grants" ADD CONSTRAINT "image_credit_grants_nonnegative" CHECK ("image_credit_grants"."allowance" >= 0 and "image_credit_grants"."used" >= 0 and "image_credit_grants"."reserved" >= 0 and "image_credit_grants"."revoked" >= 0 and "image_credit_grants"."debt_applied" >= 0 and "image_credit_grants"."debt_recovered" >= 0 and "image_credit_grants"."refunded_cents" >= 0 and ("image_credit_grants"."paid_cents" is null or "image_credit_grants"."paid_cents" >= 0));

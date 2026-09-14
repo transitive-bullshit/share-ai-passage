@@ -1,4 +1,5 @@
 import { resolveActor } from '@/lib/actors'
+import { loadCardArtwork, resolveOwnedCardDesign } from '@/lib/assets'
 import { z } from 'zod'
 
 import { renderCard, renderCardPreview } from '@/lib/card'
@@ -49,6 +50,28 @@ export async function POST(request: Request) {
     const preview = edited?.data ?? draft.preview
     const render =
       parsed.data.format === 'html' ? renderCardPreview : renderCard
+    const resolved =
+      draft.design && draft.saved
+        ? await resolveOwnedCardDesign(draft.saved.ownerId, draft.design, {
+            allowPending: true,
+            frozen: draft.saved.resolvedDesign
+          })
+        : null
+    const artwork =
+      resolved && draft.saved
+        ? await loadCardArtwork(draft.saved.ownerId, resolved)
+        : undefined
+    if (resolved)
+      return await render(
+        {
+          title: preview.title,
+          highlights: preview.highlights,
+          provider: draft.source.provider
+        },
+        parsed.data.appearance ?? draft.appearance,
+        resolved,
+        artwork
+      )
     return await render(
       {
         title: preview.title,

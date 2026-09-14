@@ -61,7 +61,7 @@ describe('summary usage policy', () => {
   })
 
   it('rejects unsupported allowances and invalid dates', () => {
-    for (const allowance of [0, 1, 100, 300, Infinity]) {
+    for (const allowance of [0, 1, 99, 301, Infinity]) {
       expect(() => validateSummaryAllowance(allowance)).toThrow()
     }
     expect(() => validateSummaryAllowance(5)).not.toThrow()

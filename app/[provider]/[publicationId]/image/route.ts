@@ -1,5 +1,7 @@
 import { renderCard } from '@/lib/card'
-import { privateHeaders } from '@/lib/http'
+import { readFrozenCard } from '@/lib/assets'
+import { AppError } from '@/lib/errors'
+import { errorResponse, privateHeaders } from '@/lib/http'
 import { getPublication } from '@/lib/service'
 import { publicImageResponse } from '@/lib/seo'
 
@@ -27,6 +29,21 @@ export async function GET(
       available: false,
       cache: 'publication'
     })
+  if (record.publication.cardVersion >= 5 || record.publication.cardAssetId) {
+    try {
+      if (!record.publication.cardAssetId)
+        throw new AppError('This saved card is temporarily unavailable.', 503)
+      const bytes = await readFrozenCard(record.publication.cardAssetId)
+      return publicImageResponse(
+        new Response(new Uint8Array(bytes), {
+          headers: { ...privateHeaders, 'Content-Type': 'image/webp' }
+        }),
+        { cache: 'publication' }
+      )
+    } catch (err) {
+      return errorResponse(err)
+    }
+  }
   return publicImageResponse(
     await renderCard(
       {

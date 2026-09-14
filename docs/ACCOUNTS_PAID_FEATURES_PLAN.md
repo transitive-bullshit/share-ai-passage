@@ -1,6 +1,6 @@
 # Accounts, billing, and paid branding implementation handoff
 
-September 14, 2026. Product decisions accepted through Q28. This is one implementation plan with two consecutive phases and a mandatory feedback gate between them. Phase 1 is implemented locally; development Google/GitHub sign-in, password recovery/sign-in and summary generation checks pass. The owner approved Gate A on September 15, 2026 after the committed accounts review; Phase 2 is authorized and starting. Hosted environment checks remain open before deployment. See the [accounts review](ACCOUNTS_REVIEW.md) for current evidence and outstanding checks. Phase 2 and the paid benchmark may now proceed within the accepted scope and $20 benchmark budget. The [interview record](research/ACCOUNTS_PAID_BRANDING_DESIGN.md) preserves decision history; this document is the implementation handoff and supersedes earlier research recommendations.
+September 14, 2026. Product decisions accepted through Q28. This is one implementation plan with two consecutive phases and a mandatory feedback gate between them. Phase 1 is implemented locally; development Google/GitHub sign-in, password recovery/sign-in and summary generation checks pass. The owner approved Gate A on September 15, 2026 after the committed accounts review (`15755bc`); Phase 2 is implemented in the working tree. Hosted environment checks remain open before deployment. See the [accounts review](ACCOUNTS_REVIEW.md) for current evidence and outstanding checks. Gate B is pending actual Stripe/R2 provisioning and live lifecycle checks, hosted Workflow verification, and full image qualification. Neither phase has been deployed or migrated to production. The [interview record](research/ACCOUNTS_PAID_BRANDING_DESIGN.md) preserves decision history; this document is the implementation handoff and supersedes earlier research recommendations.
 
 ## Sequence and stop conditions
 
@@ -10,6 +10,8 @@ September 14, 2026. Product decisions accepted through Q28. This is one implemen
 | **Gate A: accounts feedback** | User reviews the complete accounts experience; incorporate feedback | **Explicit direction to proceed to Phase 2** |
 | Phase 2: paid features | Stripe, paid branding/templates/uploads, R2, image benchmark and generation, authenticated CLI/skill | Complete paid experience and validated cost/quality gates |
 | Gate B: paid launch | Review the integrated result, measured economics, and production readiness | Resolve failed gates before enabling public paid checkout |
+
+**Gate A was explicitly cleared on September 15; the following sequence remains the agreed implementation contract.**
 
 **The Gate A pause is mandatory. Do not start Phase 2 code, dependencies, migrations, runtime integration, application-managed Stripe products, R2 integration, or the paid image benchmark while Phase 1 is underway or awaiting feedback.** User-led service-account, DNS, bucket and credential preparation may happen now, per the subsequent setup request and [third-party setup checklist](THIRD_PARTY_SETUP.md). This prepares dependencies without starting paid application implementation. The accepted $20 benchmark budget applies after Gate A. Fix accounts feedback before continuing; passing tests or elapsed time is not approval to proceed.
 
@@ -115,6 +117,8 @@ Use a single authorization path across library, draft, prepare, card, publish, a
 
 ### Gate A — stop for accounts feedback
 
+**Approved September 15, 2026 (`15755bc`).** The [accounts review](ACCOUNTS_REVIEW.md) records the demonstration and remaining hosted checks.
+
 Deliver the working accounts experience in a reviewable environment, the tested revision, migration notes, a short validation report, and any environment-dependent checks still outstanding. Demonstrate:
 
 - All three login methods, verification/recovery, sign-out, and account deletion.
@@ -126,6 +130,8 @@ Deliver the working accounts experience in a reviewable environment, the tested 
 **Stop here and request feedback. Incorporate it and obtain explicit direction before beginning any Phase 2 work.** The handoff for the next phase already exists below; this stop does not create a separate project or discard that work plan.
 
 ## Phase 2 — billing and all paid features, after Gate A
+
+Current working-tree implementation includes subscription/pack ledgers and webhook reconciliation, uploads/templates and immutable paid cards, the pinned image adapter and durable jobs, account API keys and resumable CLI commands. The local Workflow queue/step roundtrip passed with a pre-cancelled synthetic operation and no model request; this does not establish hosted execution or external service readiness. Follow [contributing](../contributing.md#paid-feature-development) for local configuration and [generation reconciliation](GENERATION_RECONCILIATION.md) for uncertain work. Keep live checkout and new image work disabled until their gates pass.
 
 ### 2.0 Paid contracts — integrator, first
 
@@ -172,6 +178,8 @@ Capture the required visual baseline before renderer/template edits. Generate ar
 
 ### 2.3 Image quality and economics benchmark — parallel lane C
 
+**Current evidence:** 14 completed calls cost $0.172288 at metered list rates; 70 distinct final cards and 15 warm repeats were rendered locally. Flare v2 remains provisional, with only one revised-prompt sample per model. The frozen 25-call qualification batch awaits the specific approval requested after automatic approval review rejected it; none ran. Supported input bounds, independent quality scoring and live costs remain open. See [measured economics and remaining evidence](research/PHASE2_MEASURED_ECONOMICS.md); the original protocol and illustrative assumptions below preserve the accepted benchmark contract.
+
 Run only after Gate A, within the accepted **$20 total spend**. Refresh official model availability/pricing and account-specific fees at execution time; September 14 research is evidence, not a permanent rate guarantee. Start with pinned OpenAI Flare/Sunburst configurations; evaluate an alternative such as BFL only if needed within remaining budget and available access. Do not expose a model picker.
 
 Use six existing authored conversations spanning short/long, concrete/abstract, code-heavy, and difficult visual subjects. Apply three style recipes with palette, art direction, and one reference each. Pilot two conversations × three styles × two configurations (12 calls). If viable, complete the other four conversations (24 calls) and repeat two per style/configuration (12 calls): at most 48 planned generations, fewer when budget or quality requires stopping. Evaluate the actual crop and overlays in all five card layouts.
@@ -196,7 +204,7 @@ Subscription scenarios assume $0.003/summary, $0.08/image and $0.50/$1 other mon
 
 ### 2.4 Durable image generation and CLI/skill — integrate after contracts and lanes
 
-Use Vercel Workflows for durable image execution plus Neon as the permanent product record. The documented Next.js integration adds `workflow`/`withWorkflow()`; select a compatible stable version at implementation time. Keep request/job boundaries small; this does not replace the application or database. [Workflow integration](https://github.com/vercel/workflow/blob/main/docs/content/docs/v4/getting-started/next.mdx), [Vercel background jobs](https://vercel.com/kb/guide/how-to-run-background-jobs-in-nextjs-on-vercel).
+Use Vercel Workflows for durable image execution plus Neon as the permanent product record. The installed `workflow` 4.8.8 integration uses `withWorkflow()` in `next.config.ts`. Keep request/job boundaries small; this does not replace the application or database. [Workflow integration](https://github.com/vercel/workflow/blob/main/docs/content/docs/v4/getting-started/next.mdx), [Vercel background jobs](https://vercel.com/kb/guide/how-to-run-background-jobs-in-nextjs-on-vercel).
 
 Atomically persist job and allowance reservation, dispatch the workflow, and return a job ID. Recover interrupted dispatch through reconciliation. Web and CLI use the same authorized job/status API. Pass IDs and object keys between steps, not image binaries, private references, or full conversations in workflow history. Keep account state/results in Neon; persist image bytes promptly under the operation's immutable R2 key.
 
@@ -254,4 +262,4 @@ At each integrated phase, run `pnpm fix:format`, `pnpm fix:lint`, `pnpm test` wi
 
 Record revision, environment, commands/results, screenshots/artifacts, migration/rollback notes and remaining external checks in each gate report. Update [MVP behavior](MVP_PLAN.md), [glossary](CONTEXT.md), [production](PRODUCTION.md), [contributing](../contributing.md), CLI/skill and public documentation when each phase actually changes behavior. Read the applicable domain-modeling/writing skills when modifying glossary or agent instructions. Keep historical research clearly separate from current requirements.
 
-The current handoff has no further unresolved product interview questions. Model selection, measured margins and production provisioning are explicit implementation gates. Gate A remains a hard user-feedback stop even if Phase 2 looks straightforward. Gate B cannot pass on estimated calculator costs, skipped lifecycle checks, or a partially working paid experience.
+The current handoff has no further unresolved product interview questions. Model selection, measured margins and production provisioning are explicit implementation gates. Gate A was satisfied by explicit owner approval; it was not inferred from passing tests. Gate B cannot pass on estimated calculator costs, skipped lifecycle checks, or a partially working paid experience.

@@ -76,7 +76,26 @@ const accountSettings = [
   'RESEND_FROM_EMAIL',
   'RESEND_REPLY_TO',
   'EMAIL_FROM',
-  'EMAIL_REPLY_TO'
+  'EMAIL_REPLY_TO',
+  'STRIPE_SECRET_KEY',
+  'STRIPE_WEBHOOK_SECRET',
+  'STRIPE_PLUS_MONTHLY_PRICE_ID',
+  'STRIPE_PLUS_ANNUAL_PRICE_ID',
+  'STRIPE_PRO_MONTHLY_PRICE_ID',
+  'STRIPE_PRO_ANNUAL_PRICE_ID',
+  'STRIPE_IMAGE_PACK_PRICE_ID',
+  'STRIPE_LIVE_CHECKOUT_ENABLED',
+  'R2_ACCOUNT_ID',
+  'R2_ACCESS_KEY_ID',
+  'R2_SECRET_ACCESS_KEY',
+  'R2_PUBLIC_BUCKET',
+  'R2_PRIVATE_BUCKET',
+  'R2_PUBLIC_URL',
+  'R2_ENDPOINT',
+  'IMAGE_AI_MODEL',
+  'IMAGE_GENERATION_ENABLED',
+  'IMAGE_AI_MONTHLY_BUDGET_USD',
+  'IMAGE_GENERATION_CONCURRENCY'
 ]
 
 function productionAppUrl(env: NodeJS.ProcessEnv) {
@@ -194,7 +213,12 @@ describe('explicit production configuration', () => {
         GITHUB_CLIENT_SECRET: 'production-github-secret',
         RESEND_API_KEY: 'production-email-key',
         RESEND_FROM_EMAIL: 'Passage <production@example.invalid>',
-        RESEND_REPLY_TO: 'reply@example.invalid'
+        RESEND_REPLY_TO: 'reply@example.invalid',
+        STRIPE_SECRET_KEY: 'sk_test_explicit_fixture',
+        STRIPE_LIVE_CHECKOUT_ENABLED: 'false',
+        R2_SECRET_ACCESS_KEY: 'explicit-storage-fixture',
+        IMAGE_GENERATION_ENABLED: '0',
+        IMAGE_AI_MONTHLY_BUDGET_USD: '20'
       }
     },
     {
@@ -221,6 +245,9 @@ describe('explicit production configuration', () => {
         accountSettings.map((name) => [name, explicit[name] ?? ''])
       )
       expect(plan.env).toMatchObject(expected)
+      expect(plan.env.WORKFLOW_TARGET_WORLD).toBe('local')
+      expect(plan.env.WORKFLOW_LOCAL_DATA_DIR).toBe('.next-prod/workflow-data')
+      expect(plan.env.WORKFLOW_LOCAL_BASE_URL).toBe('http://localhost:3001')
 
       // Exercise Next's loader in an isolated process, with in-memory fixtures.
       // No private env files, production connections, or providers are accessed.

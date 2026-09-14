@@ -2,6 +2,7 @@
 
 import { ArrowLeft, ArrowUpRight, Check } from 'lucide-react'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import {
   useEffect,
   useMemo,
@@ -10,6 +11,15 @@ import {
   useSyncExternalStore
 } from 'react'
 
+import { ImageGenerationControls } from '@/components/image-generation-controls'
+import { useDesignArtwork } from '@/components/template-recipe-editor'
+import {
+  defaultTemplateRecipe,
+  draftDesignSchema,
+  resolveCardDesign,
+  type DraftDesign,
+  type ResolvedCardDesign
+} from '@/lib/paid-design'
 import { DraftGenerationControls } from '@/components/draft-generation-controls'
 import { CopyLink } from '@/components/copy-link'
 import {
@@ -38,6 +48,12 @@ import {
   providerNames
 } from '@/lib/domain'
 
+const DraftDesignControls = dynamic(() =>
+  import('@/components/draft-design-controls').then(
+    (module) => module.DraftDesignControls
+  )
+)
+
 const legacySaveSnapshot: DraftSaveSnapshot = {
   status: 'saved',
   revision: 0,
@@ -60,6 +76,12 @@ export type PreparedDraft = {
   preview: GeneratedPreview
   /** Saved style when preparing an existing passage. */
   appearance?: CardAppearance
+  design?: DraftDesign | null
+  resolvedDesign?: ResolvedCardDesign | null
+  artwork?: { background?: string; logo?: string }
+  canCustomize?: boolean
+  imageJobId?: string
+  imageGenerationError?: string
 }
 
 export function PreviewReview({
@@ -83,10 +105,19 @@ export function PreviewReview({
   const [error, setError] = useState('')
   const [preview, setPreview] = useState(draft.preview)
   const [generating, setGenerating] = useState(false)
+  const [design, setDesign] = useState<DraftDesign | null>(draft.design ?? null)
+  const [frozenDesign, setFrozenDesign] = useState<ResolvedCardDesign | null>(
+    draft.resolvedDesign ?? null
+  )
   const [autosave] = useState(() =>
     draft.draftId && draft.revision !== undefined
       ? createDraftAutosave(
-          { preview: draft.preview, appearance, revision: draft.revision },
+          {
+            preview: draft.preview,
+            appearance,
+            design: draft.design ?? null,
+            revision: draft.revision
+          },
           (revision, content) => saveDraft(draft.draftId!, revision, content)
         )
       : null
@@ -110,15 +141,38 @@ export function PreviewReview({
   // changes arriving from another tab.
   const activeAppearance = lockedAppearance ?? appearance
   const templateId = activeAppearance.templateId
+  const validDesign = design ? draftDesignSchema.safeParse(design) : null
+  const resolvedDesign = useMemo(() => {
+    if (!design) return null
+    const parsed = draftDesignSchema.safeParse(design)
+    return parsed.success
+      ? (frozenDesign ?? resolveCardDesign(activeAppearance, parsed.data))
+      : null
+  }, [design, frozenDesign, activeAppearance])
+  const media = useDesignArtwork(
+    design?.recipe ?? defaultTemplateRecipe(templateId),
+    design?.generatedImage?.assetId
+  )
+  const backgroundPending =
+    design?.recipe.background.mode === 'generated' && !design.generatedImage
   const currentCard =
     card?.appearance === activeAppearance && card.attempt === cardAttempt
       ? card
       : null
   const currentCardError = currentCard?.error || ''
   const cardReady = Boolean(
-    preferencesReady && currentCard?.loaded && !currentCardError
+    preferencesReady &&
+    currentCard?.loaded &&
+    !currentCardError &&
+    !media.loading &&
+    !media.error
   )
-  const publishReady = cardReady && validation.success
+  const publishReady =
+    cardReady &&
+    validation.success &&
+    (!validDesign || validDesign.success) &&
+    !backgroundPending &&
+    (!design || draft.canCustomize === true)
 
   useEffect(() => {
     headingRef.current?.focus({ preventScroll: true })
@@ -150,11 +204,15 @@ export function PreviewReview({
   function changeAppearance(next: CardAppearance) {
     if (editingDisabled || shareUrl) return
     onAppearanceChange(next)
-    autosave?.change({ preview, appearance: next })
+    setDesign(null)
+    setFrozenDesign(null)
+    autosave?.change({ preview, appearance: next, design: null })
   }
 
   function acceptDraft(next: SavedDraft) {
     setPreview(next.preview)
+    setDesign(next.design ?? null)
+    setFrozenDesign(next.resolvedDesign ?? null)
     onAppearanceChange(next.appearance)
     autosave?.accept(next)
     setCardAttempt((attempt) => attempt + 1)
@@ -168,9 +226,21 @@ export function PreviewReview({
   function changePreview(next: GeneratedPreview) {
     if (editingDisabled || shareUrl) return
     setPreview(next)
-    autosave?.change({ preview: next, appearance: activeAppearance })
+    autosave?.change({ preview: next, appearance: activeAppearance, design })
     setCardAttempt((attempt) => attempt + 1)
     setError('')
+  }
+
+  function changeDesign(next: DraftDesign | null) {
+    if (editingDisabled || shareUrl) return
+    const nextAppearance = next
+      ? { templateId: next.recipe.baseStyle }
+      : activeAppearance
+    setDesign(next)
+    setFrozenDesign(null)
+    onAppearanceChange(nextAppearance)
+    autosave?.change({ preview, appearance: nextAppearance, design: next })
+    setCardAttempt((value) => value + 1)
   }
 
   async function publish() {
@@ -219,6 +289,8 @@ export function PreviewReview({
             preview={cardPreview}
             provider={draft.provider}
             appearance={activeAppearance}
+            resolvedDesign={resolvedDesign ?? undefined}
+            artwork={media.artwork}
           />
         </div>
         <FieldGroup>
@@ -309,6 +381,46 @@ export function PreviewReview({
               registered={registered}
             />
           )}
+          {draft.draftId &&
+            autosave &&
+            design?.recipe.background.mode === 'generated' && (
+              <ImageGenerationControls
+                draftId={draft.draftId}
+                initialJobId={draft.imageJobId}
+                initialError={draft.imageGenerationError}
+                hasImage={Boolean(design.generatedImage)}
+                disabled={pending || generating || save.status === 'conflict'}
+                canGenerate={draft.canCustomize === true}
+                flush={autosave.flush}
+                getSave={autosave.getSnapshot}
+                onAccept={acceptDraft}
+              />
+            )}
+          {backgroundPending && (
+            <p className='draft-status' role='status'>
+              Your text is ready. Generate a background or choose a curated or
+              uploaded image before publishing.
+            </p>
+          )}
+          {design && !draft.canCustomize && (
+            <Alert>
+              <AlertDescription>
+                Your custom design and artwork are saved.{' '}
+                <a className='auth-text-link' href='/account/billing'>
+                  Choose a paid plan
+                </a>{' '}
+                to publish with this design, or{' '}
+                <button
+                  className='auth-text-link'
+                  type='button'
+                  onClick={() => changeDesign(null)}
+                >
+                  switch this draft to a Free card style
+                </button>
+                .
+              </AlertDescription>
+            </Alert>
+          )}
           {autosave &&
             (save.status === 'error' || save.status === 'conflict') && (
               <Alert variant='destructive'>
@@ -373,12 +485,14 @@ export function PreviewReview({
             className='live-card'
             aria-busy={!cardReady && !currentCardError}
           >
-            {preferencesReady ? (
+            {preferencesReady && !media.loading && !media.error ? (
               <SocialCardPreview
                 key={`${draft.draftToken}:${templateId}:${cardAttempt}`}
                 preview={cardPreview}
                 provider={draft.provider}
                 appearance={activeAppearance}
+                resolvedDesign={resolvedDesign ?? undefined}
+                artwork={media.artwork}
                 attempt={cardAttempt}
                 onStatusChange={setCard}
               />
@@ -402,13 +516,41 @@ export function PreviewReview({
             </Alert>
           ) : null}
 
-          <SocialTemplatePicker
-            appearance={activeAppearance}
-            provider={draft.provider}
-            onChange={changeAppearance}
-            disabled={editingDisabled || !preferencesReady}
-            preferencesAvailable={preferencesAvailable}
-          />
+          {!design && (
+            <SocialTemplatePicker
+              appearance={activeAppearance}
+              provider={draft.provider}
+              onChange={changeAppearance}
+              disabled={editingDisabled || !preferencesReady}
+              preferencesAvailable={preferencesAvailable}
+            />
+          )}
+          {registered && draft.draftId && draft.canCustomize && (
+            <DraftDesignControls
+              design={design}
+              appearance={activeAppearance}
+              disabled={editingDisabled || save.status === 'conflict'}
+              onChange={changeDesign}
+            />
+          )}
+          {registered && !draft.canCustomize && !design && (
+            <p className='draft-status'>
+              <a className='auth-text-link' href='/account/billing'>
+                Customize your brand
+              </a>{' '}
+              with uploaded artwork, saved templates and image generation.
+            </p>
+          )}
+          {media.error && (
+            <Alert variant='destructive'>
+              <AlertDescription>
+                {media.error}
+                <Button type='button' variant='outline' onClick={media.retry}>
+                  Reload artwork
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
         </aside>
       </div>
     </section>

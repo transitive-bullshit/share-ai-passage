@@ -21,7 +21,8 @@ export async function generateMetadata(props?: {
     }),
     title: { absolute: title }
   }
-  if (query?.draft !== undefined) metadata.robots = noindex
+  if (query?.draft !== undefined || query?.template !== undefined)
+    metadata.robots = noindex
   return metadata
 }
 
@@ -35,6 +36,9 @@ export default async function HomePage({
     <main id='main'>
       <JsonLd data={homepageJsonLd()} />
       <ShareFlow
+        initialTemplateId={
+          typeof query.template === 'string' ? query.template : undefined
+        }
         initialDraftId={
           typeof query.draft === 'string' ? query.draft : undefined
         }

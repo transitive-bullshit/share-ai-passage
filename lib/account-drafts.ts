@@ -5,6 +5,15 @@ import { z } from 'zod'
 
 import { accountSubject } from './accounts'
 import { requireOwnedActor, requireRegisteredActor, type Actor } from './actors'
+import {
+  assetAccess,
+  resolveOwnedCardDesign,
+  validateDraftDesign
+} from './assets'
+import { readEntitlements, requirePaidAccount } from './billing'
+import { draftDesignSchema, type DraftDesign } from './paid-design'
+import { defaultDraftDesign, snapshotTemplate } from './templates'
+import { cancelUndispatchedImages } from './image-usage'
 import { DEFAULT_CARD_APPEARANCE, type CardAppearance } from './card-appearance'
 import { cardAppearanceSchema } from './card-appearance-schema'
 import { appUrl } from './config'
@@ -13,6 +22,7 @@ import {
   accountPreferences,
   authUsers,
   generationOperations,
+  imageOperations,
   publications,
   savedDrafts,
   snapshots,
@@ -45,7 +55,8 @@ export const draftEditSchema = z.strictObject({
       .array(z.string().max(limits.highlight * 2))
       .max(limits.highlights)
   }),
-  appearance: cardAppearanceSchema
+  appearance: cardAppearanceSchema,
+  design: draftDesignSchema.nullable().optional()
 })
 
 async function liveUser(tx: Transaction, userId: string) {
@@ -98,6 +109,8 @@ function tokenFor(draft: SavedDraft) {
   )
 }
 
+type DraftArtwork = { background?: string; logo?: string }
+
 async function present(draft: SavedDraft, actor: Actor) {
   if (draft.status !== 'ready') {
     const generationBlock = await pendingGenerationBlock(draft, actor)
@@ -111,6 +124,35 @@ async function present(draft: SavedDraft, actor: Actor) {
   }
   const draftToken = tokenFor(draft)
   const record = await getDraft(draftToken, actor)
+  const [entitlements, resolved] = await Promise.all([
+    actor.registered && actor.userId ? readEntitlements(actor.userId) : null,
+    draft.design
+      ? resolveOwnedCardDesign(draft.ownerId, draft.design, {
+          allowPending: true,
+          frozen: draft.resolvedDesign
+        })
+      : null
+  ])
+  const resolvedDesign = resolved
+  const artwork: DraftArtwork = {}
+  if (resolvedDesign) {
+    await Promise.all([
+      resolvedDesign.background.kind === 'asset'
+        ? assetAccess(draft.ownerId, resolvedDesign.background.assetId).then(
+            (access) => {
+              artwork.background = access.url
+            }
+          )
+        : undefined,
+      resolvedDesign.branding.mode === 'custom'
+        ? assetAccess(draft.ownerId, resolvedDesign.branding.assetId).then(
+            (access) => {
+              artwork.logo = access.url
+            }
+          )
+        : undefined
+    ])
+  }
   return {
     draftId: draft.id,
     revision: draft.revision,
@@ -119,7 +161,11 @@ async function present(draft: SavedDraft, actor: Actor) {
     provider: record.source.provider,
     sourceUrl: record.source.canonicalUrl,
     preview: record.preview,
-    appearance: draft.appearance
+    appearance: draft.appearance,
+    design: draft.design,
+    resolvedDesign,
+    artwork,
+    canCustomize: entitlements?.paidActions ?? false
   }
 }
 
@@ -188,7 +234,12 @@ async function finishDraft(
 
 export async function createSavedDraft(
   actor: Actor,
-  input: { url: string; requestKey: string; appearance?: CardAppearance }
+  input: {
+    url: string
+    requestKey: string
+    appearance?: CardAppearance
+    templateId?: string
+  }
 ) {
   requireOwnedActor(actor)
   const draft = await getDb().transaction(async (tx) => {
@@ -220,6 +271,13 @@ export async function createSavedDraft(
       .select()
       .from(accountPreferences)
       .where(eq(accountPreferences.userId, actor.userId))
+    let design: DraftDesign | null = null
+    if (input.templateId) {
+      await requirePaidAccount(actor.userId, tx)
+      design = await snapshotTemplate(actor.userId, input.templateId, tx)
+    } else if (actor.registered) {
+      design = await defaultDraftDesign(actor.userId, tx)
+    }
     const [created] = await tx
       .insert(savedDrafts)
       .values({
@@ -227,8 +285,12 @@ export async function createSavedDraft(
         namespace: actor.subjectKey,
         requestKey: input.requestKey,
         sourceUrl: input.url,
-        appearance:
-          input.appearance ?? preferences?.appearance ?? DEFAULT_CARD_APPEARANCE
+        appearance: design
+          ? { templateId: design.recipe.baseStyle }
+          : (input.appearance ??
+            preferences?.appearance ??
+            DEFAULT_CARD_APPEARANCE),
+        design
       })
       .returning()
     return created!
@@ -264,15 +326,17 @@ async function prepareSavedDraft(actor: Actor, draft: SavedDraft) {
     const record = await getDraft(result.draftToken)
     const saved = await finishDraft(draft.id, async (tx, current) => {
       if (current.status === 'ready') return current
-      const ownCopy =
-        record.source &&
-        capability.publicationId &&
-        (
-          await tx
-            .select({ ownerId: publications.ownerId })
+      const [original] = capability.publicationId
+        ? await tx
+            .select({
+              ownerId: publications.ownerId,
+              design: publications.design,
+              resolvedDesign: publications.resolvedDesign
+            })
             .from(publications)
             .where(eq(publications.id, capability.publicationId))
-        )[0]?.ownerId === current.ownerId
+        : []
+      const ownCopy = original?.ownerId === current.ownerId
       const [updated] = await tx
         .update(savedDrafts)
         .set({
@@ -286,6 +350,10 @@ async function prepareSavedDraft(actor: Actor, draft: SavedDraft) {
             ? (('appearance' in result ? result.appearance : undefined) ??
               current.appearance)
             : current.appearance,
+          design: ownCopy ? original!.design : current.design,
+          resolvedDesign: ownCopy
+            ? original!.resolvedDesign
+            : current.resolvedDesign,
           status: 'ready',
           errorMessage: null,
           updatedAt: new Date()
@@ -330,12 +398,24 @@ export async function editSavedDraft(
     sameRevision(current, input.revision)
     if (current.status !== 'ready')
       throw new AppError('Wait for this draft to finish preparing.', 409)
+    const changedDesign =
+      input.design !== undefined &&
+      JSON.stringify(input.design) !== JSON.stringify(current.design)
+    const design = input.design === undefined ? current.design : input.design
+    if (changedDesign && design) {
+      await requirePaidAccount(actor.userId!, tx)
+      await validateDraftDesign(actor.userId!, design, tx, current.design)
+    }
     const [updated] = await tx
       .update(savedDrafts)
       .set({
         title: input.preview.title,
         highlights: input.preview.highlights,
-        appearance: input.appearance,
+        appearance: design
+          ? { templateId: design.recipe.baseStyle }
+          : input.appearance,
+        design,
+        resolvedDesign: changedDesign ? null : current.resolvedDesign,
         revision: current.revision + 1,
         publishedPublicationId: null,
         updatedAt: new Date()
@@ -450,6 +530,23 @@ export async function draftOperations(actor: Actor, id: string) {
         )
       )
       .orderBy(desc(generationOperations.createdAt))
+      .limit(20),
+    images: await getDb()
+      .select({
+        id: imageOperations.id,
+        status: imageOperations.status,
+        createdAt: imageOperations.createdAt,
+        draftRevision: imageOperations.draftRevision,
+        resultAssetId: imageOperations.resultAssetId
+      })
+      .from(imageOperations)
+      .where(
+        and(
+          eq(imageOperations.draftId, id),
+          eq(imageOperations.ownerId, actor.userId!)
+        )
+      )
+      .orderBy(desc(imageOperations.createdAt))
       .limit(20)
   }
 }
@@ -494,6 +591,21 @@ export async function deleteSavedDraft(actor: Actor, id: string) {
   await getDb().transaction(async (tx) => {
     await ownedDraft(tx, actor, id)
     await cancelUndispatchedSummaries(tx, actor.subjectKey, id)
+    await cancelUndispatchedImages(tx, actor.userId!, id)
+    await tx
+      .update(imageOperations)
+      .set({
+        recipe: null,
+        prompt: null,
+        referenceAssetId: null,
+        referenceHash: null
+      })
+      .where(
+        and(
+          eq(imageOperations.draftId, id),
+          eq(imageOperations.ownerId, actor.userId!)
+        )
+      )
     await tx
       .update(generationOperations)
       .set({ result: null })
@@ -512,6 +624,8 @@ export async function deleteSavedDraft(actor: Actor, id: string) {
         title: '',
         highlights: [],
         appearance: DEFAULT_CARD_APPEARANCE,
+        design: null,
+        resolvedDesign: null,
         errorMessage: null
       })
       .where(eq(savedDrafts.id, id))

@@ -81,10 +81,12 @@ async function loadAccountDefault(appearance: CardAppearance) {
 
 export function ShareFlow({
   children,
-  initialDraftId
+  initialDraftId,
+  initialTemplateId
 }: {
   children?: ReactNode
   initialDraftId?: string
+  initialTemplateId?: string
 }) {
   const { data: session } = useAccountSession()
   const registeredUserId =
@@ -235,6 +237,8 @@ export function ShareFlow({
         setSyncedAccountId(current.data.user.id)
         setPreferenceError('')
       }
+      if (initialTemplateId && !resolvedRequest.templateId)
+        resolvedRequest = { ...resolvedRequest, templateId: initialTemplateId }
       preparationRecovery.save(resolvedRequest)
       const result = await draftRequest<DraftResult>(
         '/api/drafts',

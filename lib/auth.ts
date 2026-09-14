@@ -2,15 +2,19 @@ import { drizzleAdapter } from '@better-auth/drizzle-adapter'
 import { betterAuth, type BetterAuthOptions } from 'better-auth'
 import { APIError } from 'better-auth/api'
 import { anonymous } from 'better-auth/plugins'
+import { createApiKeyPlugin } from '@/lib/api-keys'
+import { createBillingAuthPlugin } from '@/lib/billing-auth'
 
 import { appSecret, appUrl } from '@/lib/config'
 import { getDb } from '@/lib/db'
 import {
   authAccounts,
+  authApiKeys,
   authRateLimits,
   authSessions,
   authUsers,
-  authVerifications
+  authVerifications,
+  billingSubscriptions
 } from '@/lib/db/schema'
 import { isEmailConfigured, sendAuthEmail } from '@/lib/email'
 import { maxPasswordLength, minPasswordLength } from '@/lib/password-policy'
@@ -101,6 +105,7 @@ async function deliverEmail(input: Parameters<typeof sendAuthEmail>[0]) {
 function createAuth() {
   const environment = authEnvironment()
   const status = getAuthConfigurationStatus()
+  const billingPlugin = createBillingAuthPlugin()
   const socialProviders: BetterAuthOptions['socialProviders'] = {}
   if (status.providers.google) {
     socialProviders.google = {
@@ -129,7 +134,9 @@ function createAuth() {
         session: authSessions,
         account: authAccounts,
         verification: authVerifications,
-        rateLimit: authRateLimits
+        rateLimit: authRateLimits,
+        apikey: authApiKeys,
+        subscription: billingSubscriptions
       }
     }),
     // Keep Better Auth's security rules shared across Vercel instances.
@@ -155,7 +162,14 @@ function createAuth() {
       }
     },
     // Guest deletion is the post-merge plugin operation, not a standalone user action.
-    disabledPaths: ['/delete-anonymous-user'],
+    disabledPaths: [
+      '/delete-anonymous-user',
+      '/api-key/create',
+      '/api-key/update',
+      '/api-key/get',
+      '/api-key/list',
+      '/api-key/delete'
+    ],
     emailAndPassword: {
       enabled: status.emailAndPassword,
       minPasswordLength,
@@ -194,6 +208,8 @@ function createAuth() {
       }
     },
     plugins: [
+      createApiKeyPlugin(),
+      ...(billingPlugin ? [billingPlugin] : []),
       anonymous({
         onLinkAccount: async ({ anonymousUser, newUser }) => {
           if (

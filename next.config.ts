@@ -1,8 +1,9 @@
 import type { NextConfig } from 'next'
+import { withWorkflow } from 'workflow/next'
 
 import { appUrl, indexingEnabled } from './lib/config'
 
-const config: NextConfig = {
+export const config: NextConfig = {
   allowedDevOrigins:
     process.env.NODE_ENV === 'development' && process.env.PORTLESS_URL?.trim()
       ? [new URL(appUrl()).hostname]
@@ -54,4 +55,4 @@ const config: NextConfig = {
   }
 }
 
-export default config
+export default withWorkflow(config)
