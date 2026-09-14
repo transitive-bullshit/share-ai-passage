@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 
-import { and, eq, gte, inArray, isNull, lt, sql } from 'drizzle-orm'
+import { and, desc, eq, gte, inArray, isNull, lt, sql } from 'drizzle-orm'
 
 import { readEntitlements } from './billing'
 import type { BillingEntitlements } from './billing-policy'
@@ -223,10 +223,12 @@ export async function reserveImage(input: ReserveImageInput) {
     throw new AppError('An image generation request is required.')
   const now = input.now ?? new Date()
   const subjectKey = `user:${input.userId}`
+  const initialRecovery =
+    input.draftRevision === 0 && input.requestKey === input.draftId
   return getDb().transaction(async (tx) => {
     await lockUsageSubjects(tx, subjectKey)
     await liveAccount(tx, input.userId)
-    const [existing] = await tx
+    const [replayed] = await tx
       .select()
       .from(imageOperations)
       .where(
@@ -235,18 +237,35 @@ export async function reserveImage(input: ReserveImageInput) {
           eq(imageOperations.requestKey, input.requestKey)
         )
       )
-    if (existing) {
-      if (
-        existing.inputHash !== input.inputHash ||
-        existing.draftId !== input.draftId ||
-        existing.draftRevision !== input.draftRevision
+    if (
+      replayed &&
+      ((!initialRecovery && replayed.inputHash !== input.inputHash) ||
+        replayed.draftId !== input.draftId ||
+        replayed.draftRevision !== input.draftRevision)
+    )
+      throw new AppError(
+        'This image request key was already used for different inputs.',
+        409
       )
-        throw new AppError(
-          'This image request key was already used for different inputs.',
-          409
-        )
-      return { operation: existing, created: false }
-    }
+    // Check again under the account lock: a manual request may have been
+    // accepted since the route checked. Recovery retains its pinned inputs.
+    const existing = initialRecovery
+      ? (
+          await tx
+            .select()
+            .from(imageOperations)
+            .where(
+              and(
+                eq(imageOperations.subjectKey, subjectKey),
+                eq(imageOperations.draftId, input.draftId),
+                eq(imageOperations.draftRevision, 0)
+              )
+            )
+            .orderBy(desc(imageOperations.createdAt))
+            .limit(1)
+        )[0]
+      : replayed
+    if (existing) return { operation: existing, created: false }
     const [draft] = await tx
       .select()
       .from(savedDrafts)

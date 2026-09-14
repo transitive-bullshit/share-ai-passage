@@ -137,7 +137,7 @@ API clients can send an optional `preview: { title, highlights }` with the exist
 
 Create/revoke a named key at `/account/keys`. Keep `PASSAGE_API_KEY` in your local environment; keys are shown once and never saved in draft files. Set `PASSAGE_URL` to that key’s service origin. The CLI rejects a different `--base-url` or saved-draft origin before sending the key and refuses redirects. Billing and account-security administration remain in the browser.
 
-Authenticated `prepare`/`share` require `--out`: the private recovery file is written before dispatch and retains request/job identity. New creation uses account defaults and allowances; a generated default background can start a paid image job after the summary. Use `resume` to continue saved work and `status` to retrieve it without starting fresh work. Each invocation retrieves current state and returns; repeat it to poll a pending job.
+Authenticated `prepare`/`share` require `--out`: the private recovery file is written before dispatch and retains request/job identity. New creation uses account defaults and allowances; a generated default background can start a paid image job after the summary. Use `resume` to continue saved work and `status` to retrieve it without starting fresh work. Resuming an untouched draft can start its original template image if preparation stopped before scheduling it. It reuses an existing request, including failed or uncertain work; only `image` explicitly requests another generation. Use `status` for repeated polling. Each invocation retrieves current state and returns.
 
 ```sh
 # With PASSAGE_URL and PASSAGE_API_KEY already configured locally:

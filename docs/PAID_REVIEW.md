@@ -22,6 +22,12 @@ Browser review on the isolated HTTPS accounts app covered monthly/annual prices,
 
 Eight legacy WebP exports remained byte-identical to their frozen baseline. Five paid export fixtures were visually checked; the v2 image sample was also rendered in all five layouts. The resumed paid-draft regression changes repository geometry and confirms the saved frozen descriptor survives unchanged. The local saved HTML comparison at port 4399 was blocked by the browser client and was not claimed as reviewed; live preview and exported-image checks are recorded separately.
 
+## Draft recovery follow-up
+
+The follow-up on September 15 makes create, browser reopening and CLI resume continue an untouched draft's initial template image when summary preparation finished before image scheduling. Automatic recovery follows the latest accepted operation for that draft/revision, including an explicit replacement, failed or uncertain work. Request-key collision checks and a second check under the account usage lock prevent recovery from reserving another generation. Explicit rerolls retain their own request identity; read-only status polling never starts a new generation.
+
+The updated sources passed the complete `pnpm test` checks: **767 tests in 64 files**, with the isolated PostgreSQL suites enabled, plus formatting, lint and TypeScript. The production build passed again with six Workflow steps, one workflow and 35 static pages. Regression coverage includes delayed summary readiness, interrupted browser/CLI recovery, concurrent reservations, disabled generation configuration and a failed initial job followed by an uncertain explicit replacement. No additional paid provider requests or production changes occurred.
+
 ## Outstanding gates
 
 1. Configure actual Stripe sandbox keys/prices/Portal/webhooks and R2 buckets/credentials/CORS. Exercise real checkout, renewal, proration, cancellation, pack refund/dispute, browser upload and durable object recovery. Fixture tests do not prove those services are configured.

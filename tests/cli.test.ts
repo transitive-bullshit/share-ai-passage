@@ -322,6 +322,61 @@ describe('portable Passage CLI', () => {
     ).toHaveLength(1)
   })
 
+  it('resumes a prepared generated-template draft with no initial image job through the creation continuation', async () => {
+    const file = path.join(directory, 'prepared-missing-initial-image.json')
+    const draftId = '00000000-0000-4000-8000-000000000003'
+    const imageJobId = '00000000-0000-4000-8000-000000000004'
+    await writeFile(
+      file,
+      JSON.stringify({
+        version: 2,
+        status: 'prepared',
+        baseUrl,
+        ...prepared,
+        draftId,
+        revision: 0,
+        requestKey: draftId,
+        needsImage: true
+      })
+    )
+    const ready = {
+      ...prepared,
+      draftId,
+      revision: 0,
+      status: 'ready',
+      design: { recipe: { background: { mode: 'generated' } } }
+    }
+    respond = (request, response) => {
+      if (request.url === `/api/drafts/${draftId}/resume`)
+        json(response, { ...ready, imageJobId })
+      else if (request.url === `/api/drafts/${draftId}`) json(response, ready)
+      else if (request.url === `/api/drafts/${draftId}/operations`)
+        json(response, { images: [] })
+      else if (request.url === `/api/image-jobs/${imageJobId}`)
+        json(response, { id: imageJobId, status: 'running', applied: false })
+      else json(response, { error: 'Unexpected endpoint' }, 404)
+    }
+    const result = await run(
+      ['resume', file, '--json'],
+      baseUrl,
+      'passage_fixture_key'
+    )
+    expect(result.code).toBe(0)
+    expect(requests[0]).toMatchObject({
+      method: 'POST',
+      route: `/api/drafts/${draftId}/resume`,
+      body: {}
+    })
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      imageJobId,
+      imageStatus: 'running'
+    })
+    expect(JSON.parse(await readFile(file, 'utf8')).imageJobId).toBe(imageJobId)
+    expect(
+      requests.filter((request) => request.method === 'POST')
+    ).toHaveLength(1)
+  })
+
   it('persists a new explicit image attempt and resumes the same key after a lost response', async () => {
     const file = path.join(directory, 'account-image-retry.json')
     const draftId = '00000000-0000-4000-8000-000000000003'
