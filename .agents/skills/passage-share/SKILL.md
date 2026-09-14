@@ -5,7 +5,7 @@ description: Create a Passage share link from a public ChatGPT, Codex, or Claude
 
 # Passage sharing
 
-Use the bundled Node.js CLI at `scripts/passage.mjs`, resolved relative to this skill's directory. It requires Node.js 24+ and a running Passage service. Set `PASSAGE_URL` to the service origin, or pass `--base-url`; the default is the local development service. Run `--help` for command details.
+Use the bundled Node.js CLI at `scripts/passage.mjs`, resolved relative to this skill's directory. It requires Node.js 24+ and uses `https://www.share-ai-passage.com` by default, with no repository checkout or local service needed. For a user-specified self-hosted or development service, set `PASSAGE_URL` or pass `--base-url`. Run `--help` for command details.
 
 Prepare the supplied public share URL with `prepare <url> --out <draft-file>`. The service fetches the public conversation and generates a title and concise highlights. The CLI displays those fields while saving the publishing token only in the local draft file. Show the title and highlights to the user as the preview, keeping their text unchanged.
 

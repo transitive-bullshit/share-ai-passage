@@ -465,6 +465,8 @@
   color: var(--muted-foreground);
 }
 .terminal-example pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
   margin: 0;
   padding: 25px 22px 23px;
   font-size: 12px;

@@ -136,27 +136,28 @@ export function LandingDetails() {
             And your agents.
           </h2>
           <p>
-            Create a passage here, from your terminal, or with an agent skill.
-            The same simple flow, wherever you’re working.
+            Install the Passage skill, then ask your agent to turn a public
+            conversation into a passage. Preview first. Publish when you’re
+            ready.
           </p>
           <a
             className='text-link'
             href={`${brand.repositoryUrl}/blob/main/contributing.md#cli-and-agent-skill`}
           >
-            Set up the CLI or agent skill
+            Set up the agent skill
             <ArrowUpRight size={15} aria-hidden='true' />
           </a>
         </div>
         <div className='terminal-example'>
           <div className='terminal-heading'>
             <Terminal size={15} aria-hidden='true' />
-            <span>From your local checkout</span>
+            <span>Install the agent skill</span>
           </div>
           <pre>
             <code>
-              <span className='terminal-prompt'>$</span> pnpm share{' '}
+              <span className='terminal-prompt'>$</span> npx skills add{' '}
               <span className='terminal-argument'>
-                &quot;&lt;public-chat-url&gt;&quot;
+                transitive-bullshit/share-ai-passage --skill passage-share
               </span>
             </code>
           </pre>
@@ -173,13 +174,13 @@ export function LandingDetails() {
             </p>
           </div>
           <div className='terminal-footer'>
-            Also available as the{' '}
+            Then ask your agent to use{' '}
             <a
               href={`${brand.repositoryUrl}/tree/main/.agents/skills/passage-share`}
             >
-              <code>passage-share</code> agent skill
-            </a>
-            .
+              <code>passage-share</code>
+            </a>{' '}
+            with a public conversation link.
           </div>
         </div>
       </section>

@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto'
 import { readFile, stat, writeFile } from 'node:fs/promises'
 import { createInterface } from 'node:readline/promises'
 
-const defaultBaseUrl = 'http://ai-chat-proxy.localhost:1355'
+const defaultBaseUrl = 'https://www.share-ai-passage.com'
 const maxResponseBytes = 64 * 1024
 const help = `Passage — share a public ChatGPT, Codex, or Claude conversation
 

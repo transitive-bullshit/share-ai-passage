@@ -54,20 +54,34 @@ The public `/llms.txt` is served from `public/llms.txt`. Keep its product summar
 
 ## CLI and agent skill
 
-The standalone CLI requires Node.js 24+ and a running Passage service. It uses the same service operations as the web app and has no npm dependencies. Its default origin is `http://ai-chat-proxy.localhost:1355`; set `PASSAGE_URL` or `--base-url` to match your server.
+Install the portable [passage-share skill](.agents/skills/passage-share/SKILL.md) with the [skills CLI](https://skills.sh):
 
 ```sh
-pnpm share prepare 'https://chatgpt.com/s/cx_<id>' --out work/draft.json
-pnpm share publish work/draft.json
+npx skills add transitive-bullshit/share-ai-passage --skill passage-share
+```
+
+Choose your agent in the installer, then ask it to use `passage-share` with a public conversation URL. The skill includes a dependency-free CLI, requires Node.js 24+, and defaults to `https://www.share-ai-passage.com`. No repository checkout or local service is needed. It consumes an existing public provider URL; it does not create that URL or post links to other services.
+
+### Skill distribution
+
+The public GitHub repository is the distribution source. The skills CLI discovers `.agents/skills/passage-share/` and installs the whole folder, including `scripts/passage.mjs`. Keep the `--skill passage-share` selector so repository maintenance skills are not installed alongside it.
+
+Publish skill updates to the repository's default branch, then verify the public install command from a temporary project. [skills.sh lists skills automatically through CLI installation telemetry](https://skills.sh/docs/faq#how-do-i-get-my-skill-listed-on-the-leaderboard); no npm package or separate registry upload is required. Users can run `npx skills update` to get updates.
+
+### Local CLI development
+
+From this checkout, run the bundled CLI directly. Set `PASSAGE_URL` or `--base-url` to the actual local server origin when testing against a local service:
+
+```sh
+node .agents/skills/passage-share/scripts/passage.mjs prepare 'https://chatgpt.com/s/cx_<id>' --base-url http://ai-chat-proxy.localhost:1355 --out work/draft.json
+node .agents/skills/passage-share/scripts/passage.mjs publish work/draft.json
 ```
 
 `prepare` never publishes. The standalone CLI's `publish` uses the original saved draft and its server, rejects changes to that local draft's preview, and reuses the link when retried. Browser draft editing is separate from this CLI flow. Keep draft files private: their tokens authorize publication until they expire.
 
 API clients can send an optional `preview: { title, highlights }` with the existing draft token to `POST /api/publish` or `POST /api/card`. Omitting it uses the cached generated preview. The server normalizes Unicode and whitespace and applies the same [summary limits](docs/MVP_PLAN.md#implementation-and-limits), including distinct nonblank highlights. Blank slots are filtered out, and a title-only passage is valid. Recommendations do not block publishing; hard caps are 600 Unicode characters for a title and 1,000 per highlight (at most three). Apply migration `0006_short_vertigo.sql` before deploying this behavior so database constraints accept the new limits. Publishing stores the reviewed text in the publication; it does not replace the snapshot's cached generation.
 
-`pnpm share '<public-url>'` displays the preview and asks before publishing in a terminal. Noninteractive use prepares only unless `--yes` is supplied. Use `--json` for structured output and `pnpm share --help` for options.
-
-The portable [passage-share skill](.agents/skills/passage-share/SKILL.md) includes the CLI. To use it elsewhere, copy the whole skill folder into your agent's skill directory and set `PASSAGE_URL`. It consumes an existing public provider URL; it does not create that URL or post links to other services.
+`node .agents/skills/passage-share/scripts/passage.mjs share '<public-url>'` displays the preview and asks before publishing in a terminal. Noninteractive use prepares only unless `--yes` is supplied. Use `--json` for structured output and `node .agents/skills/passage-share/scripts/passage.mjs --help` for options.
 
 ## Saved conversations
 

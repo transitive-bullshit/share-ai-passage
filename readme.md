@@ -22,15 +22,17 @@ One illustrative conversation, two ways to share it. Select a card to read the c
 
 [![Why the test passed locally but failed in CI — Midnight observatory example](docs/readme-assets/example-passage-02.webp)](https://www.share-ai-passage.com/examples/share-your-ai-chats-after-dark)
 
-## From your terminal or agent
+## For agents
 
-Use the [CLI](contributing.md#cli-and-agent-skill) or the portable [passage-share agent skill](.agents/skills/passage-share/SKILL.md) to prepare a preview and publish it after review. From a local checkout:
+Install the [passage-share agent skill](.agents/skills/passage-share/SKILL.md) with the [skills CLI](https://skills.sh):
 
 ```sh
-pnpm share '<public-conversation-url>' --base-url https://www.share-ai-passage.com
+npx skills add transitive-bullshit/share-ai-passage --skill passage-share
 ```
 
-Requires Node.js 24+. [Set up the CLI or skill](contributing.md#cli-and-agent-skill).
+Then ask your agent: “Use passage-share to create a passage from this public conversation: <public-conversation-url>.” It prepares a title and highlights, shows the preview, and publishes when authorized.
+
+Requires Node.js 24+. The skill includes its CLI and uses the hosted Passage service. [Agent setup and local development](contributing.md#cli-and-agent-skill).
 
 ## Before you share
 
