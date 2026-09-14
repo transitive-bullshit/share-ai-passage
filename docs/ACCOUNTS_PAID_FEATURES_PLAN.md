@@ -1,6 +1,6 @@
 # Accounts, billing, and paid branding implementation handoff
 
-September 14, 2026. Product decisions accepted through Q28. This is one implementation plan with two consecutive phases and a mandatory feedback gate between them. Phase 1 is implemented locally; live service checks and Gate A remain open. See the [accounts review](ACCOUNTS_REVIEW.md) for current evidence and outstanding checks. Phase 2 and the paid benchmark have not started. The [interview record](research/ACCOUNTS_PAID_BRANDING_DESIGN.md) preserves decision history; this document is the implementation handoff and supersedes earlier research recommendations.
+September 14, 2026. Product decisions accepted through Q28. This is one implementation plan with two consecutive phases and a mandatory feedback gate between them. Phase 1 is implemented locally; development Google/GitHub sign-in, password recovery/sign-in and summary generation checks pass. Gate A feedback and hosted environment checks remain open. See the [accounts review](ACCOUNTS_REVIEW.md) for current evidence and outstanding checks. Phase 2 and the paid benchmark have not started. The [interview record](research/ACCOUNTS_PAID_BRANDING_DESIGN.md) preserves decision history; this document is the implementation handoff and supersedes earlier research recommendations.
 
 ## Sequence and stop conditions
 

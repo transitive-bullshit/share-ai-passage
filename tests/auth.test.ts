@@ -150,6 +150,34 @@ describe('account availability', () => {
 })
 
 describe('Better Auth account lifecycle with fixture storage and email', () => {
+  it.each([4, 128])(
+    'accepts a %i-character signup password while still requiring email verification',
+    async (length) => {
+      const input = { ...credentials, password: 'p'.repeat(length) }
+      const signup = await call('/sign-up/email', input)
+      expect(signup.status).toBe(200)
+      expect(await signup.json()).toMatchObject({ token: null })
+      expect((await call('/sign-in/email', input)).status).toBe(403)
+      expect((await call(verificationPath())).status).toBe(302)
+      expect((await call('/sign-in/email', input)).status).toBe(200)
+    }
+  )
+
+  it('rejects signup passwords shorter than four or longer than 128 before sending verification', async () => {
+    for (const [password, code] of [
+      ['abc', 'PASSWORD_TOO_SHORT'],
+      ['p'.repeat(129), 'PASSWORD_TOO_LONG']
+    ]) {
+      const response = await call('/sign-up/email', {
+        ...credentials,
+        password
+      })
+      expect(response.status).toBe(400)
+      expect(await response.json()).toMatchObject({ code })
+    }
+    expect(state.sendEmail).not.toHaveBeenCalled()
+  })
+
   it('retains the guest through signup and imports only after email verification', async () => {
     const guest = await call('/sign-in/anonymous', {})
     expect(guest.status).toBe(200)
@@ -272,31 +300,126 @@ describe('Better Auth account lifecycle with fixture storage and email', () => {
     ).toBeNull()
   })
 
-  it('uses a one-time reset link and revokes existing sessions when the password changes', async () => {
+  it.each([4, 128])(
+    'uses a one-time reset link for a %i-character password and revokes existing sessions',
+    async (length) => {
+      const account = await verifiedAccount()
+      const requested = await call('/request-password-reset', {
+        email: credentials.email,
+        redirectTo: '/reset-password'
+      })
+      expect(requested.status).toBe(200)
+      const delivery = state.sendEmail.mock.calls.at(-1)![0]
+      const link = delivery.text!.match(/Reset password: (\S+)/)![1]!
+      const token = new URL(link).pathname.split('/').at(-1)!
+      for (const [newPassword, code] of [
+        ['abc', 'PASSWORD_TOO_SHORT'],
+        ['p'.repeat(129), 'PASSWORD_TOO_LONG']
+      ]) {
+        const rejected = await call('/reset-password', { token, newPassword })
+        expect(rejected.status).toBe(400)
+        expect(await rejected.json()).toMatchObject({ code })
+      }
+      expect(
+        await (await call('/get-session', undefined, account.cookie)).json()
+      ).toMatchObject({ user: { id: account.userId } })
+      const body = { token, newPassword: 'p'.repeat(length) }
+      expect((await call('/reset-password', body)).status).toBe(200)
+      expect(
+        await (await call('/get-session', undefined, account.cookie)).json()
+      ).toBeNull()
+      expect((await call('/reset-password', body)).status).toBe(400)
+      expect((await call('/sign-in/email', credentials)).status).toBe(401)
+      expect(
+        (
+          await call('/sign-in/email', {
+            ...credentials,
+            password: body.newPassword
+          })
+        ).status
+      ).toBe(200)
+    }
+  )
+
+  it('rejects out-of-bounds password changes without changing credentials or revoking sessions', async () => {
     const account = await verifiedAccount()
-    const requested = await call('/request-password-reset', {
-      email: credentials.email,
-      redirectTo: '/reset-password'
-    })
-    expect(requested.status).toBe(200)
-    const delivery = state.sendEmail.mock.calls.at(-1)![0]
-    const link = delivery.text!.match(/Reset password: (\S+)/)![1]!
-    const token = new URL(link).pathname.split('/').at(-1)!
-    const body = { token, newPassword: 'a-different-realistic-test-password' }
-    expect((await call('/reset-password', body)).status).toBe(200)
+    for (const [newPassword, code] of [
+      ['abc', 'PASSWORD_TOO_SHORT'],
+      ['p'.repeat(129), 'PASSWORD_TOO_LONG']
+    ]) {
+      const rejected = await call(
+        '/change-password',
+        {
+          currentPassword: credentials.password,
+          newPassword,
+          revokeOtherSessions: true
+        },
+        account.cookie
+      )
+      expect(rejected.status).toBe(400)
+      expect(await rejected.json()).toMatchObject({ code })
+    }
     expect(
       await (await call('/get-session', undefined, account.cookie)).json()
-    ).toBeNull()
-    expect((await call('/reset-password', body)).status).toBe(400)
-    expect(
-      (
-        await call('/sign-in/email', {
-          ...credentials,
-          password: body.newPassword
-        })
-      ).status
-    ).toBe(200)
+    ).toMatchObject({ user: { id: account.userId } })
+    expect((await call('/sign-in/email', credentials)).status).toBe(200)
   })
+
+  it.each([4, 128])(
+    'changes to a %i-character password only with the current password and revokes prior sessions',
+    async (length) => {
+      const account = await verifiedAccount()
+      const otherSignIn = await call('/sign-in/email', credentials)
+      expect(otherSignIn.status).toBe(200)
+      const otherCookie = sessionCookies(otherSignIn)
+      const newPassword = 'p'.repeat(length)
+      const incorrectPassword = await call(
+        '/change-password',
+        {
+          currentPassword: 'incorrect-current-password',
+          newPassword,
+          revokeOtherSessions: true
+        },
+        account.cookie
+      )
+      expect(incorrectPassword.status).toBe(400)
+      expect(await incorrectPassword.json()).toMatchObject({
+        code: 'INVALID_PASSWORD'
+      })
+      expect(
+        await (await call('/get-session', undefined, otherCookie)).json()
+      ).toMatchObject({ user: { id: account.userId } })
+      const changed = await call(
+        '/change-password',
+        {
+          currentPassword: credentials.password,
+          newPassword,
+          revokeOtherSessions: true
+        },
+        account.cookie
+      )
+      expect(changed.status).toBe(200)
+      for (const cookie of [account.cookie, otherCookie]) {
+        expect(
+          await (await call('/get-session', undefined, cookie)).json()
+        ).toBeNull()
+      }
+      expect(
+        await (
+          await call('/get-session', undefined, sessionCookies(changed))
+        ).json()
+      ).toMatchObject({ user: { id: account.userId } })
+      expect((await call('/sign-in/email', credentials)).status).toBe(401)
+      expect(
+        (
+          await call('/sign-in/email', {
+            ...credentials,
+            password: newPassword
+          })
+        ).status
+      ).toBe(200)
+    }
+  )
 
   it('does not issue sessions to accounts whose deletion has started', async () => {
     const account = await verifiedAccount()

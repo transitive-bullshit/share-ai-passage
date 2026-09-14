@@ -1,8 +1,8 @@
 # Accounts implementation review
 
-Status: Phase 1 implemented and validated locally; live service checks and accounts feedback remain open. This is not a production deployment or a passed accounts feedback gate. Phase 2 has not started.
+Status: Phase 1 implemented and validated locally; live development Google, GitHub, password recovery/sign-in and summary generation checks pass. Accounts feedback and hosted environment checks remain open. This is not a production deployment or a passed accounts feedback gate. Phase 2 has not started.
 
-Implementation branch: `codex/accounts-first-launch`, rebased onto `main` at `70aeefb` to incorporate the committed OAuth/Resend setup and logo asset. Development uses a dedicated local PostgreSQL instance on port 55437, database `passage_accounts_afc0`; tests use the separate disposable `passage_accounts_afc0_test`. The review app is `https://share-ai-passage-accounts-afc0.local.share-ai-passage.com:8443`, routed to the isolated backend on port 3107. Use that origin for authentication; the main checkout retains its separate development route. The review instance uses separate development Google, GitHub and Resend configuration. Fresh OpenAI generation still awaits a development key. Automated validation used fixtures and disabled external credentials.
+Implementation branch: `codex/accounts-first-launch`, rebased onto `main` at `70aeefb` to incorporate the committed OAuth/Resend setup and logo asset. Development uses a dedicated local PostgreSQL instance on port 55437, database `passage_accounts_afc0`; tests use the separate disposable `passage_accounts_afc0_test`. The review app is `https://share-ai-passage-accounts-afc0.local.share-ai-passage.com:8443`, routed to the isolated backend on port 3107. Use that origin for authentication; the main checkout retains its separate development route. The review instance uses separate development Google, GitHub and Resend configuration. With explicit owner approval, OpenAI development uses the existing normal API key; fresh summary generation has passed a live check. Automated validation used fixtures and disabled external credentials.
 
 ## Implemented
 
@@ -34,6 +34,14 @@ Local HTTP, CLI and backup/restore reports are under `work/accounts-review/`. Th
 
 The Google development follow-up also verified DNS to loopback, trusted TLS and the configured HTTPS callback. Next.js now allows its configured Portless hostname in development: the real font-resource request changed from 403 to 200, while an unrelated origin still receives 403. Scoped formatting, lint and TypeScript checks pass. On September 15, the real Google consent/callback roundtrip completed for the approved tester. The browser reached My passages with 25/25 Free summary generations, Account showed Google connected and the expected verified email, and the session survived a full refresh. A read-only check of the isolated development database confirmed the nonanonymous account, verified email, Google link and active session. The compact result is recorded in `work/accounts-review/google-oauth-smoke.json`.
 
+On September 15, GitHub consent/linking completed, and a subsequent sign-out and GitHub sign-in returned to the authenticated application. The isolated database confirms Google and GitHub are linked to the same verified account. All three exact development GitHub callbacks remain registered with wildcard matching disabled.
+
+The owner explicitly approved using the existing normal OpenAI key for development. A previously uncached public Claude conversation completed one live summary generation, produced a saved draft with three highlights, survived reload and appeared in My passages. The Free ledger settled exactly one operation: 1 used, 24 remaining and 0 reserved. Recorded provider cost was 452 µUSD ($0.000452). The operation persisted its successful result and provider response reference. Individual token counts and response-model metadata are not stored; the metered dispatch code enforces OpenAI `gpt-5.4-nano`. The result is recorded in `work/accounts-review/live-summary-smoke.json`. These checks use the isolated development database, not production data.
+
+The owner completed the delivered password-reset flow on September 15. Subsequent email/password sign-in returned to the same account, with Email and password, Google and GitHub all connected. My passages retained the existing private draft and 24/25 summary allowance after refresh. No test password or reset token is stored in the review evidence. This proves development reset delivery and recovery/sign-in; fresh signup verification is covered by fixture tests but has not been separately exercised with live email.
+
+The requested password policy is now 4–128 characters, shared by Better Auth, signup/reset forms, account password changes and error copy. Follow-up validation passes all **26 focused auth route/UI tests**, scoped formatting, repository lint and TypeScript checks. Actual Better Auth fixture routes accept both boundaries and reject shorter/longer values while preserving email verification, reset-token handling and session revocation. The live Account form displays the four-character minimum. This follow-up did not repeat the full build/database suite above.
+
 ## Migration and rollback
 
 Production remains at `0006`; nothing has been applied there. Apply the full pending `0007`–`0008` batch using the repository Drizzle migration command. The installed PostgreSQL migrator wraps all pending migrations in one transaction. Do not deploy only the intermediate `0007` schema.
@@ -44,10 +52,8 @@ Tested local migration does not establish a production backup or restore. Obtain
 
 ## Outstanding external checks and feedback gate
 
-- GitHub development credentials are integrated. The real GitHub authorization page recognizes the exact worktree callback and requests read-only profile/email access; completing consent and the callback/session roundtrip awaits user authorization. The main and earlier worktree callbacks remain registered; the new HTTPS callback is also saved, with wildcard matching disabled on all three.
-- Development Resend credentials, sender and Reply-To are integrated and recognized by the review app. Verify actual delivery and the email/reset roundtrip; no live email was sent by automated validation.
-- Supply a development `OPENAI_API_KEY` for fresh-summary end-to-end checks. Cached creation and generation bookkeeping have passed fixture-backed tests.
+- Fresh signup verification delivery and the external Reply-To mailbox remain untested live; development password-reset delivery and subsequent email sign-in pass.
 - Use isolated hosted preview data and verify the target origin, callbacks, session cookies and account removal there. Confirm production backup/recovery before deployment.
 - Review the working accounts experience and explicitly direct continuation before any billing, R2, custom templates, generated artwork or paid CLI implementation.
 
-Configuration-presence checks and fixture-backed authentication tests do not prove real OAuth credentials or email delivery. The accounts feedback gate remains open until those external checks and user feedback are complete.
+Live development checks now establish Google/GitHub sign-in, password recovery/sign-in and model generation. They do not establish hosted preview or production readiness. Review the local accounts experience at Gate A; hosted checks and backup/recovery remain required before deployment, and Phase 2 still requires explicit direction after feedback.
