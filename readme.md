@@ -4,13 +4,9 @@
 
 Turn your AI chats into links you’ll be proud to share.
 
-[**Try Passage ↗**](https://www.share-ai-passage.com) · [View an example](https://www.share-ai-passage.com/chatgpt/89a0a919-ec9e-49a3-a966-67e5bff95e0e) · [Run locally](contributing.md#run-locally)
-
-## Before and After
-
-The same conversation shared on X before and after using Passage.
-
 [![The same AI conversation shared as a generic chat link and with Passage](public/images/passage-before-after.jpg)](https://www.share-ai-passage.com)
+
+[**Try Passage**](https://www.share-ai-passage.com) · [View an example](https://www.share-ai-passage.com/chatgpt/89a0a919-ec9e-49a3-a966-67e5bff95e0e) · [Run locally](contributing.md#run-locally)
 
 ## Features
 
