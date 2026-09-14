@@ -4,22 +4,27 @@
 
 Turn your AI chats into links you’ll be proud to share.
 
-- Free
-- Open source
-- No account needed
-- Works with public ChatGPT, Codex, and Claude chats
-
-[**Try Passage ↗**](https://www.share-ai-passage.com) · [Read an example](https://www.share-ai-passage.com/chatgpt/89a0a919-ec9e-49a3-a966-67e5bff95e0e) · [Run locally](contributing.md#run-locally)
-
-1. Paste a public conversation link and choose **Create a passage**.
-2. Edit the generated title and highlights, then choose from **five card styles**.
-3. Select **Publish passage** and share your passage link.
+[**Try Passage ↗**](https://www.share-ai-passage.com) · [View an example](https://www.share-ai-passage.com/chatgpt/89a0a919-ec9e-49a3-a966-67e5bff95e0e) · [Run locally](contributing.md#run-locally)
 
 ## Before and After
 
 The same conversation shared on X before and after using Passage.
 
 [![The same AI conversation shared as a generic chat link and with Passage](public/images/passage-before-after.jpg)](https://www.share-ai-passage.com)
+
+## Features
+
+- Free
+- Open source
+- No account needed
+- Supports ChatGPT, Codex, and Claude
+
+## For humans
+
+1. Share an AI chat publicly from within your preferred AI app.
+1. Paste the public chat link and select **Create a passage**.
+1. Edit the generated title and highlights, then choose from the built-in **social card style**.
+1. Select **Publish passage** and share your passage link on social media.
 
 ## For agents
 
