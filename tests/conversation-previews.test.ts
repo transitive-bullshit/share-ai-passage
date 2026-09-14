@@ -10,6 +10,15 @@ const { resolve } = vi.hoisted(() => ({
     vi.fn<(url: string, signal: AbortSignal) => Promise<LinkPreviewResult>>()
 }))
 vi.mock('@/lib/link-previews/client', () => ({ resolveClientPreview: resolve }))
+// Controller tests isolate hover/focus from the separately tested idle queue.
+vi.mock('@/lib/link-previews/prefetch', () => ({
+  createLinkPreviewPrefetch: () => ({
+    update() {},
+    pause() {},
+    resume() {},
+    dispose() {}
+  })
+}))
 let root: Root
 let anchor: HTMLAnchorElement
 beforeEach(async () => {

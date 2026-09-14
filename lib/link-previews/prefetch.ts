@@ -1,23 +1,19 @@
-// Adapted from Repaint tweaks/link-previews.
+import { previewLimits } from './limits'
 import type { LinkPreviewResult } from './types'
 
 type Phase = 'metadata' | 'complete'
-
 interface Attempt {
-  expires: number
-  metadata: boolean
-  assetsPending: boolean
-  complete: boolean
-  busyRetries: number
+  phase: Phase
+  done: boolean
+  retries: number
   retryAt: number
 }
-
 interface Source {
   url: string
   href: string | null
 }
 
-/** Speculative work uses only adapter-provided links and never mounts preview UI. */
+/** Warm the entire saved chat, including offscreen and collapsed messages. */
 export function createLinkPreviewPrefetch(options: {
   window: Window & typeof globalThis
   document: Document
@@ -31,9 +27,9 @@ export function createLinkPreviewPrefetch(options: {
   available(): boolean
 }) {
   const { window, document, root } = options
-  const sources = new Map<HTMLElement, Source>()
-  const visible = new Map<string, Set<HTMLElement>>()
+  const sources = new Map<string, Map<HTMLElement, Source>>()
   const attempts = new Map<string, Attempt>()
+  const current = new Map<string, AbortController>()
   const events = new AbortController()
   const connection = (
     window.navigator as Navigator & {
@@ -43,12 +39,9 @@ export function createLinkPreviewPrefetch(options: {
   let disposed = false
   let paused = false
   let loaded = document.readyState === 'complete'
-  let quietUntil = Date.now() + 300
+  let quietUntil = Date.now() + 150
   let timer: number | undefined
   let idle: number | undefined
-  let current:
-    | { url: string; phase: Phase; controller: AbortController }
-    | undefined
 
   function available() {
     return (
@@ -70,120 +63,36 @@ export function createLinkPreviewPrefetch(options: {
     idle = undefined
   }
 
-  function live(element: HTMLElement, source: Source) {
-    if (
-      !element.isConnected ||
-      !root.contains(element) ||
-      element.getAttribute('href') !== source.href ||
-      element.closest('[hidden], [aria-hidden="true"], [inert]')
-    )
-      return false
-    if (typeof element.checkVisibility === 'function')
-      return element.checkVisibility({
-        checkOpacity: true,
-        checkVisibilityCSS: true,
-        contentVisibilityAuto: true
-      })
-    // Older hosts lack checkVisibility. Keep the fallback bounded, and decline
-    // deeply nested sources rather than expanding into an unbounded style walk.
-    let node: HTMLElement | null = element
-    for (
-      let depth = 0;
-      node && depth < 32;
-      depth++, node = node.parentElement
-    ) {
-      const style = window.getComputedStyle(node)
-      if (
-        style.display === 'none' ||
-        style.visibility === 'hidden' ||
-        style.visibility === 'collapse' ||
-        style.opacity === '0' ||
-        style.contentVisibility === 'hidden'
-      )
-        return false
-    }
-    return node === null
-  }
-
-  function removeVisible(element: HTMLElement, source: Source) {
-    const elements = visible.get(source.url)
-    elements?.delete(element)
-    if (!elements?.size) visible.delete(source.url)
-    if (current?.url === source.url && !visible.has(source.url))
-      current.controller.abort()
-  }
-
   function eligible(url: string) {
-    const elements = visible.get(url)
-    if (!elements) return false
-    for (const element of elements) {
-      const source = sources.get(element)
-      if (source && live(element, source)) return true
+    for (const [element, source] of sources.get(url) ?? []) {
+      if (
+        element.isConnected &&
+        root.contains(element) &&
+        element.getAttribute('href') === source.href
+      )
+        return true
     }
     return false
   }
 
-  function attemptFor(url: string) {
-    const attempt = attempts.get(url)
-    if (attempt && attempt.expires > Date.now()) return attempt
-    attempts.delete(url)
-    return undefined
-  }
-
-  function work(checkSources = false) {
-    let next: { url: string; phase: Phase; wait: number } | undefined
-    for (const phase of ['metadata', 'complete'] as const) {
-      for (const url of visible.keys()) {
-        const attempt = attemptFor(url)
+  function work() {
+    let next: { url: string; attempt: Attempt; wait: number } | undefined
+    // Finish ready artwork promptly rather than putting it behind every page fetch.
+    for (const phase of ['complete', 'metadata'] as const) {
+      for (const [url, attempt] of attempts) {
         if (
-          phase === 'metadata'
-            ? attempt?.metadata
-            : !attempt?.metadata || !attempt.assetsPending || attempt.complete
+          attempt.done ||
+          attempt.phase !== phase ||
+          current.has(url) ||
+          !eligible(url)
         )
           continue
-        // Only inspect source paint while actually selecting idle work. Keep
-        // geometric membership so a later snapshot can recover CSS visibility.
-        if (checkSources && !eligible(url)) continue
-        const wait = Math.max(0, (attempt?.retryAt ?? 0) - Date.now())
-        if (!next || wait < next.wait) next = { url, phase, wait }
+        const wait = Math.max(0, attempt.retryAt - Date.now())
+        if (!next || wait < next.wait) next = { url, attempt, wait }
         if (!wait) return next
       }
-      // Finish visible page metadata before spending bandwidth on artwork.
-      if (next) return next
     }
-    return undefined
-  }
-
-  function prioritizeMetadata() {
-    if (
-      current?.phase === 'complete' &&
-      !current.controller.signal.aborted &&
-      work(true)?.phase === 'metadata'
-    )
-      current.controller.abort()
-  }
-
-  function remember(url: string) {
-    let attempt = attemptFor(url)
-    if (attempt) return attempt
-    attempt = {
-      expires: Date.now() + 5 * 60_000,
-      metadata: false,
-      assetsPending: false,
-      complete: false,
-      busyRetries: 0,
-      retryAt: 0
-    }
-    attempts.set(url, attempt)
-    if (attempts.size > 64) {
-      // Keep completion state for the current viewport: evicting a still-visible
-      // URL would immediately make that same destination eligible again.
-      const oldest = [...attempts.keys()].find(
-        (candidate) => !visible.has(candidate)
-      )
-      attempts.delete(oldest ?? attempts.keys().next().value!)
-    }
-    return attempt
+    return next
   }
 
   function internal(result: LinkPreviewResult) {
@@ -198,57 +107,63 @@ export function createLinkPreviewPrefetch(options: {
     }
   }
 
-  async function run() {
-    if (!available() || current) return
-    const next = work(true)
-    if (!next) return
-    if (Date.now() < quietUntil || next.wait) {
-      schedule(next.wait)
-      return
-    }
-    const request = { ...next, controller: new AbortController() }
-    current = request
-    const attempt = remember(next.url)
+  async function run(url: string, attempt: Attempt) {
+    const controller = new AbortController()
+    current.set(url, controller)
     try {
-      const result = await options.resolve(
-        next.url,
-        request.controller.signal,
-        {
-          phase: next.phase,
-          priority: 'background'
-        }
-      )
-      if (request.controller.signal.aborted) return
+      const result = await options.resolve(url, controller.signal, {
+        phase: attempt.phase,
+        priority: 'background'
+      })
+      if (controller.signal.aborted) return
       if (
         !result.ok &&
         ['busy', 'aborted'].includes(result.reason) &&
-        attempt.busyRetries < 2
+        attempt.retries < 2
       ) {
-        attempt.retryAt = Date.now() + 1000 * ++attempt.busyRetries
+        attempt.retryAt = Date.now() + 1000 * ++attempt.retries
         return
       }
       attempt.retryAt = 0
-      attempt.busyRetries = 0
-      if (next.phase === 'metadata') {
-        attempt.metadata = true
-        attempt.assetsPending =
-          result.ok && result.assetsPending === true && !internal(result)
-      } else attempt.complete = true
+      attempt.retries = 0
+      if (
+        attempt.phase === 'metadata' &&
+        result.ok &&
+        result.assetsPending &&
+        !internal(result)
+      )
+        attempt.phase = 'complete'
+      else attempt.done = true
     } catch {
-      if (!request.controller.signal.aborted) {
-        if (next.phase === 'metadata') attempt.metadata = true
-        else attempt.complete = true
-      }
+      if (!controller.signal.aborted) attempt.done = true
     } finally {
-      // Keep the slot until settlement even if a host is slow to honor abort.
-      current = undefined
-      quietUntil = Math.max(quietUntil, Date.now() + 300)
+      // An aborted request keeps its slot until it actually settles.
+      current.delete(url)
       schedule()
     }
   }
 
-  function schedule(minWait = 0) {
-    if (timer !== undefined || idle !== undefined || current || !available())
+  function pump() {
+    if (!available()) return
+    if (Date.now() < quietUntil) {
+      schedule()
+      return
+    }
+    while (current.size < previewLimits.backgroundConcurrency) {
+      const next = work()
+      if (!next || next.wait) break
+      void run(next.url, next.attempt)
+    }
+    schedule()
+  }
+
+  function schedule() {
+    if (
+      timer !== undefined ||
+      idle !== undefined ||
+      !available() ||
+      current.size >= previewLimits.backgroundConcurrency
+    )
       return
     const next = work()
     if (!next) return
@@ -259,123 +174,82 @@ export function createLinkPreviewPrefetch(options: {
         if (typeof window.requestIdleCallback === 'function') {
           idle = window.requestIdleCallback(() => {
             idle = undefined
-            void run()
+            pump()
           })
-        } else void run()
+        } else pump()
       },
-      Math.max(0, quietUntil - Date.now(), next.wait, minWait)
+      Math.max(0, quietUntil - Date.now(), next.wait)
     )
   }
 
   function quiet() {
-    quietUntil = Date.now() + 300
+    quietUntil = Date.now() + 150
     cancelScheduled()
     schedule()
   }
 
+  function stop() {
+    cancelScheduled()
+    for (const controller of current.values()) controller.abort()
+  }
+
   function changed() {
-    if (!available()) {
-      cancelScheduled()
-      current?.controller.abort()
-    } else quiet()
+    if (!available()) stop()
+    else quiet()
   }
 
-  const observer =
-    typeof window.IntersectionObserver === 'function'
-      ? new window.IntersectionObserver(
-          (entries) => {
-            for (const entry of entries) {
-              const element = entry.target as HTMLElement
-              const source = sources.get(element)
-              if (!source) continue
-              if (!entry.isIntersecting || entry.intersectionRatio < 0.01) {
-                removeVisible(element, source)
-                continue
-              }
-              let elements = visible.get(source.url)
-              if (!elements) {
-                // Excess visible links are safely left for hover or a later entry.
-                if (visible.size >= 64) continue
-                elements = new Set()
-                visible.set(source.url, elements)
-              }
-              elements.add(element)
-            }
-            prioritizeMetadata()
-            quiet()
-          },
-          { rootMargin: '0px', threshold: 0.01 }
-        )
-      : undefined
-
-  let resources: PerformanceObserver | undefined
-  if (observer) {
-    const config = { signal: events.signal, passive: true }
-    document.addEventListener('scroll', quiet, { ...config, capture: true })
-    document.addEventListener('pointerdown', quiet, {
-      ...config,
-      capture: true
-    })
-    document.addEventListener('keydown', quiet, { ...config, capture: true })
-    document.addEventListener('input', quiet, { ...config, capture: true })
-    window.addEventListener('resize', quiet, config)
-    window.addEventListener(
-      'load',
-      () => {
-        loaded = true
-        quiet()
-      },
-      config
-    )
-    document.addEventListener('visibilitychange', changed, config)
-    window.addEventListener('online', changed, config)
-    window.addEventListener('offline', changed, config)
-    connection?.addEventListener('change', changed, config)
-    // Resource completion followed by quiet is a conservative heuristic. Page
-    // scripts cannot observe every in-flight request, and CPU idle is separate.
-    if (typeof window.PerformanceObserver === 'function') {
-      try {
-        resources = new window.PerformanceObserver(quiet)
-        resources.observe({ type: 'resource' })
-      } catch {
-        resources?.disconnect()
-        resources = undefined
-      }
-    }
-  }
+  const config = { signal: events.signal, passive: true }
+  document.addEventListener('scroll', quiet, { ...config, capture: true })
+  document.addEventListener('pointerdown', quiet, { ...config, capture: true })
+  document.addEventListener('keydown', quiet, { ...config, capture: true })
+  document.addEventListener('input', quiet, { ...config, capture: true })
+  window.addEventListener('resize', quiet, config)
+  window.addEventListener(
+    'load',
+    () => {
+      loaded = true
+      quiet()
+    },
+    config
+  )
+  document.addEventListener('visibilitychange', changed, config)
+  window.addEventListener('online', changed, config)
+  window.addEventListener('offline', changed, config)
+  connection?.addEventListener('change', changed, config)
 
   return {
     update(links: ReadonlyMap<HTMLElement, { url: string }>) {
-      if (disposed || !observer) return
-      for (const [element, source] of sources) {
-        if (
-          links.get(element)?.url === source.url &&
-          element.getAttribute('href') === source.href
-        )
-          continue
-        removeVisible(element, source)
-        observer.unobserve(element)
-        sources.delete(element)
+      if (disposed) return
+      sources.clear()
+      for (const [element, { url }] of links) {
+        let elements = sources.get(url)
+        if (!elements) {
+          elements = new Map()
+          sources.set(url, elements)
+        }
+        elements.set(element, { url, href: element.getAttribute('href') })
+        if (!attempts.has(url))
+          attempts.set(url, {
+            phase: 'metadata',
+            done: false,
+            retries: 0,
+            retryAt: 0
+          })
       }
-      for (const [element, link] of links) {
-        if (sources.has(element)) continue
-        sources.set(element, {
-          url: link.url,
-          href: element.getAttribute('href')
-        })
-        observer.observe(element)
+      for (const url of attempts.keys()) {
+        if (!sources.has(url)) {
+          attempts.delete(url)
+          current.get(url)?.abort()
+        }
       }
-      if (current && !eligible(current.url)) current.controller.abort()
-      prioritizeMetadata()
-      if (!available()) {
-        cancelScheduled()
-        current?.controller.abort()
-      } else schedule()
+      for (const [url, controller] of current)
+        if (!eligible(url)) controller.abort()
+      if (!available()) stop()
+      else schedule()
     },
     pause() {
       paused = true
-      cancelScheduled()
-      current?.controller.abort()
+      stop()
     },
     resume() {
       paused = false
@@ -384,13 +258,9 @@ export function createLinkPreviewPrefetch(options: {
     dispose() {
       if (disposed) return
       disposed = true
-      cancelScheduled()
-      current?.controller.abort()
-      observer?.disconnect()
-      resources?.disconnect()
+      stop()
       events.abort()
       sources.clear()
-      visible.clear()
       attempts.clear()
     }
   }

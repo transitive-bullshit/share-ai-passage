@@ -61,7 +61,7 @@ it('bounds simultaneous acquisition and retries failures after their short TTL',
 it('evicts old entries and expires successful metadata', async () => {
   vi.useFakeTimers()
   const acquire = vi.fn<() => Promise<LinkPreviewResult>>(async () => success)
-  const resolve = createPreviewCache(acquire)
+  const resolve = createPreviewCache(acquire, 8, 4, 64)
   const signal = new AbortController().signal
   for (let i = 0; i < 65; i++) await resolve(String(i), signal)
   await resolve('0', signal)
@@ -71,22 +71,29 @@ it('evicts old entries and expires successful metadata', async () => {
   expect(acquire).toHaveBeenCalledTimes(67)
 })
 
-it('reserves interactive capacity and promotes a joined background job', async () => {
-  let finish!: (result: LinkPreviewResult) => void
+it('allows four background jobs, reserves hover capacity, and promotes joined work', async () => {
+  const finishes: Array<(result: LinkPreviewResult) => void> = []
   const resolve = createPreviewCache(
     () =>
-      new Promise((result) => {
-        finish = result
+      new Promise((finish) => {
+        finishes.push(finish)
       })
   )
   const signal = new AbortController().signal
-  const background = resolve('a', signal, 'background')
-  expect(await resolve('b', signal, 'background')).toEqual({
+  const background = Array.from({ length: 4 }, (_, i) =>
+    resolve(String(i), signal, 'background')
+  )
+  expect(await resolve('extra', signal, 'background')).toEqual({
     ok: false,
     reason: 'busy'
   })
-  const foreground = resolve('a', signal)
-  finish(success)
-  expect(await background).toEqual(success)
-  expect(await foreground).toEqual(success)
+  const joined = resolve('0', signal)
+  const next = resolve('extra', signal, 'background')
+  const hover = resolve('hover', signal)
+  await Promise.resolve()
+  expect(finishes).toHaveLength(6)
+  for (const finish of finishes) finish(success)
+  expect(await Promise.all([...background, joined, next, hover])).toHaveLength(
+    7
+  )
 })

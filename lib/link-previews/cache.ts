@@ -1,3 +1,4 @@
+import { previewLimits } from './limits'
 import type { LinkPreviewResult } from './types'
 
 export type PreviewPriority = 'interactive' | 'background'
@@ -9,7 +10,12 @@ export function createPreviewCache(
     signal: AbortSignal,
     priority: PreviewPriority
   ) => Promise<LinkPreviewResult>,
-  concurrency = 3
+  concurrency: number = previewLimits.concurrency,
+  backgroundConcurrency = Math.min(
+    previewLimits.backgroundConcurrency,
+    concurrency
+  ),
+  cacheEntries: number = previewLimits.cacheEntries
 ) {
   const cache = new Map<
     string,
@@ -46,7 +52,8 @@ export function createPreviewCache(
       if (
         jobs.size >= concurrency ||
         (priority === 'background' &&
-          [...jobs.values()].some((job) => job.priority === 'background'))
+          [...jobs.values()].filter((job) => job.priority === 'background')
+            .length >= backgroundConcurrency)
       )
         return { ok: false, reason: 'busy' }
       const controller = new AbortController()
@@ -74,7 +81,8 @@ export function createPreviewCache(
               result,
               expires: Date.now() + (result.ok ? 600_000 : 30_000)
             })
-            if (cache.size > 64) cache.delete(cache.keys().next().value!)
+            if (cache.size > cacheEntries)
+              cache.delete(cache.keys().next().value!)
           }
           return result
         })

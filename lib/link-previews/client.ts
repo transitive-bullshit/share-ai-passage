@@ -18,24 +18,23 @@ const metadata = createPreviewCache(async (url, signal, priority) => {
 function warmImage(src: string, signal: AbortSignal) {
   return new Promise<void>((resolve) => {
     const image = new Image()
-    const done = () => {
+    const done = (loaded = false) => {
       clearTimeout(timer)
-      signal.removeEventListener('abort', done)
+      signal.removeEventListener('abort', abort)
       image.onload = image.onerror = null
-      image.removeAttribute('src')
+      if (!loaded) image.removeAttribute('src')
       resolve()
     }
-    const timer = setTimeout(done, 4000)
-    signal.addEventListener('abort', done, { once: true })
+    const abort = () => done()
+    const timer = setTimeout(abort, 4000)
+    signal.addEventListener('abort', abort, { once: true })
     image.referrerPolicy = 'no-referrer'
     image.decoding = 'async'
+    image.fetchPriority = 'low'
     image.onload = () => {
-      void image
-        .decode()
-        .catch(() => {})
-        .then(done)
+      void image.decode().then(() => done(true), abort)
     }
-    image.onerror = done
+    image.onerror = abort
     image.src = src
     if (signal.aborted) done()
   })
