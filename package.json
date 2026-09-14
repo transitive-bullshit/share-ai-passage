@@ -1,11 +1,11 @@
 {
-  "name": "ai-chat-proxy",
+  "name": "share-ai-passage",
   "version": "0.0.0",
   "private": true,
   "description": "Public AI conversations, saved with concise highlights and a beautiful share card",
   "license": "MIT",
   "author": "Travis Fischer <travis@transitivebullsh.it>",
-  "repository": "https://github.com/transitive-bullshit/ai-chat-proxy",
+  "repository": "https://github.com/transitive-bullshit/share-ai-passage",
   "type": "module",
   "scripts": {
     "predev": "pnpm fonts:prepare",
@@ -40,7 +40,6 @@
     "db:check:prod": "node --import tsx scripts/production.ts check"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^4.0.50",
     "@ai-sdk/openai": "^4.0.62",
     "@fontsource/dm-sans": "^5.3.0",
     "@fontsource/inter": "^5.3.0",
@@ -52,7 +51,6 @@
     "@vercel/analytics": "^2.0.1",
     "ai": "^7.0.94",
     "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
     "cn": "^0.2.5",
     "drizzle-orm": "^0.45.2",
     "lucide-react": "^1.43.0",
@@ -67,7 +65,6 @@
     "rehype-highlight": "^7.0.2",
     "remark-gfm": "^4.0.1",
     "remark-parse": "^11.0.0",
-    "tailwind-merge": "^3.6.0",
     "takumi-js": "^2.13.7",
     "unified": "^11.0.5",
     "zod": "^4.5.4"

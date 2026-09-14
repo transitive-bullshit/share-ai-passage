@@ -59,7 +59,7 @@ A nonexistent ID proves the provider's missing-source response shape; it is not 
 
 A temporary harness containing exact copies of the actual adapters and fixed public sample URLs passed the same six-case probe locally. Its output contained statuses, parser versions, message counts, and byte counts only. A Vercel dry run confirmed five deployable files and no credentials or environment files. No hosted database was provisioned.
 
-The deployment action was rejected by automatic approval review before it ran. The stated reason was that fetching full public conversation contents into Vercel was considered sensitive external transfer without specific authorization for that payload. No attempt was made to bypass that decision. **No Vercel deployment or hosted extraction request occurred.** The task-created empty project, `ai-chat-proxy-extraction-20260910`, was removed successfully after the rejection. Hosted extraction remains a release check requiring explicit approval in this environment.
+The deployment action was rejected by automatic approval review before it ran. The stated reason was that fetching full public conversation contents into Vercel was considered sensitive external transfer without specific authorization for that payload. No attempt was made to bypass that decision. **No Vercel deployment or hosted extraction request occurred.** The task-created empty extraction project was removed successfully after the rejection. Hosted extraction remains a release check requiring explicit approval in this environment.
 
 ## Fixtures and limits
 

@@ -47,7 +47,7 @@ The existing source geometry and visual rules for Passage are linked in [passage
 
 ## Build and verification
 
-From `/Users/tfischer/dev/modules/ai-chat-proxy`:
+From the repository root:
 
 ```sh
 pnpm exec tsx docs/brand-exploration/round-06/build.ts

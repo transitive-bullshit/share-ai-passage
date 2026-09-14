@@ -4,7 +4,7 @@ Status: proposed round-04 exploration imagery. Built-in imagegen tool, one style
 
 Asset: `cut-paper-hero.png`
 
-Reference source: `/Users/tfischer/dev/modules/ai-chat-proxy/docs/brand-exploration/round-03/assets/folio-hero.png`
+Reference source: `docs/brand-exploration/round-03/assets/folio-hero.png`
 
 Original returned image: `/Users/tfischer/.codex/generated_images/01a0901c-59cd-7f91-bec3-dcffec6ba0b4/exec-9e1f1e47-095c-45fe-a7fd-5260b320e281.png`
 

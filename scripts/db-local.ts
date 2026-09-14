@@ -9,6 +9,7 @@ const projectDirectory = path.resolve(
 )
 const workDirectory = path.join(projectDirectory, 'work')
 const dataDirectory = path.join(workDirectory, 'postgres-data')
+// Retain the legacy marker so existing local databases remain manageable.
 const ownerMarker = path.join(dataDirectory, '.ai-chat-proxy-local')
 const databasePort = 55432
 const databaseName = 'ai_chat_proxy'
@@ -109,7 +110,7 @@ if (action === 'status') {
     ])
     writeFileSync(
       ownerMarker,
-      'Owned by the ai-chat-proxy local development script.\n'
+      'Owned by the share-ai-passage local development script.\n'
     )
   }
   assertOwned()

@@ -36,7 +36,7 @@ The Passage mark copies [BrandMark](../../../components/brand-mark.tsx): two out
 
 ## Build and verification
 
-From `/Users/tfischer/dev/modules/ai-chat-proxy`:
+From the repository root:
 
 ```sh
 pnpm exec tsx docs/brand-exploration/round-05/build.ts

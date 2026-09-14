@@ -43,7 +43,7 @@ The local [font directory](assets/fonts) includes these four WOFF files and thei
 
 ## Build and verification
 
-From `/Users/tfischer/dev/modules/ai-chat-proxy`, the documented command is:
+From the repository root, the documented command is:
 
 ```sh
 pnpm exec tsx docs/brand-exploration/round-03/build.ts

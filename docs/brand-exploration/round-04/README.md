@@ -45,7 +45,7 @@ All four directions use the existing Instrument Sans normal 400/500 WOFF files i
 
 ## Build and verification
 
-From `/Users/tfischer/dev/modules/ai-chat-proxy`:
+From the repository root:
 
 ```sh
 pnpm exec tsx docs/brand-exploration/round-04/build.ts

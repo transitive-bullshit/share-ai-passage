@@ -25,7 +25,7 @@ See [provenance](assets/provenance.md) for reused imagery and fonts. Earlier rou
 
 ## Rebuild and verification
 
-From `/Users/tfischer/dev/modules/ai-chat-proxy`:
+From the repository root:
 
 ```sh
 pnpm exec tsx docs/brand-exploration/round-07/build.ts

@@ -1,6 +1,6 @@
 # Production and self-hosting
 
-Deployment recorded September 11, 2026: Neon is configured and Vercel is deployed at [ai-chat-proxy-puce.vercel.app](https://ai-chat-proxy-puce.vercel.app). See the [MVP plan](MVP_PLAN.md#remaining-work) for remaining launch checks; this setup record does not establish hosted extraction or social-platform validation.
+Neon is configured and Vercel serves production at [www.share-ai-passage.com](https://www.share-ai-passage.com). See the [MVP plan](MVP_PLAN.md#remaining-work) for remaining launch checks; this setup record does not establish hosted extraction or social-platform validation.
 
 ## Production domain
 

@@ -109,9 +109,6 @@ importers:
 
   .:
     dependencies:
-      '@ai-sdk/anthropic':
-        specifier: ^4.0.50
-        version: 4.0.50(zod@4.5.4)
       '@ai-sdk/openai':
         specifier: ^4.0.62
         version: 4.0.62(zod@4.5.4)
@@ -145,9 +142,6 @@ importers:
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
-      clsx:
-        specifier: ^2.1.1
-        version: 2.1.1
       cn:
         specifier: ^0.2.5
         version: 0.2.6
@@ -190,9 +184,6 @@ importers:
       remark-parse:
         specifier: ^11.0.0
         version: 11.0.0
-      tailwind-merge:
-        specifier: ^3.6.0
-        version: 3.6.0
       takumi-js:
         specifier: ^2.13.7
         version: 2.13.7(csstype@3.2.3)(react@19.2.8)
@@ -268,12 +259,6 @@ importers:
         version: 5.0.0(@types/node@26.5.0)(happy-dom@20.14.3)(vite@8.2.2(@types/node@26.5.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.0))
 
 packages:
-
-  '@ai-sdk/anthropic@4.0.50':
-    resolution: {integrity: sha512-bHtVy5FC2JUX3T1zapquOqVxkYtDoDVUXUmZlobNq0EzZ2ESx72ysw223MzdlxCEoaFn3lDPog6EhjRgHd87qQ==}
-    engines: {node: '>=22'}
-    peerDependencies:
-      zod: ^3.25.76 || ^4.1.8
 
   '@ai-sdk/gateway@4.0.76':
     resolution: {integrity: sha512-hWNtiveILLtkXm1t5tNmzeII8p+j/mzxlL2OtPAgU/0h4ZInkIVILX8Svx4SzI5U9d80B59gCPaKRAhb7jTtAw==}
@@ -3526,9 +3511,6 @@ packages:
       babel-plugin-macros:
         optional: true
 
-  tailwind-merge@3.6.0:
-    resolution: {integrity: sha512-uxL7qAVQriqRQPAyK3pj66VqskWqoZ37PW94jwOTwNfq/z9oyu1V+eqrZqtR2+fCiXdYOZe/Modt8GtvqNzu+w==}
-
   tailwindcss@4.3.3:
     resolution: {integrity: sha512-gOhV3P7ufE62QDGg1zVaTgCR+EtPv92k2nIhVcVKcLmxT1sUBsQGhnZj175j+MqRt4zLF7ic+sCYjfhxMxj7YQ==}
 
@@ -3760,12 +3742,6 @@ packages:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
 
 snapshots:
-
-  '@ai-sdk/anthropic@4.0.50(zod@4.5.4)':
-    dependencies:
-      '@ai-sdk/provider': 4.0.11
-      '@ai-sdk/provider-utils': 5.0.37(zod@4.5.4)
-      zod: 4.5.4
 
   '@ai-sdk/gateway@4.0.76(zod@4.5.4)':
     dependencies:
@@ -6649,8 +6625,6 @@ snapshots:
     dependencies:
       client-only: 0.0.1
       react: 19.2.8
-
-  tailwind-merge@3.6.0: {}
 
   tailwindcss@4.3.3: {}
 

@@ -10,7 +10,7 @@ Audited September 11, 2026 against the initial plan at `5a46c91`, the revised [M
 
 The original plan's central promise remains intact: paste a public AI conversation, review an attractive preview, publish one stable link, and let someone read the saved conversation with its source. Read-only AI highlights, public Codex support, the CLI, and five curated card styles were subsequent approved changes. They are assessed as the current product, rather than treating the original excerpt editor, fallback summary, or single template as missing features.
 
-Production setup update: Neon Free is configured in Ohio on PostgreSQL 18, with the checked-in migrations applied, a fixed 0.25-CU production compute, and five-minute idle suspension. Explicit local production commands are available; see [production setup](../PRODUCTION.md). The Vercel project is deployed at [ai-chat-proxy-puce.vercel.app](https://ai-chat-proxy-puce.vercel.app). A future brand/domain choice can be applied to the existing project and picked up automatically after redeployment. Deployment checks should cover production and preview metadata, share links, and request-host validation.
+Production setup update: Neon Free is configured in Ohio on PostgreSQL 18, with the checked-in migrations applied, a fixed 0.25-CU production compute, and five-minute idle suspension. Explicit local production commands are available; see [production setup](../PRODUCTION.md). The Vercel project is deployed at [www.share-ai-passage.com](https://www.share-ai-passage.com). The current production domain is documented in the production guide. Deployment checks should cover production and preview metadata, share links, and request-host validation.
 
 ## The main user journeys
 
@@ -38,7 +38,7 @@ The initial plan explicitly required hosted extraction and real social unfurls. 
 
 Verification for the earlier audit revision: **381 tests across 20 files passed on Node 24.5.0**, including real local PostgreSQL integration tests; formatting, lint, generated route types, TypeScript, and the production build passed. Browser checks covered cached creation/publication, the mobile reader, the jump target, a synthetic retry countdown, and changing to another source during a source cooldown. The synthetic cooldown record was removed. No model or upstream provider request was made by those browser checks.
 
-The [GitHub Actions run for `9976991`](https://github.com/transitive-bullshit/ai-chat-proxy/actions/runs/34578105827) also passed on Ubuntu with Node 24 and PostgreSQL 17, including the frozen-lockfile install, font preparation, migrations, complete test command, and production build. The earlier account billing failure did not recur; CI is no longer an open gate for this code revision.
+The [GitHub Actions run for `9976991`](https://github.com/transitive-bullshit/share-ai-passage/actions/runs/34578105827) also passed on Ubuntu with Node 24 and PostgreSQL 17, including the frozen-lockfile install, font preparation, migrations, complete test command, and production build. The earlier account billing failure did not recur; CI is no longer an open gate for this code revision.
 
 ## Remaining launch gates, in order
 

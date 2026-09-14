@@ -18,7 +18,7 @@ pnpm dev
 
 Set `OPENAI_API_KEY` in `.env.local` before preparing a new conversation. Preview generation sends bounded public conversation text to OpenAI; missing credentials or generation failures return a retryable error. The default model is `gpt-5.4-nano`; `AI_MODEL` changes it and `AI_PROVIDER` currently supports `openai`.
 
-`pnpm dev` uses [Portless](https://portless.sh/). Open the exact URL printed in the terminal, normally `https://ai-chat-proxy.localhost`; proxy settings can change its scheme or port. Worktrees get their own app subdomain. To run directly at [localhost:3000](http://localhost:3000), use `PORTLESS=0 pnpm dev` (`PORT` overrides 3000).
+`pnpm dev` uses [Portless](https://portless.sh/). Open the exact URL printed in the terminal, normally `https://share-ai-passage.localhost`; proxy settings can change its scheme or port. Worktrees get their own app subdomain. To run directly at [localhost:3000](http://localhost:3000), use `PORTLESS=0 pnpm dev` (`PORT` overrides 3000).
 
 Paste a public `https://chatgpt.com/share/<uuid>`, `https://chatgpt.com/s/cx_<id>`, or `https://claude.ai/share/<uuid>` URL. Choose **Create a passage**, review or edit the generated title and add or remove optional highlights, choose a card style, then **Publish passage**. Text and style changes update the preview directly in the page without a `/api/card` request. Publishing becomes available when the text is valid and artwork, fonts, and text fitting are ready. The browser remembers your last style choice.
 
@@ -73,7 +73,7 @@ Publish skill updates to the repository's default branch, then verify the public
 From this checkout, run the bundled CLI directly. Set `PASSAGE_URL` or `--base-url` to the actual local server origin when testing against a local service:
 
 ```sh
-node .agents/skills/passage-share/scripts/passage.mjs prepare 'https://chatgpt.com/s/cx_<id>' --base-url http://ai-chat-proxy.localhost:1355 --out work/draft.json
+node .agents/skills/passage-share/scripts/passage.mjs prepare 'https://chatgpt.com/s/cx_<id>' --base-url http://share-ai-passage.localhost:1355 --out work/draft.json
 node .agents/skills/passage-share/scripts/passage.mjs publish work/draft.json
 ```
 
