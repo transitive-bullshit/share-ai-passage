@@ -12,11 +12,9 @@ Give a public ChatGPT, Codex, or Claude conversation a clear introduction, a bea
 2. Edit the generated title and highlights, then choose from **five card styles**.
 3. Select **Publish passage** and share your passage link.
 
-## Example passages
+## Before and After
 
-**Give your public AI chats a facelift.** Clear highlights, five card styles, and the saved conversation with its original source.
-
-See the same conversation before and after sharing with Passage. Select the image to try Passage.
+The same conversation shared on X before and after using Passage.
 
 [![The same AI conversation shared as a generic chat link and with Passage](public/images/passage-before-after.jpg)](https://www.share-ai-passage.com)
 
@@ -32,7 +30,7 @@ Then ask your agent: “Use passage-share to create a passage from this public c
 
 Requires Node.js 24+. The skill includes its CLI and uses the hosted Passage service. [Agent setup and local development](contributing.md#cli-and-agent-skill).
 
-## Before you share
+## How to share
 
 - **Start with a public link.** Use the provider’s Share option; private conversation addresses and workspace-only links aren’t supported.
 - **The context comes with it.** Passages include saved conversation text, supported formatting and code, and the original-source link. Unsupported media, tools, and artifacts are marked as omissions.
