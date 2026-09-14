@@ -32,7 +32,7 @@ Final validation on September 14, 2026, after integration with the OAuth/Resend 
 
 Local HTTP, CLI and backup/restore reports are under `work/accounts-review/`. The repair CLI has focused tests and a disposable-database smoke covering repeated cost settlement without extra provider calls. Card review artifacts use the offline authored baseline under `work/share-card-review/accounts-drafts-20260914/`; no paid model calls are part of these checks. Synthetic local review fixture identities are recorded in `work/library-review/fixture.json`.
 
-The Google development follow-up also verified DNS to loopback, trusted TLS and the configured HTTPS callback. Next.js now allows its configured Portless hostname in development: the real font-resource request changed from 403 to 200, while an unrelated origin still receives 403. Scoped formatting, lint and TypeScript checks pass. This does not replace the outstanding live OAuth roundtrip.
+The Google development follow-up also verified DNS to loopback, trusted TLS and the configured HTTPS callback. Next.js now allows its configured Portless hostname in development: the real font-resource request changed from 403 to 200, while an unrelated origin still receives 403. Scoped formatting, lint and TypeScript checks pass. On September 15, the real Google consent/callback roundtrip completed for the approved tester. The browser reached My passages with 25/25 Free summary generations, Account showed Google connected and the expected verified email, and the session survived a full refresh. A read-only check of the isolated development database confirmed the nonanonymous account, verified email, Google link and active session. The compact result is recorded in `work/accounts-review/google-oauth-smoke.json`.
 
 ## Migration and rollback
 
@@ -45,7 +45,6 @@ Tested local migration does not establish a production backup or restore. Obtain
 ## Outstanding external checks and feedback gate
 
 - GitHub development credentials are integrated. The real GitHub authorization page recognizes the exact worktree callback and requests read-only profile/email access; completing consent and the callback/session roundtrip awaits user authorization. The main and earlier worktree callbacks remain registered; the new HTTPS callback is also saved, with wildcard matching disabled on all three.
-- Google development is configured in the separate `share-ai-passage-development` project. Its exact owned-domain HTTPS callback is accepted, credentials are integrated privately, and real sign-in reaches the identity-only Google consent screen. `travis@transitivebullsh.it` was added and verified as a tester on September 15 with explicit approval. Completing Google consent and the callback/session check remains open. Production credentials remain separate.
 - Development Resend credentials, sender and Reply-To are integrated and recognized by the review app. Verify actual delivery and the email/reset roundtrip; no live email was sent by automated validation.
 - Supply a development `OPENAI_API_KEY` for fresh-summary end-to-end checks. Cached creation and generation bookkeeping have passed fixture-backed tests.
 - Use isolated hosted preview data and verify the target origin, callbacks, session cookies and account removal there. Confirm production backup/recovery before deployment.
