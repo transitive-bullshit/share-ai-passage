@@ -1,13 +1,15 @@
-import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
 import { GET as exampleImage } from '@/app/examples/[exampleId]/image/route'
-import ExamplePage, { generateMetadata } from '@/app/examples/[exampleId]/page'
+import ExamplePage from '@/app/examples/[exampleId]/page'
 import { renderCard } from '@/lib/card'
 import { getMarketingExample } from '@/lib/marketing-examples'
 
 const missing = vi.hoisted(() => new Error('Example not found'))
 vi.mock('next/navigation', () => ({
+  redirect: (url: string) => {
+    throw new Error(`Redirect: ${url}`)
+  },
   notFound: () => {
     throw missing
   }
@@ -30,24 +32,14 @@ it.each([
   ['share-your-ai-chats', 'margin-notes'],
   ['share-your-ai-chats-after-dark', 'midnight-observatory']
 ])(
-  'links %s metadata to its fixed card style',
+  'redirects %s to its publication and renders its fixed card style',
   async (exampleId, templateId) => {
     const params = Promise.resolve({ exampleId })
     const example = getMarketingExample(exampleId)!
     const url = `https://passage.example/examples/${exampleId}`
-    const metadata = await generateMetadata({ params })
-    expect(metadata).toMatchObject({
-      title: example.title,
-      openGraph: {
-        url,
-        title: example.title,
-        images: [{ url: `${url}/image`, width: 1200, height: 630 }]
-      },
-      twitter: {
-        card: 'summary_large_image',
-        images: [{ url: `${url}/image` }]
-      }
-    })
+    await expect(ExamplePage({ params })).rejects.toThrow(
+      `Redirect: ${example.shareUrl}`
+    )
     const response = await exampleImage(
       new Request(`${url}/image?template=friendly-lab`),
       { params }
@@ -57,8 +49,7 @@ it.each([
       {
         title: example.title,
         highlights: example.highlights,
-        provider: 'chatgpt',
-        example: true
+        provider: 'chatgpt'
       },
       { templateId }
     )
@@ -70,11 +61,6 @@ it.each(['missing-example', 'toString'])(
   async (exampleId) => {
     const params = Promise.resolve({ exampleId })
     await expect(ExamplePage({ params })).rejects.toBe(missing)
-    expect(await generateMetadata({ params })).toMatchObject({
-      robots: { index: false, follow: false },
-      openGraph: { images: [] },
-      twitter: { images: [] }
-    })
     const response = await exampleImage(
       new Request(`https://passage.example/examples/${exampleId}/image`),
       { params }
@@ -84,16 +70,3 @@ it.each(['missing-example', 'toString'])(
     expect(renderCard).not.toHaveBeenCalled()
   }
 )
-
-it('clearly labels the authored conversation without a claimed provider source', async () => {
-  const page = await ExamplePage({
-    params: Promise.resolve({ exampleId: 'share-your-ai-chats' })
-  })
-  const html = renderToStaticMarkup(page)
-  expect(html).toContain('Example passage')
-  expect(html).toContain('An illustrative debugging conversation.')
-  expect(html).toContain('Copy passage link')
-  expect(html).toContain('Create a passage')
-  expect(html).not.toMatch(/href="https?:\/\/(?:chatgpt\.com|claude\.ai)/)
-  expect(html).not.toContain('A conversation with')
-})

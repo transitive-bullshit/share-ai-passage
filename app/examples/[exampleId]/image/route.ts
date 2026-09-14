@@ -22,8 +22,7 @@ export async function GET(
       {
         title: example.title,
         highlights: example.highlights,
-        provider: 'chatgpt',
-        example: true
+        provider: 'chatgpt'
       },
       example.appearance
     )

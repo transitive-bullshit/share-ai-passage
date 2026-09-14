@@ -17,8 +17,7 @@ export async function GET(request: Request) {
       {
         title: featuredExample.title,
         highlights: featuredExample.highlights,
-        provider: 'chatgpt',
-        example: true
+        provider: 'chatgpt'
       },
       parsed.data
     )

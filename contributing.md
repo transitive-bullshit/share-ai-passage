@@ -124,7 +124,9 @@ Inspect the final saved HTML samples after fonts and artwork load alongside thei
 
 ## Marketing examples
 
-The homepage and two [README previews](readme.md#example-passages) share one authored four-message debugging conversation, **Why the test passed locally but failed in CI**. [lib/marketing-examples.ts](lib/marketing-examples.ts) is the single source for its text and styles: Margin notes and Midnight observatory. The homepage’s card links to the matching example reader; its caption conveys the topic at mobile sizes. Existing example IDs remain stable. These clearly labeled illustrative passages ship with the app when deployed; they need no production database or provider share URLs. After changing the fixture, fetch these card routes from the normal local development origin:
+The homepage and two [README previews](readme.md#example-passages) feature **Give your AI conversations a better introduction**, with approved highlights and no trailing periods. [lib/marketing-examples.ts](lib/marketing-examples.ts) records the real public Codex source, reviewed wording, and production publication URLs for Margin notes and Midnight observatory. Both cards link directly to database-backed production readers. The legacy example reader URLs redirect to those publications; local example image routes render the same wording and styles without database access. Keep the provider source public so the publications remain available. Changes to published wording require new publications and updated URLs.
+
+After updating the reviewed example, fetch these card routes from the normal local development origin:
 
 | Route | README image |
 | --- | --- |

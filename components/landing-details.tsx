@@ -22,7 +22,7 @@ export function LandingDetails() {
           />
           <Link
             className='example-window'
-            href={`/examples/${featuredExample.id}`}
+            href={featuredExample.shareUrl}
             aria-label={`Read the example passage: ${featuredExample.title}`}
           >
             <div className='example-toolbar'>

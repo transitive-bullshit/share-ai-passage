@@ -6,7 +6,7 @@ Turn your AI chats into links you’ll be proud to share
 
 Give a public ChatGPT, Codex, or Claude conversation a clear introduction, a beautiful share card, and a readable saved conversation. No account needed.
 
-[**Try Passage ↗**](https://www.share-ai-passage.com) · [Read an example](https://www.share-ai-passage.com/examples/share-your-ai-chats) · [Run locally](contributing.md#run-locally)
+[**Try Passage ↗**](https://www.share-ai-passage.com) · [Read an example](https://www.share-ai-passage.com/chatgpt/7ba655a3-e940-4ce2-ad8d-d6a981640d29) · [Run locally](contributing.md#run-locally)
 
 1. Paste a public conversation link and choose **Create a passage**.
 2. Edit the generated title and highlights, then choose from **five card styles**.
@@ -14,13 +14,13 @@ Give a public ChatGPT, Codex, or Claude conversation a clear introduction, a bea
 
 ## Example passages
 
-**Why the test passed locally but failed in CI.** A save request, a shared test record, and two useful next steps—enough context to decide whether to open the conversation.
+**Give your AI conversations a better introduction.** Clear highlights, five card styles, and the saved conversation with its original source.
 
-One illustrative conversation, two ways to share it. Select a card to read the conversation behind it.
+One real conversation about sharing with Passage, published in two card styles. Select a card to read it.
 
-[![Why the test passed locally but failed in CI — Margin notes example](docs/readme-assets/example-passage-01.webp)](https://www.share-ai-passage.com/examples/share-your-ai-chats)
+[![Give your AI conversations a better introduction — Margin notes example](docs/readme-assets/example-passage-01.webp)](https://www.share-ai-passage.com/chatgpt/7ba655a3-e940-4ce2-ad8d-d6a981640d29)
 
-[![Why the test passed locally but failed in CI — Midnight observatory example](docs/readme-assets/example-passage-02.webp)](https://www.share-ai-passage.com/examples/share-your-ai-chats-after-dark)
+[![Give your AI conversations a better introduction — Midnight observatory example](docs/readme-assets/example-passage-02.webp)](https://www.share-ai-passage.com/chatgpt/15f45335-dcb1-494c-951d-feb00dcacd00)
 
 ## For agents
 

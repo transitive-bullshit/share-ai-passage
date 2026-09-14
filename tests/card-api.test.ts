@@ -263,7 +263,7 @@ describe('saved social-card appearance routes', () => {
       )
       expect(response.status).toBe(200)
       expect(renderCard).toHaveBeenCalledExactlyOnceWith(
-        expect.objectContaining({ example: true }),
+        expect.objectContaining({ provider: 'chatgpt' }),
         { templateId }
       )
     }
