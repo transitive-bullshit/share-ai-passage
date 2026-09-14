@@ -4,7 +4,10 @@
 
 Turn your AI chats into links you’ll be proud to share.
 
-Give a public ChatGPT, Codex, or Claude conversation a clear introduction, a beautiful share card, and a readable saved conversation. No account needed.
+- Free
+- Open source
+- No account needed
+- Works with public ChatGPT, Codex, and Claude chats
 
 [**Try Passage ↗**](https://www.share-ai-passage.com) · [Read an example](https://www.share-ai-passage.com/chatgpt/89a0a919-ec9e-49a3-a966-67e5bff95e0e) · [Run locally](contributing.md#run-locally)
 
