@@ -31,10 +31,6 @@ export function getDb() {
   return getConnection().db
 }
 
-export function getSqlClient() {
-  return getConnection().client
-}
-
 export async function closeDatabase() {
   const connection = databaseGlobal.conversationDatabase
   if (!connection) return
@@ -42,5 +38,5 @@ export async function closeDatabase() {
   await connection.client.end({ timeout: 5 })
 }
 
-export type Database = ReturnType<typeof getDb>
+type Database = ReturnType<typeof getDb>
 export type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0]

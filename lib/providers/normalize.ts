@@ -1,7 +1,7 @@
 import { limits, type ExtractedConversation, type Message } from '../domain'
 import { messageText } from '../messages'
 
-export { message, plainText, textContent } from '../messages'
+export { message, textContent } from '../messages'
 
 export function record(value: unknown): Record<string, unknown> | undefined {
   return value !== null && typeof value === 'object' && !Array.isArray(value)

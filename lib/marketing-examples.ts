@@ -20,7 +20,7 @@ type MarketingExample = {
   appearance: CardAppearance
 }
 
-export const marketingExamples: MarketingExample[] = [
+const marketingExamples: MarketingExample[] = [
   {
     ...conversation,
     id: 'share-your-ai-chats',

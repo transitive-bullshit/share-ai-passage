@@ -16,7 +16,7 @@ export function readerMessageContent(message: Message) {
   }
 }
 
-export type ReaderEntry = { message: Message; index: number }
+type ReaderEntry = { message: Message; index: number }
 export type ReaderGroup = {
   type: 'message' | 'activity'
   entries: ReaderEntry[]
