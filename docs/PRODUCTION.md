@@ -24,6 +24,33 @@ Separate `Passage development` and `Passage production` API keys have Sending ac
 
 The sender is a sending identity, not a receiving mailbox. The owner reports creating a Google Workspace group alias for Reply-To that forwards to `travis@transitivebullsh.it`; external delivery has not been tested. Authentication-email integration is still pending: the app does not yet consume these variables or send verification/password-reset emails. Vercel environment changes apply to subsequent deployments.
 
+## GitHub sign-in setup
+
+On September 14, 2026, two OAuth apps were registered under `transitive-bullshit`:
+
+| Environment | OAuth app | Homepage | Exact callback |
+| --- | --- | --- | --- |
+| Production | [Passage](https://github.com/settings/applications/3857651) | `https://www.share-ai-passage.com` | `https://www.share-ai-passage.com/api/auth/callback/github` |
+| Development | [Passage Development](https://github.com/settings/applications/3857667) | `http://share-ai-passage.localhost:1355` | `http://share-ai-passage.localhost:1355/api/auth/callback/github` |
+
+Each app has a separate client ID and secret, saved as `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` in the main checkout's ignored, owner-only `.env.prod.local` and `.env.local`, respectively. These credentials have not been added to Vercel. Both apps disable wildcard callback matching and device flow. Logo upload remains pending.
+
+Development keeps Portless enabled with `pnpm dev`. On September 14, the actual startup output reported `http://share-ai-passage.localhost:1355`; GitHub accepted this exact origin and callback, replacing the initial direct-localhost registration. Portless keeps this public hostname stable while assigning an ephemeral backend port. Worktrees receive separate hostnames. If the proxy scheme/port changes or a worktree needs sign-in, register its exact callback in the development OAuth app. Do not infer the origin from Portless defaults. Google's client form rejects this `.localhost` subdomain for both JavaScript origins and redirect URIs because it requires a public top-level/private domain. GitHub accepts it. Google development needs a separately selected compatible origin; keep Portless enabled.
+
+This provisions credentials only. Better Auth, account persistence, sign-in UI, and `/api/auth/callback/github` are not implemented yet, so end-to-end sign-in has not been tested. During integration, request basic identity and `user:email` only, with no repository scopes, and ensure Better Auth's base URL matches the selected origin. See [Better Auth's GitHub setup](https://better-auth.com/docs/authentication/github). OAuth app registration itself does not enforce the scopes requested by the application.
+
+## Google sign-in setup
+
+On September 14, 2026, [Passage / share-ai-passage-production](https://console.cloud.google.com/auth/overview?authuser=1&project=share-ai-passage-production) was created under the `transitivebullsh.it` organization using `travis@transitivebullsh.it`. The earlier empty `share-ai-passage-prod` project under the Gmail account is unused. `Agentic Test` was not modified.
+
+The production project has an External audience, Passage name and PNG logo, `passage@transitivebullsh.it` as support and developer contact, authorized domain `share-ai-passage.com`, and homepage `https://www.share-ai-passage.com`. Only `openid`, `https://www.googleapis.com/auth/userinfo.email`, and `https://www.googleapis.com/auth/userinfo.profile` are configured; no sensitive or restricted scopes were added.
+
+The Web application client `Passage production` has JavaScript origin `https://www.share-ai-passage.com` and exact redirect URI `https://www.share-ai-passage.com/api/auth/callback/google`. Its client ID and secret are saved as `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in the main checkout's ignored, owner-only `.env.prod.local`. Both were also saved and verified as Production-only Secret environment variables in [Vercel's saasify/share-ai-passage project](https://vercel.com/saasify/share-ai-passage/settings/environment-variables) on September 14, 2026. They are not configured for Preview or Development. Vercel applies them to the next production deployment; this configuration change did not redeploy the app. No Google development client has been created, and production credentials must not be reused for development.
+
+The project remains in Testing with no test users added. Google currently disables Publish app until branding configuration is complete. Public launch still needs an accurate public privacy policy and applicable terms, production publishing/branding verification and domain-ownership checks. These pages are not implemented yet. Better Auth integration and end-to-end sign-in testing also remain pending. The API Services User Data Policy agreement was accepted with the owner's explicit approval.
+
+Google's client form rejected `http://share-ai-passage.localhost:1355` and its `/api/auth/callback/google` URL before submission. No client or extra domain was saved during that validation check. Keep Portless enabled; select a compatible HTTPS development hostname under an owned public domain, resolve it locally, and configure a separate development project/client before implementing Google local sign-in.
+
 ## Recorded database configuration
 
 | Setting | Value |
