@@ -64,6 +64,34 @@
       "when": 1789398722997,
       "tag": "0008_silly_mephisto",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1789415537943,
+      "tag": "0009_early_firestar",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1789416056619,
+      "tag": "0010_crazy_cobalt_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1789416333394,
+      "tag": "0011_flashy_morph",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1789416746943,
+      "tag": "0012_chemical_secret_warriors",
+      "breakpoints": true
     }
   ]
 }

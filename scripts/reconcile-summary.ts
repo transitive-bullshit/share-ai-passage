@@ -17,7 +17,7 @@ Set DATABASE_URL explicitly. No environment files or production configuration ar
 Repairs require an evidence file binding action and operationId. Keep that file private.
 Unknown provider outcomes must stay reserved; elapsed time is not failure evidence.`
 
-class ReconciliationError extends Error {}
+export class ReconciliationError extends Error {}
 
 const uuid = z.uuid()
 const cost = z.number().int().min(0).max(2_147_483_647)
@@ -179,9 +179,9 @@ type Inspection = {
   periodUsed: number
   periodReserved: number
   periodAllowance: number
-  budgetSpentMicros: number
-  budgetReservedMicros: number
-  budgetLimitMicros: number
+  budgetSpentMicros: number | null
+  budgetReservedMicros: number | null
+  budgetLimitMicros: number | null
 }
 
 /** Explicit allowlist: never spread an operation or log provider/database errors. */
@@ -321,7 +321,7 @@ export async function runReconciliation(args: string[]) {
       })
       .from(operations)
       .innerJoin(periods, eq(periods.id, operations.periodId))
-      .innerJoin(budgets, eq(budgets.id, operations.budgetPeriodId))
+      .leftJoin(budgets, eq(budgets.id, operations.budgetPeriodId))
       .where(condition)
       .orderBy(asc(operations.updatedAt), asc(operations.id))
       .limit(command.action === 'list-stale' ? command.limit : 1)

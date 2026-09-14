@@ -1,0 +1,1 @@
+ALTER TABLE "assets" ADD COLUMN "input_hash" text;

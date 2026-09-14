@@ -12,7 +12,7 @@ import { renderCard } from '@/lib/card'
 import { appUrl, indexingEnabled } from '@/lib/config'
 import { privateHeaders } from '@/lib/http'
 import { homepageJsonLd, passageJsonLd, publicRobots } from '@/lib/seo'
-import nextConfig from '../next.config'
+import { config as nextConfig } from '../next.config'
 
 const service = vi.hoisted(() => ({
   getPublication: vi.fn<() => Promise<ReturnType<typeof publication> | null>>(),

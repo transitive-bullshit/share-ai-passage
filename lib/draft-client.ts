@@ -1,3 +1,4 @@
+import type { DraftDesign, ResolvedCardDesign } from '@/lib/paid-design'
 import type { CardAppearance } from '@/lib/card-appearance'
 import { ClientRequestError, parseRetryAfter } from '@/lib/client-request'
 import type { GeneratedPreview, Provider } from '@/lib/domain'
@@ -11,6 +12,12 @@ export type SavedDraft = {
   sourceUrl: string
   preview: GeneratedPreview
   appearance: CardAppearance
+  design?: DraftDesign | null
+  resolvedDesign?: ResolvedCardDesign | null
+  artwork?: { background?: string; logo?: string }
+  canCustomize?: boolean
+  imageJobId?: string
+  imageGenerationError?: string
 }
 export type PendingDraft = {
   draftId: string
@@ -98,19 +105,33 @@ export async function draftRequest<T>(
 }
 
 export function sameDraftContent(
-  a: { preview: GeneratedPreview; appearance: CardAppearance },
-  b: { preview: GeneratedPreview; appearance: CardAppearance }
+  a: {
+    preview: GeneratedPreview
+    appearance: CardAppearance
+    design?: DraftDesign | null
+  },
+  b: {
+    preview: GeneratedPreview
+    appearance: CardAppearance
+    design?: DraftDesign | null
+  }
 ) {
   return (
     JSON.stringify(a.preview) === JSON.stringify(b.preview) &&
-    a.appearance.templateId === b.appearance.templateId
+    a.appearance.templateId === b.appearance.templateId &&
+    (b.design === undefined ||
+      JSON.stringify(a.design ?? null) === JSON.stringify(b.design))
   )
 }
 
 export async function saveDraft(
   draftId: string,
   revision: number,
-  content: { preview: GeneratedPreview; appearance: CardAppearance }
+  content: {
+    preview: GeneratedPreview
+    appearance: CardAppearance
+    design?: DraftDesign | null
+  }
 ) {
   try {
     return await draftRequest<SavedDraft>(`/api/drafts/${draftId}`, 'PATCH', {

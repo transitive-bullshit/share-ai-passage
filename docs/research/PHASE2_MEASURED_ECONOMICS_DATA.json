@@ -1,0 +1,409 @@
+{
+  "recordedDate": "2026-09-15",
+  "gate": "B pending quality/input bounds/live integrations",
+  "imageLedgerEntries": 14,
+  "imageSpendMicros": 172288,
+  "imageGroups": [
+    {
+      "model": "flare",
+      "promptGroup": "pilot",
+      "calls": 6,
+      "costMicros": {
+        "n": 6,
+        "min": 12217,
+        "median": 12269.5,
+        "mean": 12269.5,
+        "max": 12322
+      },
+      "durationMs": {
+        "n": 6,
+        "min": 8211,
+        "median": 11450.0,
+        "mean": 11383,
+        "max": 14877
+      }
+    },
+    {
+      "model": "flare",
+      "promptGroup": "mini-v2",
+      "calls": 1,
+      "costMicros": {
+        "n": 1,
+        "min": 12527,
+        "median": 12527,
+        "mean": 12527,
+        "max": 12527
+      },
+      "durationMs": {
+        "n": 1,
+        "min": 12196,
+        "median": 12196,
+        "mean": 12196,
+        "max": 12196
+      }
+    },
+    {
+      "model": "sunburst",
+      "promptGroup": "pilot",
+      "calls": 6,
+      "costMicros": {
+        "n": 6,
+        "min": 12217,
+        "median": 12269.5,
+        "mean": 12269.5,
+        "max": 12322
+      },
+      "durationMs": {
+        "n": 6,
+        "min": 13649,
+        "median": 15189.5,
+        "mean": 15838.666666666666,
+        "max": 20128
+      }
+    },
+    {
+      "model": "sunburst",
+      "promptGroup": "mini-v2",
+      "calls": 1,
+      "costMicros": {
+        "n": 1,
+        "min": 12527,
+        "median": 12527,
+        "mean": 12527,
+        "max": 12527
+      },
+      "durationMs": {
+        "n": 1,
+        "min": 16888,
+        "median": 16888,
+        "mean": 16888,
+        "max": 16888
+      }
+    }
+  ],
+  "localRenderMachine": {
+    "platform": "darwin",
+    "architecture": "arm64",
+    "cpu": "Apple M3 Pro",
+    "logicalCpus": 12,
+    "node": "v25.9.0"
+  },
+  "localRender": {
+    "firstRender": {
+      "requestId": "pilot-tiny-everyday-margin-notes-flare",
+      "promptVersion": "v1",
+      "templateId": "margin-notes",
+      "firstRenderInProcess": true,
+      "wallMs": 49.86062500000003,
+      "cpuMs": 51.405,
+      "cpuUserMs": 48.457,
+      "cpuSystemMs": 2.948,
+      "rssBytes": 336494592,
+      "bytes": 125540,
+      "hash": "675c5db7730544a1744551a7f0572a1da3c3c5554133db0f8812d028353b42ea",
+      "path": "cards/pilot-tiny-everyday-margin-notes-flare-margin-notes.webp",
+      "generatedAssetBytes": 176324,
+      "normalizationMs": 74.89475000000016
+    },
+    "cardBytes": {
+      "n": 70,
+      "min": 79780,
+      "median": 109996.0,
+      "mean": 117126.22857142857,
+      "max": 164768
+    },
+    "wallMs": {
+      "n": 70,
+      "min": 31.045082999999977,
+      "median": 36.92847950000032,
+      "mean": 38.55166074285713,
+      "max": 100.24645799999962
+    },
+    "cpuMs": {
+      "n": 70,
+      "min": 31.168,
+      "median": 37.418499999999995,
+      "mean": 38.551385714285715,
+      "max": 65.605
+    },
+    "warmWallMs": {
+      "n": 15,
+      "min": 36.90299999999934,
+      "median": 38.67770799999926,
+      "mean": 39.682941599999744,
+      "max": 44.65379099999973
+    },
+    "warmCpuMs": {
+      "n": 15,
+      "min": 36.902,
+      "median": 38.643,
+      "mean": 40.626933333333334,
+      "max": 61.564
+    },
+    "generatedAssetBytes": {
+      "n": 14,
+      "min": 93778,
+      "median": 157465.0,
+      "mean": 157303,
+      "max": 221258
+    }
+  },
+  "pricesUsd": {
+    "cpuHour": 0.128,
+    "memoryGbHour": 0.0106,
+    "invocation": 6e-7,
+    "edgeRequest": 2e-6,
+    "fastDataGb": 0.15,
+    "fastOriginGb": 0.06,
+    "r2GbMonth": 0.015,
+    "r2Write": 4.5e-6,
+    "r2Read": 3.6e-7,
+    "workflowEvent": 2e-5,
+    "workflowWrittenGb": 0.5,
+    "workflowRetainedGbMonth": 0.5,
+    "queueUnit": 6e-7
+  },
+  "scenarioAssumptionsNotMeasurements": {
+    "summaryUsd": 0.003,
+    "imageUsd": 0.012527,
+    "extraBilledImageFailureFraction": 0.05,
+    "expectedAiAllowanceFraction": 0.5,
+    "memoryGb": 2,
+    "readerBodyBytes": 50000,
+    "requestOverheadBytes": 2000,
+    "readerImageCpuSeconds": 0.01,
+    "readerImageWallSeconds": 0.1,
+    "workflowEventsPerImage": 20,
+    "workflowBytesPerImage": 20000,
+    "workflowRetentionDays": 7,
+    "queueUnitsPerImage": 20,
+    "workflowCpuSeconds": 1,
+    "workflowWallSeconds": 30,
+    "workflowInvocations": 5,
+    "publicationR2Writes": 1,
+    "publicationR2Reads": 2
+  },
+  "subscriptions": [
+    {
+      "name": "Plus",
+      "cadence": "monthly",
+      "revenueUsd": 10,
+      "feesUsd": 0.6599999999999999,
+      "summaries": 100,
+      "images": 10,
+      "otherReserveUsd": 0.5,
+      "expectedHalfUse": {
+        "costUsd": 1.37576675,
+        "contributionUsd": 8.62423325,
+        "margin": 0.862423325,
+        "aiUsd": 0.21576675
+      },
+      "fullUseObservedUnitScenario": {
+        "costUsd": 1.5915335,
+        "contributionUsd": 8.4084665,
+        "margin": 0.8408466499999999,
+        "aiUsd": 0.4315335
+      },
+      "fullUseUnqualified8CentStress": {
+        "costUsd": 2.3,
+        "contributionUsd": 7.7,
+        "margin": 0.77,
+        "aiUsd": 1.1400000000000001
+      }
+    },
+    {
+      "name": "Plus",
+      "cadence": "annual",
+      "revenueUsd": 8.0,
+      "feesUsd": 0.313,
+      "summaries": 100,
+      "images": 10,
+      "otherReserveUsd": 0.5,
+      "expectedHalfUse": {
+        "costUsd": 1.02876675,
+        "contributionUsd": 6.97123325,
+        "margin": 0.87140415625,
+        "aiUsd": 0.21576675
+      },
+      "fullUseObservedUnitScenario": {
+        "costUsd": 1.2445335,
+        "contributionUsd": 6.7554665,
+        "margin": 0.8444333125,
+        "aiUsd": 0.4315335
+      },
+      "fullUseUnqualified8CentStress": {
+        "costUsd": 1.953,
+        "contributionUsd": 6.047,
+        "margin": 0.755875,
+        "aiUsd": 1.1400000000000001
+      }
+    },
+    {
+      "name": "Pro",
+      "cadence": "monthly",
+      "revenueUsd": 25,
+      "feesUsd": 1.2,
+      "summaries": 300,
+      "images": 25,
+      "otherReserveUsd": 1,
+      "expectedHalfUse": {
+        "costUsd": 2.814416875,
+        "contributionUsd": 22.185583125,
+        "margin": 0.887423325,
+        "aiUsd": 0.614416875
+      },
+      "fullUseObservedUnitScenario": {
+        "costUsd": 3.42883375,
+        "contributionUsd": 21.57116625,
+        "margin": 0.86284665,
+        "aiUsd": 1.22883375
+      },
+      "fullUseUnqualified8CentStress": {
+        "costUsd": 5.2,
+        "contributionUsd": 19.8,
+        "margin": 0.792,
+        "aiUsd": 3.0
+      }
+    },
+    {
+      "name": "Pro",
+      "cadence": "annual",
+      "revenueUsd": 20.0,
+      "feesUsd": 0.745,
+      "summaries": 300,
+      "images": 25,
+      "otherReserveUsd": 1,
+      "expectedHalfUse": {
+        "costUsd": 2.359416875,
+        "contributionUsd": 17.640583125,
+        "margin": 0.88202915625,
+        "aiUsd": 0.614416875
+      },
+      "fullUseObservedUnitScenario": {
+        "costUsd": 2.97383375,
+        "contributionUsd": 17.02616625,
+        "margin": 0.8513083124999999,
+        "aiUsd": 1.22883375
+      },
+      "fullUseUnqualified8CentStress": {
+        "costUsd": 4.745,
+        "contributionUsd": 15.254999999999999,
+        "margin": 0.7627499999999999,
+        "aiUsd": 3.0
+      }
+    }
+  ],
+  "packFullRedemption": [
+    {
+      "rawImageUnitUsd": 0.012527,
+      "images": 50,
+      "imageCostIncludingFailureScenarioUsd": 0.6576675,
+      "feesUsd": 0.59,
+      "otherReserveUsd": 0.2,
+      "margin": 0.8552332500000001
+    },
+    {
+      "rawImageUnitUsd": 0.0242,
+      "images": 50,
+      "imageCostIncludingFailureScenarioUsd": 1.2705,
+      "feesUsd": 0.59,
+      "otherReserveUsd": 0.2,
+      "margin": 0.79395
+    },
+    {
+      "rawImageUnitUsd": 0.0442,
+      "images": 50,
+      "imageCostIncludingFailureScenarioUsd": 2.3205,
+      "feesUsd": 0.59,
+      "otherReserveUsd": 0.2,
+      "margin": 0.6889500000000001
+    },
+    {
+      "rawImageUnitUsd": 0.08,
+      "images": 50,
+      "imageCostIncludingFailureScenarioUsd": 4.2,
+      "feesUsd": 0.59,
+      "otherReserveUsd": 0.2,
+      "margin": 0.5010000000000001
+    }
+  ],
+  "renderingPer1000": {
+    "measuredLocalTimesMappedToCloudRatesUsd": 0.0021977423831047622,
+    "oneSecondCloudSensitivityUsd": 0.04204444444444444,
+    "objectWriteReadScenarioUsd": 0.00522,
+    "retainedCardGb": 0.11712622857142857,
+    "retainedCardUsdPerMonth": 0.0017568934285714284
+  },
+  "workflowPerImageScenarioUsd": 0.0006395555555555555,
+  "serving100kEach": {
+    "imageRequests": 100000,
+    "readerRequests": 100000,
+    "transferredGb": 17.112622857142856,
+    "fastDataUsd": 2.5668934285714284,
+    "fastOriginUsd": 1.0267573714285714,
+    "edgeUsd": 0.39999999999999997,
+    "computeUsd": 0.3088888888888889,
+    "r2ReadUsd": 0.036,
+    "totalUsd": 4.338539688888889,
+    "withoutFlatCdnCoveredComponentsUsd": 1.3716462603174606
+  },
+  "viral1mEach": {
+    "imageRequests": 1000000,
+    "readerRequests": 1000000,
+    "transferredGb": 171.12622857142858,
+    "fastDataUsd": 25.668934285714286,
+    "fastOriginUsd": 10.267573714285716,
+    "edgeUsd": 4.0,
+    "computeUsd": 3.0888888888888886,
+    "r2ReadUsd": 0.36,
+    "totalUsd": 43.38539688888889,
+    "withoutFlatCdnCoveredComponentsUsd": 13.716462603174605
+  },
+  "nonAiWorkloadChecks": {
+    "Plus": {
+      "publications": 100,
+      "images": 10,
+      "eachReaderAndImageRequests": 1000,
+      "retentionMonthsReservedUpfront": 60,
+      "activeLibraryGbForOneMonth": 1,
+      "renderAndObjectOperationsUsd": 0.0007867742383104762,
+      "workflowScenarioUsd": 0.006395555555555555,
+      "servingScenarioUsd": 0.043385396888888886,
+      "storageReserveUsd": 0.02695708757142857,
+      "subtotalBeforeDbEmailRefundsUsd": 0.07752481425418348
+    },
+    "Pro": {
+      "publications": 300,
+      "images": 25,
+      "eachReaderAndImageRequests": 3000,
+      "retentionMonthsReservedUpfront": 60,
+      "activeLibraryGbForOneMonth": 1,
+      "renderAndObjectOperationsUsd": 0.0023378227149314285,
+      "workflowScenarioUsd": 0.01598888888888889,
+      "servingScenarioUsd": 0.13015619066666667,
+      "storageReserveUsd": 0.05016339921428571,
+      "subtotalBeforeDbEmailRefundsUsd": 0.1986463014847727
+    },
+    "Pack": {
+      "publications": 100,
+      "images": 50,
+      "eachReaderAndImageRequests": 1000,
+      "retentionMonthsReservedUpfront": 60,
+      "activeLibraryGbForOneMonth": 0,
+      "renderAndObjectOperationsUsd": 0.0009667742383104763,
+      "workflowScenarioUsd": 0.03197777777777778,
+      "servingScenarioUsd": 0.043385396888888886,
+      "storageReserveUsd": 0.01761999557142857,
+      "subtotalBeforeDbEmailRefundsUsd": 0.09394994447640571
+    }
+  },
+  "retention": {
+    "millionCardGb": 117.12622857142857,
+    "millionCardUsdMonth": 1.7568934285714284,
+    "millionCardUsd60Months": 105.41360571428571
+  },
+  "rawEvidence": {
+    "ledgerSha256": "9f220172b19a601a0e85dbfacdb7bba5e810c9b55b65cf12a5519ac835d5e7a7",
+    "renderMetricsSha256": "ced11b2f97fd984894150644e45cd797a49de3e682491394839d4fb4f48f2580"
+  }
+}

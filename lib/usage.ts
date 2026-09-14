@@ -1,5 +1,6 @@
-import { and, eq, inArray, sql } from 'drizzle-orm'
+import { and, eq, gte, inArray, lt, ne, sql } from 'drizzle-orm'
 
+import { readEntitlements } from './billing'
 import { getDb, type Transaction } from './db'
 import {
   aiBudgetPeriods,
@@ -95,6 +96,77 @@ async function ensureUsagePeriod(
   return saved
 }
 
+/** Resolve the current tier from stored payment state, never a caller's paid allowance. */
+async function summaryWindow(
+  tx: Transaction,
+  subjectKey: string,
+  guestAllowance: number,
+  now: Date
+) {
+  if (subjectKey.startsWith('user:')) {
+    const userId = subjectKey.slice('user:'.length)
+    const [user] = await tx
+      .select()
+      .from(authUsers)
+      .where(eq(authUsers.id, userId))
+    if (user && !user.isAnonymous && user.emailVerified) {
+      const entitlements = await readEntitlements(userId, tx, now)
+      return {
+        period: entitlements.allowanceWindow,
+        allowance: entitlements.summaryLimit,
+        paid: entitlements.paidActions,
+        plan: entitlements.plan
+      }
+    }
+    return {
+      period: utcUsagePeriod(now),
+      allowance: 5,
+      paid: false,
+      plan: 'free' as const
+    }
+  }
+  return {
+    period: utcUsagePeriod(now),
+    allowance: Math.min(25, guestAllowance),
+    paid: false,
+    plan: 'free' as const
+  }
+}
+
+/** Counters settle their original period. Overlapping Free/paid windows count
+ * other periods' operations by reservation time without moving or copying them. */
+async function windowConsumption(
+  tx: Transaction,
+  subjectKey: string,
+  period: { startsAt: Date; endsAt: Date },
+  native?: typeof usagePeriods.$inferSelect
+) {
+  const [overlap] = await tx
+    .select({
+      used: sql<number>`count(*) filter (where ${generationOperations.status} = 'succeeded')`.mapWith(
+        Number
+      ),
+      reserved:
+        sql<number>`count(*) filter (where ${generationOperations.status} in ('reserved', 'running', 'uncertain'))`.mapWith(
+          Number
+        )
+    })
+    .from(generationOperations)
+    .innerJoin(usagePeriods, eq(generationOperations.periodId, usagePeriods.id))
+    .where(
+      and(
+        eq(usagePeriods.subjectKey, subjectKey),
+        gte(generationOperations.createdAt, period.startsAt),
+        lt(generationOperations.createdAt, period.endsAt),
+        native ? ne(generationOperations.periodId, native.id) : undefined
+      )
+    )
+  return {
+    used: (native?.used ?? 0) + (overlap?.used ?? 0),
+    reserved: (native?.reserved ?? 0) + (overlap?.reserved ?? 0)
+  }
+}
+
 /** Call only after cache/lease checks establish that new model work is needed. */
 export async function reserveSummary(input: ReserveSummaryInput) {
   validateSummaryAllowance(input.allowance)
@@ -102,7 +174,6 @@ export async function reserveSummary(input: ReserveSummaryInput) {
     throw new AppError('A generation request identity is required.')
   }
   const now = input.now ?? new Date()
-  const period = utcUsagePeriod(now)
   const requestSubjectKey = input.requestSubjectKey ?? input.subjectKey
   return getDb().transaction(async (tx) => {
     await lockUsageSubjects(tx, input.subjectKey, requestSubjectKey)
@@ -155,44 +226,64 @@ export async function reserveSummary(input: ReserveSummaryInput) {
       return { operation: existing, created: false }
     }
 
-    await tx
-      .insert(aiBudgetPeriods)
-      .values({
-        ...period,
-        limitMicros: FREE_AI_MONTHLY_BUDGET_MICROS
-      })
-      .onConflictDoNothing()
-    const [budget] = await tx
-      .select()
-      .from(aiBudgetPeriods)
-      .where(eq(aiBudgetPeriods.startsAt, period.startsAt))
-      .for('update')
-    if (!budget) throw new Error('AI budget period was not saved.')
-    if (
-      budget.spentMicros + budget.reservedMicros + SUMMARY_RESERVATION_MICROS >
-      budget.limitMicros
-    ) {
-      throw usageLimitError(period.endsAt, now, true)
+    const current = await summaryWindow(
+      tx,
+      input.subjectKey,
+      input.allowance,
+      now
+    )
+    const period = current.period
+    let budgetId: string | null = null
+    if (!current.paid) {
+      const freePeriod = utcUsagePeriod(now)
+      await tx
+        .insert(aiBudgetPeriods)
+        .values({
+          ...freePeriod,
+          limitMicros: FREE_AI_MONTHLY_BUDGET_MICROS
+        })
+        .onConflictDoNothing()
+      const [budget] = await tx
+        .select()
+        .from(aiBudgetPeriods)
+        .where(eq(aiBudgetPeriods.startsAt, freePeriod.startsAt))
+        .for('update')
+      if (!budget) throw new Error('AI budget period was not saved.')
+      if (
+        budget.spentMicros +
+          budget.reservedMicros +
+          SUMMARY_RESERVATION_MICROS >
+        budget.limitMicros
+      )
+        throw usageLimitError(freePeriod.endsAt, now, true)
+      budgetId = budget.id
     }
     const usage = await ensureUsagePeriod(
       tx,
       input.subjectKey,
-      input.allowance,
+      current.allowance,
       period
     )
-    if (usage.used + usage.reserved >= usage.allowance) {
+    const consumed = await windowConsumption(
+      tx,
+      input.subjectKey,
+      period,
+      usage
+    )
+    if (consumed.used + consumed.reserved >= usage.allowance) {
       throw usageLimitError(usage.endsAt, now)
     }
     await tx
       .update(usagePeriods)
       .set({ reserved: sql`${usagePeriods.reserved} + 1` })
       .where(eq(usagePeriods.id, usage.id))
-    await tx
-      .update(aiBudgetPeriods)
-      .set({
-        reservedMicros: sql`${aiBudgetPeriods.reservedMicros} + ${SUMMARY_RESERVATION_MICROS}`
-      })
-      .where(eq(aiBudgetPeriods.id, budget.id))
+    if (budgetId)
+      await tx
+        .update(aiBudgetPeriods)
+        .set({
+          reservedMicros: sql`${aiBudgetPeriods.reservedMicros} + ${SUMMARY_RESERVATION_MICROS}`
+        })
+        .where(eq(aiBudgetPeriods.id, budgetId))
     const [operation] = await tx
       .insert(generationOperations)
       .values({
@@ -201,7 +292,7 @@ export async function reserveSummary(input: ReserveSummaryInput) {
         requestKey: input.requestKey,
         inputHash: input.inputHash,
         periodId: usage.id,
-        budgetPeriodId: budget.id,
+        budgetPeriodId: budgetId,
         snapshotId: input.snapshotId ?? null,
         draftId: input.draftId ?? null,
         draftRevision: input.draftRevision ?? null,
@@ -316,6 +407,7 @@ async function settleBudget(
   actualCostMicros: number
 ) {
   validateCostMicros(actualCostMicros)
+  if (!operation.budgetPeriodId) return
   await tx
     .update(aiBudgetPeriods)
     .set({
@@ -471,9 +563,11 @@ export async function getSummaryUsage(
   now = new Date()
 ) {
   validateSummaryAllowance(allowance)
-  const period = utcUsagePeriod(now)
-  const [[usage], [budget]] = await Promise.all([
-    getDb()
+  return getDb().transaction(async (tx) => {
+    await lockUsageSubjects(tx, subjectKey)
+    const current = await summaryWindow(tx, subjectKey, allowance, now)
+    const period = current.period
+    const [usage] = await tx
       .select()
       .from(usagePeriods)
       .where(
@@ -481,27 +575,34 @@ export async function getSummaryUsage(
           eq(usagePeriods.subjectKey, subjectKey),
           eq(usagePeriods.startsAt, period.startsAt)
         )
-      ),
-    getDb()
-      .select()
-      .from(aiBudgetPeriods)
-      .where(eq(aiBudgetPeriods.startsAt, period.startsAt))
-  ])
-  const used = usage?.used ?? 0
-  const reserved = usage?.reserved ?? 0
-  return {
-    allowance,
-    used,
-    reserved,
-    remaining: Math.max(0, allowance - used - reserved),
-    resetAt: period.endsAt,
-    generationPaused: budget
-      ? budget.spentMicros +
-          budget.reservedMicros +
-          SUMMARY_RESERVATION_MICROS >
-        budget.limitMicros
-      : false
-  }
+      )
+    const { used, reserved } = await windowConsumption(
+      tx,
+      subjectKey,
+      period,
+      usage
+    )
+    const [budget] = current.paid
+      ? []
+      : await tx
+          .select()
+          .from(aiBudgetPeriods)
+          .where(eq(aiBudgetPeriods.startsAt, utcUsagePeriod(now).startsAt))
+    return {
+      plan: current.plan,
+      allowance: current.allowance,
+      used,
+      reserved,
+      remaining: Math.max(0, current.allowance - used - reserved),
+      resetAt: period.endsAt,
+      generationPaused: budget
+        ? budget.spentMicros +
+            budget.reservedMicros +
+            SUMMARY_RESERVATION_MICROS >
+          budget.limitMicros
+        : false
+    }
+  })
 }
 
 /** Caller records the guest import marker and ownership changes in this transaction. */
