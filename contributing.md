@@ -126,6 +126,8 @@ Inspect the final saved HTML samples after fonts and artwork load alongside thei
 
 The homepage and two [README previews](readme.md#example-passages) feature **Give your public AI chats a facelift**, with approved highlights and no trailing periods. [lib/marketing-examples.ts](lib/marketing-examples.ts) records the real public Codex source, reviewed wording, and production publication URLs for Margin notes and Midnight observatory. Both cards link directly to database-backed production readers. The legacy example reader URLs redirect to those publications; local example image routes render the same wording and styles without database access. Keep the provider source public so the publications remain available. Changes to published wording require new publications and updated URLs.
 
+The landing-page X comparison uses the committed `public/images/landing-passage-card.webp`, generated from `featuredExample`. It loads eagerly with high fetch priority through a static image import, bypassing both the dynamic Takumi route and runtime image optimization. After changing the featured example or card design, regenerate it with `pnpm fonts:prepare && pnpm exec tsx scripts/build-landing-card.ts` and visually review the output. Sharp is used only during asset generation.
+
 After updating the reviewed example, fetch these card routes from the normal local development origin:
 
 | Route | README image |

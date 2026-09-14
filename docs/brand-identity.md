@@ -56,6 +56,8 @@ Use the existing semantic CSS tokens. Brand controls are neutral. Error and succ
 
 In saved conversations, blue (`#326DA8`) identifies source links, with small local favicon glyphs (GitHub’s mark or a web/email symbol). Syntax colors distinguish code tokens. These functional reading cues leave brand controls neutral. Keep prose around 46rem wide; dense desktop tables may extend to 66rem, with wider expansion and contained scrolling on small screens. Questions use the secondary surface, while answers remain on white without repeated visible role labels.
 
+Header and footer creation CTAs use rounded shadcn outline buttons with a trailing pen-in-square icon. The header uses the default size; the footer uses the more compact small size.
+
 The site footer pairs the Passage wordmark with adjacent X and GitHub icon links and the creation CTA. Use shadcn ghost icon buttons, inherited muted color, neutral hover and focus states, accessible link labels, and a new tab for external destinations.
 
 Use **Inter 400** for body copy and highlights, **500** for headings/actions, and **600** for the wordmark. The site headline scales to 68 px with 1.055 line-height and tight tracking; supporting copy is 17 px/1.75. Keep the existing responsive scale, generous white space, and pill-shaped primary form. The gray second headline line creates hierarchy without another font. The one-pager scales this system to its larger canvas.
@@ -66,7 +68,9 @@ Local Inter WOFF inputs and the [license](brand-assets/fonts/inter-LICENSE.txt) 
 
 The [painted landscape](brand-assets/passage-landscape.png) is the accepted hero: a soft impressionistic lake with water lilies, trees, and distant misty hills. Its broad, calm setting frames a before-and-after comparison of the same conversation shared on X. Keep enough of the landscape visible to retain that sense of place; its purpose is to frame readable work.
 
-Use a centered introduction, clear descriptor, public-link input, and **Create a passage** CTA. The announcement above the headline is removed. The homepage header omits the creation CTA; it remains available on reader pages. Below-fold sections use headings without eyebrow copy. Provider labels use locally stored ChatGPT, Codex, and Claude logos from `public/providers/`. The landscape showcase follows the form, headed **Same chat. A better first impression.** Show **Before / A generic chat link** beside **With Passage / A reason to open it**, stacking in that order on mobile. Use the compact ChatGPT preview wording from the real source screenshot and the existing featured Passage card linked to its reader. Keep X’s official logo and verified repost icon, with neighboring posts blurred at 1.7 px and the main previews sharp. These are illustrative posts: label them discreetly, hide decorative feed chrome from assistive technology, and omit post body copy, the card domain overlay, the benefit caption, and blur controls. The social image is composed specifically for 1200 × 630; individual passage cards lead with their content rather than the product headline.
+Use a centered introduction, clear descriptor, public-link input, and **Create a passage** CTA. The announcement above the headline is removed. The homepage header omits the creation CTA; it remains available on reader pages. Below-fold sections use headings without eyebrow copy. Provider labels use locally stored ChatGPT, Codex, and Claude logos from `public/providers/`. The landscape showcase follows the form, headed **Same chat. A better first impression.** Show **Before / A generic chat link** beside **With Passage / A reason to open it**, stacking in that order on mobile. Use the compact ChatGPT preview wording from the real source screenshot and the existing featured Passage card linked to its reader. Keep X’s official logo and verified repost icon, with neighboring posts blurred at 1.7 px and the main previews sharp. These are illustrative posts: hide decorative feed chrome from assistive technology and omit the illustrative-post caption, post body copy, the card domain overlay, the benefit caption, and blur controls. The social image is composed specifically for 1200 × 630; individual passage cards lead with their content rather than the product headline.
+
+The landing-page X comparison uses a pre-generated, optimized WebP of the reviewed featured passage, loaded eagerly. Its illustrative-post caption is omitted. Regeneration instructions live in [Marketing examples](../contributing.md#marketing-examples).
 
 The landscape is the existing 1672 × 941 application image, retained unchanged. Its SHA-256 is `d4618cc38cadbc1d14f9e36ae168ff8d648093e509361c8a709303086d83989a`. The exact original generation prompt was not recovered; see [historical provenance](brand-exploration/round-05/assets/provenance.md). No new imagery was generated for this identity.
 
@@ -78,7 +82,7 @@ Write plainly, warmly, and with respect for the work being shared. Apply [ISO 24
 | --- | --- |
 | Create a passage | Begin the creation workflow |
 | Paste a public chat link… | Explain the required input |
-| Preview first. Publish when you’re ready. | Make the publication boundary clear |
+| Preview first. Publish when you’re ready. No account needed. | Make the publication boundary and account-free access clear |
 | Highlights | Label the generated introduction |
 | Example passage | Label illustrative product content |
 | Read the passage | Open the published artifact |

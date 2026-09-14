@@ -3,6 +3,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 
 import { featuredExample } from '@/lib/marketing-examples'
+import landingCard from '@/public/images/landing-passage-card.webp'
 import landscape from '@/public/images/passage-landscape.png'
 
 // X logo: https://about.x.com/en/who-we-are/brand-toolkit
@@ -155,11 +156,11 @@ export function ShareComparison() {
                 href={featuredExample.shareUrl}
                 aria-label={`Read the example passage: ${featuredExample.title}`}
               >
-                <img
+                <Image
                   className='comparison-card'
-                  src={`/examples/${featuredExample.id}/image`}
-                  width={1200}
-                  height={630}
+                  src={landingCard}
+                  unoptimized
+                  loading='eager'
                   alt={`Passage card: ${featuredExample.title}. ${featuredExample.highlights.join('. ')}`}
                   fetchPriority='high'
                 />
@@ -168,9 +169,6 @@ export function ShareComparison() {
           </div>
         </div>
       </div>
-      <p className='comparison-note'>
-        Illustrative X posts. ChatGPT preview based on a real shared link.
-      </p>
     </section>
   )
 }

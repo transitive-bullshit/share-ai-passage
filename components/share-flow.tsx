@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowRight, Link2 } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import {
   type FormEvent,
   type ReactNode,
@@ -12,12 +12,7 @@ import {
 import { PreviewReview, type PreparedDraft } from '@/components/preview-review'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import {
-  Field,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel
-} from '@/components/ui/field'
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { brand } from '@/lib/brand'
@@ -155,7 +150,6 @@ export function ShareFlow({ children }: { children?: ReactNode }) {
                     placeholder='Paste a public chat link…'
                     disabled={pending}
                     aria-invalid={Boolean(error)}
-                    aria-describedby='source-help'
                   />
                   <Button
                     type='submit'
@@ -173,9 +167,6 @@ export function ShareFlow({ children }: { children?: ReactNode }) {
                     )}
                   </Button>
                 </div>
-                <FieldDescription id='source-help'>
-                  ChatGPT, Codex &amp; Claude. No account needed.
-                </FieldDescription>
               </Field>
             </FieldGroup>
             <div aria-live='polite' className='form-status'>
@@ -190,8 +181,7 @@ export function ShareFlow({ children }: { children?: ReactNode }) {
             ) : null}
           </form>
           <p className='public-note'>
-            <Link2 size={14} aria-hidden='true' />
-            Preview first. Publish when you’re ready.
+            Preview first. Publish when you’re ready. No account needed.
           </p>
         </div>
       </section>

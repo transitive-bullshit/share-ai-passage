@@ -248,6 +248,9 @@ importers:
       portless:
         specifier: ^0.15.6
         version: 0.15.6
+      sharp:
+        specifier: ^0.35.4
+        version: 0.35.4(@types/node@26.5.0)
       simple-git-hooks:
         specifier: ^2.14.0
         version: 2.14.0
@@ -4073,8 +4076,7 @@ snapshots:
 
   '@fontsource/noto-sans@5.3.0': {}
 
-  '@img/colour@1.1.0':
-    optional: true
+  '@img/colour@1.1.0': {}
 
   '@img/sharp-darwin-arm64@0.35.4':
     optionalDependencies:
@@ -6564,8 +6566,7 @@ snapshots:
 
   scheduler@0.27.0: {}
 
-  semver@7.8.5:
-    optional: true
+  semver@7.8.5: {}
 
   sharp@0.35.4(@types/node@26.5.0):
     dependencies:
@@ -6599,7 +6600,6 @@ snapshots:
       '@img/sharp-win32-ia32': 0.35.4
       '@img/sharp-win32-x64': 0.35.4
       '@types/node': 26.5.0
-    optional: true
 
   shebang-command@2.0.0:
     dependencies:

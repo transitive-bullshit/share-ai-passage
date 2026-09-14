@@ -1,7 +1,9 @@
 'use client'
 
+import { SquarePen } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 
+import { Button } from '@/components/ui/button'
 import { brand } from '@/lib/brand'
 
 export function HeaderCreateLink() {
@@ -9,8 +11,11 @@ export function HeaderCreateLink() {
   if (pathname === '/') return null
 
   return (
-    <a className='header-cta' href='/'>
-      {brand.cta} <span aria-hidden='true'>↗</span>
-    </a>
+    <Button asChild variant='outline' className='header-cta rounded-full'>
+      <a href='/'>
+        {brand.cta}
+        <SquarePen data-icon='inline-end' aria-hidden='true' />
+      </a>
+    </Button>
   )
 }

@@ -3,6 +3,7 @@ import '@fontsource/inter/500.css'
 import '@fontsource/inter/600.css'
 import './globals.css'
 
+import { SquarePen } from 'lucide-react'
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 import { Analytics } from '@vercel/analytics/next'
@@ -90,9 +91,17 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                   </a>
                 </Button>
               </nav>
-              <a href='/'>
-                {brand.cta} <span aria-hidden='true'>↗</span>
-              </a>
+              <Button
+                asChild
+                variant='outline'
+                size='sm'
+                className='rounded-full'
+              >
+                <a href='/'>
+                  {brand.cta}
+                  <SquarePen data-icon='inline-end' aria-hidden='true' />
+                </a>
+              </Button>
             </div>
           </footer>
         </div>
