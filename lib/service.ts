@@ -2,6 +2,10 @@ import { createHash, randomUUID } from 'node:crypto'
 
 import { and, eq, exists, isNull, lt, notExists, or, sql } from 'drizzle-orm'
 
+import type { Actor } from './actors'
+import { requireOwnedActor } from './actors'
+import { lockUsageSubjects } from './usage'
+import { generateSummary } from './summary-generation'
 import { DEFAULT_CARD_APPEARANCE, type CardAppearance } from './card-appearance'
 import { cardAppearanceSchema } from './card-appearance-schema'
 import { appUrl } from './config'
@@ -9,6 +13,9 @@ import { captureConversationImages } from './conversation-images'
 import { getDb, type Transaction } from './db'
 import { consumeRateLimit } from './db/rate-limit'
 import {
+  authUsers,
+  savedDrafts,
+  generationOperations,
   publications,
   rateLimits,
   snapshots,
@@ -99,7 +106,18 @@ async function safelyFetch(source: Source): Promise<ProviderResult> {
   }
 }
 
-export async function prepareSource(input: string) {
+export type PreparationContext = {
+  actor: Actor
+  requestKey: string
+  requestSubjectKey?: string
+  draftId?: string
+  onSnapshot?: (source: Source, snapshot: Snapshot) => Promise<void>
+}
+
+export async function prepareSource(
+  input: string,
+  context?: PreparationContext
+) {
   const passage = parsePassageUrl(input, appUrl())
   if (passage) {
     const record = await getPublication(passage.provider, passage.publicationId)
@@ -262,8 +280,64 @@ export async function prepareSource(input: string) {
           eq(snapshots.contentHash, contentHash)
         )
       )
+    // Persist captured input before dispatch, so interrupted work can resume the
+    // same operation without re-fetching or changing its identity.
+    const captured = await db.transaction(async (tx) => {
+      const source = await lockSource(tx, claim.source.id)
+      if (source.preparationLeaseToken !== token)
+        throw new AppError('This preparation was superseded.', 409)
+      const now = new Date()
+      const [inserted] = await tx
+        .insert(snapshots)
+        .values({
+          sourceId: source.id,
+          contentHash,
+          title: conversation.title,
+          messages: conversation.messages,
+          parserVersion: conversation.parserVersion,
+          capturedAt: now
+        })
+        .onConflictDoNothing({
+          target: [snapshots.sourceId, snapshots.contentHash]
+        })
+        .returning()
+      const snapshot = inserted || existing
+      if (!snapshot) throw new Error('Snapshot insert failed')
+      const [updated] = await tx
+        .update(sources)
+        .set({
+          availability: 'available',
+          publicationGeneration:
+            source.publicationGeneration +
+            (source.availability === 'unavailable' ? 1 : 0),
+          latestSnapshotId: snapshot.id,
+          latestSnapshotVerifiedAt: claim.snapshotToSummarize
+            ? source.latestSnapshotVerifiedAt || snapshot.capturedAt
+            : now,
+          updatedAt: now
+        })
+        .where(eq(sources.id, source.id))
+        .returning()
+      return { source: updated!, snapshot }
+    })
+    await context?.onSnapshot?.(captured.source, captured.snapshot)
     const preview = validateGeneratedPreview(
-      existing?.preview || (await suggestPreview(conversation))
+      existing?.preview ||
+        (context
+          ? (
+              await generateSummary(conversation, {
+                ownerId: context.actor.userId,
+                subjectKey: context.actor.subjectKey,
+                requestSubjectKey: context.requestSubjectKey,
+                allowance: context.actor.allowance,
+                requestKey: context.requestKey,
+                inputHash: contentHash,
+                snapshotId: captured.snapshot.id,
+                draftId: context.draftId,
+                draftRevision: context.draftId ? 0 : null
+              })
+            ).preview
+          : await suggestPreview(conversation))
     )
 
     return await db.transaction(async (tx) => {
@@ -325,18 +399,24 @@ export async function prepareSource(input: string) {
       return preparedResponse(updated, snapshot)
     })
   } catch (err) {
-    // A failed DB/model/size operation also releases the lease and backs off.
+    // Account limits and stale/forbidden requests must not lock out other sharers
+    // of this public source. Only shared preparation failures get a cooldown.
+    const callerFailure =
+      err instanceof AppError &&
+      (Boolean(err.details) || [401, 403, 404, 409].includes(err.status))
     await db
       .update(sources)
       .set({
         preparationLeaseToken: null,
         preparationLeaseUntil: null,
-        preparationRetryAfter: new Date(
-          Date.now() +
-            (err instanceof AppError && err.retryAfter
-              ? err.retryAfter * 1000
-              : limits.cooldownMs)
-        )
+        preparationRetryAfter: callerFailure
+          ? null
+          : new Date(
+              Date.now() +
+                (err instanceof AppError && err.retryAfter
+                  ? err.retryAfter * 1000
+                  : limits.cooldownMs)
+            )
       })
       .where(
         and(
@@ -365,8 +445,32 @@ function preparedResponse(
   }
 }
 
-export async function getDraft(token: string) {
+export async function getDraft(token: string, actor?: Actor) {
   const draft = readDraftToken(token)
+  let saved: typeof savedDrafts.$inferSelect | undefined
+  if (draft.savedDraftId) {
+    if (!actor) throw new AppError('Sign in to open this draft.', 401)
+    requireOwnedActor(actor)
+    ;[saved] = await getDb()
+      .select()
+      .from(savedDrafts)
+      .where(
+        and(
+          eq(savedDrafts.id, draft.savedDraftId),
+          eq(savedDrafts.ownerId, actor.userId),
+          isNull(savedDrafts.deletedAt)
+        )
+      )
+    if (!saved) throw new AppError('Draft not found.', 404)
+    if (
+      saved.revision !== draft.revision ||
+      saved.snapshotId !== draft.snapshotId
+    )
+      throw new AppError(
+        'This draft changed. Reload the latest saved revision.',
+        409
+      )
+  }
   const [record] = await getDb()
     .select({ source: sources, snapshot: snapshots })
     .from(snapshots)
@@ -386,17 +490,20 @@ export async function getDraft(token: string) {
       410
     )
   }
-  const copied = draft.publicationId
-    ? await getPublication(record.source.provider, draft.publicationId)
-    : null
+  const copied =
+    !saved && draft.publicationId
+      ? await getPublication(record.source.provider, draft.publicationId)
+      : null
   if (
+    !saved &&
     draft.publicationId &&
     (!copied || copied.disabled || copied.snapshot.id !== draft.snapshotId)
   ) {
     throw new AppError('This passage is unavailable.', 410)
   }
-  const preview =
-    copied?.preview ?? validateGeneratedPreview(record.snapshot.preview)
+  const preview = saved
+    ? { title: saved.title, highlights: saved.highlights }
+    : (copied?.preview ?? validateGeneratedPreview(record.snapshot.preview))
   if (previewHash(preview) !== draft.previewHash) {
     throw new AppError(
       'This preview has changed. Please prepare the source again.',
@@ -406,15 +513,20 @@ export async function getDraft(token: string) {
   return {
     ...record,
     draft,
+    saved,
     preview,
-    appearance: copied?.publication.appearance ?? DEFAULT_CARD_APPEARANCE
+    appearance:
+      saved?.appearance ??
+      copied?.publication.appearance ??
+      DEFAULT_CARD_APPEARANCE
   }
 }
 
 export async function publishPreview(
   token: string,
   selectedAppearance?: CardAppearance,
-  selectedPreview?: unknown
+  selectedPreview?: unknown,
+  actor?: Actor
 ) {
   const parsed = cardAppearanceSchema.optional().safeParse(selectedAppearance)
   if (!parsed.success) throw new AppError('Choose a supported card template.')
@@ -428,14 +540,29 @@ export async function publishPreview(
     )
   const {
     draft,
+    saved,
     snapshot,
     preview: generated,
     appearance: savedAppearance
-  } = await getDraft(token)
+  } = await getDraft(token, actor)
   const appearance = parsed.data ?? savedAppearance
-  const preview = edited?.data ?? generated
+  const preview = validateGeneratedPreview(edited?.data ?? generated)
+  // Legacy tokens retain their original anonymous capability; login never claims them.
+  const dedupeScope = saved?.namespace ?? 'legacy'
+  const ownerId = saved?.ownerId ?? null
+  if (
+    saved &&
+    (previewHash(preview) !==
+      previewHash(validateGeneratedPreview(generated)) ||
+      JSON.stringify(appearance) !== JSON.stringify(savedAppearance))
+  ) {
+    throw new AppError(
+      'Save your reviewed changes before publishing this draft.',
+      409
+    )
+  }
   const db = getDb()
-  const fingerprint = createHash('sha256')
+  const contentFingerprint = createHash('sha256')
     .update(
       JSON.stringify({
         snapshotId: snapshot.id,
@@ -446,7 +573,35 @@ export async function publishPreview(
       })
     )
     .digest('hex')
+  // Preserve the old writer's hash exactly for legacy capabilities. Owned work
+  // has a stable namespace even after its guest account is merged or removed.
+  const fingerprint =
+    dedupeScope === 'legacy'
+      ? contentFingerprint
+      : `${dedupeScope}:${contentFingerprint}`
   const publication = await db.transaction(async (tx) => {
+    if (saved && actor) {
+      await lockUsageSubjects(tx, actor.subjectKey)
+      const [user] = await tx
+        .select()
+        .from(authUsers)
+        .where(eq(authUsers.id, saved.ownerId))
+      const [current] = await tx
+        .select()
+        .from(savedDrafts)
+        .where(eq(savedDrafts.id, saved.id))
+        .for('update')
+      if (
+        !user ||
+        user.deletionRequestedAt ||
+        !current ||
+        current.deletedAt ||
+        current.ownerId !== actor.userId
+      )
+        throw new AppError('Draft not found.', 404)
+      if (current.revision !== saved.revision)
+        throw new AppError('This draft changed. Reload before publishing.', 409)
+    }
     const source = await lockSource(tx, snapshot.sourceId)
     if (
       source.availability !== 'available' ||
@@ -460,6 +615,8 @@ export async function publishPreview(
     const [created] = await tx
       .insert(publications)
       .values({
+        ownerId,
+        dedupeScope,
         sourceId: source.id,
         snapshotId: snapshot.id,
         fingerprint,
@@ -485,6 +642,8 @@ export async function publishPreview(
           .from(publications)
           .where(
             and(
+              eq(publications.dedupeScope, dedupeScope),
+              isNull(publications.deletedAt),
               eq(publications.sourceId, source.id),
               eq(publications.generation, draft.generation),
               eq(publications.fingerprint, fingerprint)
@@ -493,6 +652,11 @@ export async function publishPreview(
       )[0]
     if (!record || record.disabledAt)
       throw new AppError('This passage is unavailable.', 410)
+    if (saved)
+      await tx
+        .update(savedDrafts)
+        .set({ publishedPublicationId: record.id })
+        .where(eq(savedDrafts.id, saved.id))
     return { ...record, provider: source.provider }
   })
   return {
@@ -512,6 +676,7 @@ export async function getPublication(provider: string, id: string) {
     .where(eq(publications.id, id))
   if (!record || record.source.provider !== provider) return null
   const disabled =
+    !!record.publication.deletedAt ||
     !!record.publication.disabledAt ||
     record.source.availability !== 'available'
   const preview = validateGeneratedPreview({
@@ -658,6 +823,12 @@ export async function cleanupPreparations() {
     .where(
       and(
         lt(sources.updatedAt, cutoff),
+        notExists(
+          db
+            .select({ id: savedDrafts.id })
+            .from(savedDrafts)
+            .where(eq(savedDrafts.sourceId, sources.id))
+        ),
         or(
           exists(abandoned),
           notExists(
@@ -674,25 +845,45 @@ export async function cleanupPreparations() {
     await db.transaction(async (tx) => {
       const source = await lockSource(tx, id)
       if (
+        (
+          await tx
+            .select({ id: savedDrafts.id })
+            .from(savedDrafts)
+            .where(eq(savedDrafts.sourceId, id))
+            .limit(1)
+        ).length > 0 ||
         source.updatedAt >= cutoff ||
         (source.preparationLeaseUntil &&
           source.preparationLeaseUntil > new Date())
       )
         return
-      await tx
-        .delete(snapshots)
-        .where(
-          and(
-            eq(snapshots.sourceId, id),
-            lt(snapshots.capturedAt, cutoff),
-            notExists(
-              tx
-                .select({ id: publications.id })
-                .from(publications)
-                .where(eq(publications.snapshotId, snapshots.id))
-            )
+      await tx.delete(snapshots).where(
+        and(
+          eq(snapshots.sourceId, id),
+          lt(snapshots.capturedAt, cutoff),
+          notExists(
+            tx
+              .select({ id: generationOperations.id })
+              .from(generationOperations)
+              .where(
+                and(
+                  eq(generationOperations.snapshotId, snapshots.id),
+                  or(
+                    eq(generationOperations.status, 'reserved'),
+                    eq(generationOperations.status, 'running'),
+                    eq(generationOperations.status, 'uncertain')
+                  )
+                )
+              )
+          ),
+          notExists(
+            tx
+              .select({ id: publications.id })
+              .from(publications)
+              .where(eq(publications.snapshotId, snapshots.id))
           )
         )
+      )
       await tx
         .delete(sources)
         .where(

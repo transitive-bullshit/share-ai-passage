@@ -647,7 +647,12 @@ describe.skipIf(!testUrl)('publication lifecycle with PostgreSQL', () => {
       retryAfter: 30
     })
     const failed = await sourceRecord(url)
-    expect(failed.latestSnapshotId).toBeNull()
+    expect(failed.latestSnapshotId).not.toBeNull()
+    const [captured] = await getDb()
+      .select()
+      .from(snapshots)
+      .where(eq(snapshots.id, failed.latestSnapshotId!))
+    expect(captured!.preview).toBeNull()
     expect(failed.preparationLeaseToken).toBeNull()
     expect(failed.preparationRetryAfter!.getTime()).toBe(
       baseTime.getTime() + 30_000

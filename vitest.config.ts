@@ -12,6 +12,17 @@ export default defineConfig({
     // Override inherited shell/CI credentials before loading test modules.
     env: {
       OPENAI_API_KEY: '',
+      RESEND_API_KEY: '',
+      RESEND_FROM_EMAIL: '',
+      RESEND_REPLY_TO: '',
+      EMAIL_FROM: '',
+      EMAIL_REPLY_TO: '',
+      GOOGLE_CLIENT_ID: '',
+      GOOGLE_CLIENT_SECRET: '',
+      GITHUB_CLIENT_ID: '',
+      GITHUB_CLIENT_SECRET: '',
+      BETTER_AUTH_SECRET: '',
+      BETTER_AUTH_URL: '',
       ANTHROPIC_API_KEY: '',
       AI_GATEWAY_API_KEY: '',
       VERCEL_OIDC_TOKEN: '',

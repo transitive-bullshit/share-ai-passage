@@ -167,9 +167,10 @@ export function LandingDetails() {
           <div>
             <dt>Can I edit or remove it later?</dt>
             <dd>
-              You can’t edit a published passage. To remove it, stop sharing the
-              original conversation. Passage disables its copy once removal is
-              confirmed. Previews on other sites may remain.
+              With an account, use My passages to revise a passage into a new
+              link or delete your own links. Unsharing the original also
+              disables its passages once removal is confirmed. Previews on other
+              sites may remain.
             </dd>
           </div>
         </dl>

@@ -22,7 +22,7 @@ A conversation-sharing service makes public AI conversations more engaging to sh
 
 **Highlight**: A short, grounded summary of a main idea in the conversation, generated initially and refinable during draft review. It is a paraphrase rather than a quotation attributed to a speaker.
 
-**Draft**: A prepared snapshot and preview awaiting publication, with title and highlights the sharer can edit and a card style they can choose. It has no public share URL of its own. _Avoid_: Unpublished publication, editable conversation.
+**Draft**: A prepared snapshot and preview awaiting publication, with title and highlights the sharer can edit and a card style they can choose. It has no public share URL of its own. A saved draft belongs to its sharer and can be resumed or revised until deletion. _Avoid_: Unpublished publication, editable conversation.
 
 **Publication**: An independently addressable share of one snapshot with a fixed reviewed title, highlights, and card style; customer-facing copy must call it a “passage.” Repeated publication of an identical presentation reuses its share URL while that publication remains available. _Avoid_: Source, proxied chat, redirect, editable link.
 
@@ -38,10 +38,18 @@ A conversation-sharing service makes public AI conversations more engaging to sh
 
 **Reader**: The public page displaying a publication's saved conversation, its preview, and a prominent link to the source.
 
-**Sharer**: The person creating a publication by submitting a source URL, reviewing or refining its generated preview, and publishing it. An agent may carry out this workflow on their behalf. The MVP has no accounts or assertion that the sharer owns the source.
+**Sharer**: The person creating a publication by submitting a source URL, reviewing or refining its generated preview, and publishing it. An agent may carry out this workflow on their behalf. A sharer may use a guest session or an account; creating a passage does not assert ownership of its original source.
 
 **Availability check**: A check that the source remains publicly accessible. It does not refresh a publication's snapshot, title, or highlights. _Avoid_: Sync, refresh content.
 
 **Unavailable source**: A source confirmed to have been removed or made inaccessible to public readers. A temporary network error, challenge, or ambiguous parsing failure is not confirmation.
 
-**Disabled publication**: A publication marked unavailable because its source is confirmed unavailable. It is excluded from newly generated readers and social cards; previously cached representations can remain available until revalidation, and copies cached by other platforms are outside the service's control.
+**Disabled publication**: A publication whose conversation, preview, and social card are no longer generated because its source is confirmed unavailable or its owner has deleted it. Previously cached representations can remain available until revalidation, and copies cached by other platforms are outside the service's control.
+
+**Account**: A sharer’s verified identity, saved preferences, drafts, and passages. Several sign-in methods can belong to one account; accounts do not imply ownership of source conversations.
+
+**Guest session**: A temporary sharer identity for account-free creation. Its work and generation usage transfer once when the sharer signs up or signs in.
+
+**Generation allowance**: The number of new AI summaries a sharer may request during a usage period. A usable result consumes allowance even if it is regenerated or never published; cached reuse and manual edits do not.
+
+**Generation operation**: One identifiable request for an AI-generated result, including its pending outcome and any saved result. Retrying that request is distinct from deliberately requesting another generation.

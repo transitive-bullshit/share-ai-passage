@@ -128,7 +128,10 @@ describe('saved social-card appearance routes', () => {
         appearance
       )
     }
-    expect(service.getDraft).toHaveBeenCalledExactlyOnceWith('signed-preview')
+    expect(service.getDraft).toHaveBeenCalledExactlyOnceWith(
+      'signed-preview',
+      expect.objectContaining({ userId: null, allowance: 5 })
+    )
     expect(service.getPublication).toHaveBeenCalledExactlyOnceWith(
       'claude',
       'publication-id'
@@ -174,7 +177,10 @@ describe('saved social-card appearance routes', () => {
       appearance
     )
     expect(renderCard).not.toHaveBeenCalled()
-    expect(service.getDraft).toHaveBeenCalledExactlyOnceWith('signed-preview')
+    expect(service.getDraft).toHaveBeenCalledExactlyOnceWith(
+      'signed-preview',
+      expect.objectContaining({ userId: null, allowance: 5 })
+    )
   })
 
   it.each(['webp', 'html'])(
@@ -203,7 +209,10 @@ describe('saved social-card appearance routes', () => {
         },
         appearance
       )
-      expect(service.getDraft).toHaveBeenCalledExactlyOnceWith('signed-preview')
+      expect(service.getDraft).toHaveBeenCalledExactlyOnceWith(
+        'signed-preview',
+        expect.objectContaining({ userId: null, allowance: 5 })
+      )
       expect(savedPreview).toEqual(original)
     }
   )

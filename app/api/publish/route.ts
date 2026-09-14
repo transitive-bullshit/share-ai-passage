@@ -1,3 +1,4 @@
+import { resolveActor } from '@/lib/actors'
 import { z } from 'zod'
 
 import { cardAppearanceSchema } from '@/lib/card-appearance-schema'
@@ -38,7 +39,8 @@ export async function POST(request: Request) {
     const result = await publishPreview(
       parsed.data.draftToken,
       parsed.data.appearance,
-      preview?.data
+      preview?.data,
+      await resolveActor(request)
     )
     return Response.json(result, { headers: privateHeaders })
   } catch (err) {

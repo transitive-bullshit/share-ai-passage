@@ -45,7 +45,8 @@ describe('reviewed preview publication API', () => {
     expect(service.publishPreview).toHaveBeenCalledExactlyOnceWith(
       'signed-preview',
       undefined,
-      undefined
+      undefined,
+      expect.objectContaining({ userId: null, allowance: 5 })
     )
   })
 
@@ -60,7 +61,8 @@ describe('reviewed preview publication API', () => {
       expect(service.publishPreview).toHaveBeenCalledExactlyOnceWith(
         'signed-preview',
         appearance,
-        undefined
+        undefined,
+        expect.objectContaining({ userId: null, allowance: 5 })
       )
     }
   )
@@ -79,7 +81,11 @@ describe('reviewed preview publication API', () => {
     expect(service.publishPreview).toHaveBeenCalledExactlyOnceWith(
       'signed-preview',
       undefined,
-      { title: 'Café habits', highlights: ['Start small.', 'Repeat each day.'] }
+      {
+        title: 'Café habits',
+        highlights: ['Start small.', 'Repeat each day.']
+      },
+      expect.objectContaining({ userId: null, allowance: 5 })
     )
   })
 
@@ -95,7 +101,8 @@ describe('reviewed preview publication API', () => {
     expect(service.publishPreview).toHaveBeenCalledExactlyOnceWith(
       'signed-preview',
       undefined,
-      preview
+      preview,
+      expect.objectContaining({ userId: null, allowance: 5 })
     )
   })
 
