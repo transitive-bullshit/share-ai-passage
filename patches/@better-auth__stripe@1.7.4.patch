@@ -1,0 +1,11 @@
+diff --git a/dist/index.mjs b/dist/index.mjs
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -913,6 +913,7 @@
+ 					}, {
+ 						items: newPhaseItems,
+ 						start_date: currentPhase.end_date,
++						billing_cycle_anchor: "phase_start",
+ 						proration_behavior: "none"
+ 					}]
+ 				}).catch(async (e) => {
