@@ -15,6 +15,7 @@ import type Stripe from 'stripe'
 
 import { readEntitlements } from '@/lib/billing'
 import { deleteAccountData } from '@/lib/accounts'
+import { getImageUsage } from '@/lib/image-usage'
 import {
   reconcileStripeEvent,
   saveBillingCustomer
@@ -33,6 +34,10 @@ const fixture = vi.hoisted(() => ({
   lines: [] as unknown[],
   sessions: new Map<string, unknown>(),
   schedules: new Map<string, unknown>(),
+  disputes: new Map<string, unknown[]>(),
+  disputeLookupError: null as Error | null,
+  payments: [] as unknown[],
+  charges: new Map<string, unknown>(),
   cancel: vi.fn<() => Promise<unknown>>(),
   expire: vi.fn<() => Promise<unknown>>()
 }))
@@ -57,7 +62,15 @@ vi.mock('stripe', () => {
             )
           )
       }
-      invoicePayments = { list: () => pages([]) }
+      invoicePayments = { list: () => pages(fixture.payments) }
+      charges = { retrieve: async (id: string) => fixture.charges.get(id) }
+      disputes = {
+        list: ({ charge }: { charge: string; limit: number }) =>
+          (async function* () {
+            if (fixture.disputeLookupError) throw fixture.disputeLookupError
+            yield* fixture.disputes.get(charge) ?? []
+          })()
+      }
       subscriptionSchedules = {
         retrieve: async (id: string) => fixture.schedules.get(id)
       }
@@ -170,6 +183,10 @@ describe.skipIf(!testUrl)(
       vi.stubEnv('STRIPE_IMAGE_PACK_PRICE_ID', 'price_pack')
       fixture.sessions.clear()
       fixture.schedules.clear()
+      fixture.disputes.clear()
+      fixture.charges.clear()
+      fixture.payments = []
+      fixture.disputeLookupError = null
       fixture.cancel.mockReset().mockResolvedValue({})
       fixture.expire.mockReset().mockResolvedValue({})
       paidSubscription()
@@ -425,6 +442,212 @@ describe.skipIf(!testUrl)(
         .from(imageCreditGrants)
         .where(eq(imageCreditGrants.id, grant!.id))
       expect(disputed).toMatchObject({ used: 40, revoked: 50, disputed: true })
+    })
+
+    it('restores won-dispute credits when the charge stays disputed and preserves debt and partial refunds', async () => {
+      const owner = await account()
+      const [grant] = await getDb()
+        .insert(imageCreditGrants)
+        .values({
+          userId: owner.id,
+          grantKey: `pack:${randomUUID()}`,
+          kind: 'pack',
+          startsAt: new Date(),
+          allowance: 50,
+          used: 40
+        })
+        .returning()
+      const charge = {
+        id: 'charge_won_fixture',
+        amount: 1000,
+        amount_refunded: 0,
+        disputed: true
+      }
+      const checkout = {
+        id: 'checkout_won_fixture',
+        customer: owner.customer,
+        mode: 'payment',
+        metadata: {
+          kind: 'image-pack',
+          passageUserId: owner.id,
+          passagePackGrantId: grant!.id
+        },
+        currency: 'usd',
+        amount_subtotal: 1000,
+        amount_total: 1000,
+        payment_status: 'paid',
+        line_items: {
+          has_more: false,
+          data: [{ price: { id: 'price_pack' }, quantity: 1 }]
+        },
+        payment_intent: {
+          id: 'intent_won_fixture',
+          status: 'succeeded',
+          latest_charge: charge
+        }
+      }
+      fixture.sessions.set(checkout.id, checkout)
+      fixture.disputes.set(charge.id, [
+        { id: 'du_fixture', status: 'needs_response' }
+      ])
+      const purchase = event(
+        owner.customer,
+        'checkout.session.completed',
+        undefined,
+        checkout.id
+      )
+      await reconcileStripeEvent(purchase)
+      const created = event(owner.customer, 'charge.dispute.created')
+      await reconcileStripeEvent(created)
+      expect(await getImageUsage(owner.id)).toMatchObject({
+        remaining: 0,
+        debt: 30
+      })
+      const readGrant = async () =>
+        (
+          await getDb()
+            .select()
+            .from(imageCreditGrants)
+            .where(eq(imageCreditGrants.id, grant!.id))
+        )[0]!
+      expect(await readGrant()).toMatchObject({
+        used: 40,
+        revoked: 50,
+        debtRecovered: 10
+      })
+
+      // Stripe's charge.disputed flag remains true after the actual dispute is won.
+      fixture.disputes.set(charge.id, [{ id: 'du_fixture', status: 'won' }])
+      const closed = event(owner.customer, 'charge.dispute.closed')
+      await reconcileStripeEvent(closed)
+      expect(charge.disputed).toBe(true)
+      expect(await readGrant()).toMatchObject({
+        used: 40,
+        reserved: 0,
+        revoked: 0,
+        disputed: false,
+        debtRecovered: 10
+      })
+      expect(await getImageUsage(owner.id)).toMatchObject({
+        remaining: 20,
+        purchased: 20,
+        included: 0,
+        debt: 0
+      })
+      await reconcileStripeEvent(closed)
+      await reconcileStripeEvent(created)
+      expect(await getImageUsage(owner.id)).toMatchObject({
+        remaining: 20,
+        debt: 0
+      })
+
+      charge.amount_refunded = 301
+      await reconcileStripeEvent(event(owner.customer, 'charge.refunded'))
+      expect(await readGrant()).toMatchObject({
+        used: 40,
+        revoked: 16,
+        refundedCents: 301,
+        debtRecovered: 10
+      })
+      expect(await getImageUsage(owner.id)).toMatchObject({
+        remaining: 4,
+        debt: 0
+      })
+
+      // A failed authoritative lookup must leave the event retryable, never restore credit.
+      fixture.disputeLookupError = new Error(
+        'fixture dispute lookup unavailable'
+      )
+      const unavailable = event(owner.customer, 'charge.dispute.updated')
+      await expect(reconcileStripeEvent(unavailable)).rejects.toThrow(
+        'fixture dispute lookup unavailable'
+      )
+      expect(await readGrant()).toMatchObject({ revoked: 16, used: 40 })
+      const [record] = await getDb()
+        .select()
+        .from(billingEvents)
+        .where(eq(billingEvents.id, unavailable.id))
+      expect(record).toMatchObject({ processedAt: null, attempts: 1 })
+      fixture.disputeLookupError = null
+      await reconcileStripeEvent(unavailable)
+      expect(await getImageUsage(owner.id)).toMatchObject({
+        remaining: 4,
+        debt: 0
+      })
+
+      // The SDK iterator must inspect later pages, not only the first 100 resolved disputes.
+      fixture.disputes.set(charge.id, [
+        ...Array.from({ length: 100 }, (_, index) => ({
+          id: `du_won_${index}`,
+          status: 'won'
+        })),
+        { id: 'du_later_page', status: 'lost' }
+      ])
+      await reconcileStripeEvent(event(owner.customer, 'charge.dispute.closed'))
+      expect(await readGrant()).toMatchObject({
+        revoked: 50,
+        disputed: true,
+        used: 40
+      })
+      expect(await getImageUsage(owner.id)).toMatchObject({
+        remaining: 0,
+        debt: 30
+      })
+      fixture.disputes.set(charge.id, [])
+      await reconcileStripeEvent(
+        event(owner.customer, 'charge.dispute.updated')
+      )
+      expect(await readGrant()).toMatchObject({ revoked: 50, disputed: true })
+    })
+
+    it('uses authoritative dispute resolution for paid invoice coverage while retaining refund checks', async () => {
+      const owner = await account()
+      const charge = {
+        id: 'invoice_charge_fixture',
+        amount: 1000,
+        amount_refunded: 0,
+        disputed: true
+      }
+      fixture.charges.set(charge.id, charge)
+      fixture.payments = [{ status: 'paid', payment: { charge: charge.id } }]
+      fixture.disputes.set(charge.id, [
+        { id: 'du_invoice', status: 'needs_response' }
+      ])
+      await reconcileStripeEvent(event(owner.customer))
+      expect(await readEntitlements(owner.id)).toMatchObject({
+        paidActions: false,
+        plan: 'free'
+      })
+      fixture.disputes.set(charge.id, [{ id: 'du_invoice', status: 'won' }])
+      await reconcileStripeEvent(event(owner.customer, 'charge.dispute.closed'))
+      expect(charge.disputed).toBe(true)
+      expect(await readEntitlements(owner.id)).toMatchObject({
+        paidActions: true,
+        plan: 'plus'
+      })
+      fixture.disputes.set(charge.id, [
+        { id: 'du_invoice', status: 'warning_closed' }
+      ])
+      await reconcileStripeEvent(event(owner.customer, 'charge.dispute.closed'))
+      expect(await readEntitlements(owner.id)).toMatchObject({
+        paidActions: true
+      })
+      charge.amount_refunded = 301
+      await reconcileStripeEvent(event(owner.customer, 'charge.refunded'))
+      expect(await readEntitlements(owner.id)).toMatchObject({
+        paidActions: true
+      })
+      charge.amount_refunded = 1000
+      await reconcileStripeEvent(event(owner.customer, 'charge.refunded'))
+      expect(await readEntitlements(owner.id)).toMatchObject({
+        paidActions: false
+      })
+      charge.amount_refunded = 0
+      fixture.disputes.set(charge.id, [{ id: 'du_invoice', status: 'lost' }])
+      await reconcileStripeEvent(event(owner.customer, 'charge.dispute.closed'))
+      expect(await readEntitlements(owner.id)).toMatchObject({
+        paidActions: false
+      })
     })
 
     it('keeps late subscription cancellation retryable after account closure', async () => {
