@@ -58,7 +58,7 @@ In saved conversations, blue (`#326DA8`) identifies source links, with small loc
 
 Header and footer creation CTAs use rounded shadcn outline buttons with a trailing Lucide external-link icon. The header uses the default size; the footer uses the more compact small size.
 
-The site footer pairs the Passage wordmark with adjacent X and GitHub icon links and the creation CTA. Use shadcn ghost icon buttons, inherited muted color, neutral hover and focus states, accessible link labels, and a new tab for external destinations.
+The site footer pairs the Passage wordmark, short product description, and creation CTA with grouped Product, Your account, and Developers navigation. Include pricing, My passages, templates, billing, account settings, agent guidance, API keys, FAQs, and source code. On smaller screens, place the introduction above the links and wrap the link groups into two columns. A quiet bottom row carries the brand mantra and X/GitHub links. Use shadcn ghost icon buttons, inherited muted color, neutral hover and focus states, accessible link labels, and a new tab for external destinations.
 
 Use **Inter 400** for body copy and highlights, **500** for headings/actions, and **600** for the wordmark. The site headline scales to 68 px with 1.055 line-height and tight tracking; supporting copy is 17 px/1.75. Keep the existing responsive scale, generous white space, and pill-shaped primary form. The gray second headline line creates hierarchy without another font. The one-pager scales this system to its larger canvas.
 
@@ -88,7 +88,7 @@ Write plainly, warmly, and with respect for the work being shared. Apply [ISO 24
 | Read the passage | Open the published artifact |
 | Copy passage link | Copy its address |
 
-The editor uses “Review your passage” without a period. Style choices show visual thumbnails with accessible names, without visible theme names or preview captions. Title guidance is roughly 10 words at most (usually 4–7), leading with the most distinctive terms; highlights recommend 100 characters. These are soft recommendations, with hard caps of 600 title characters and 1,000 characters per highlight. Sharers can add or remove up to three highlights; blank highlights and empty highlights sections are omitted.
+The editor uses “Review your passage” without a period. Style choices show visual thumbnails with accessible names, without visible theme names or preview captions. Title guidance is roughly 10 words at most (usually 4–7), leading with the most distinctive terms; highlights recommend 100 characters. These are soft recommendations, with hard caps of 600 title characters and 1,000 characters per highlight. Sharers can add or remove up to three highlights; blank highlights and empty highlights sections are omitted. New cards require highlight text of at least 22px on the 1200×630 canvas. When it cannot fit, ask the sharer to shorten the highlights or choose another style; preserve saved wording and existing published-card compatibility.
 
 Share card titles use balanced text wrapping and occupy at most two lines, with an ellipsis when the title overflows. Keep the full title in the saved summary and reader. Card footers show the source attribution or example mantra. Reserve **Read the passage** for the interactive link that opens a published passage; omit it from card templates and their exported images.
 

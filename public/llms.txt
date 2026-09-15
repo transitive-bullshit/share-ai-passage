@@ -2,7 +2,7 @@
 
 > Turn your AI chats into links you’ll be proud to share.
 
-Passage turns public ChatGPT, Codex, and Claude conversations into shareable pages with a concise title, AI-generated highlights, a social preview card, and the saved conversation with its original-source link. No account is required.
+Passage turns public ChatGPT, Codex, and Claude conversations into shareable pages with a concise title, AI-generated highlights, a social preview card, and the saved conversation with its original-source link. No account is required to create. Optional accounts save drafts, passage history, and curated card preferences across devices.
 
 ## Workflow
 
@@ -10,7 +10,7 @@ Passage turns public ChatGPT, Codex, and Claude conversations into shareable pag
 2. Review and edit the generated title, add or remove optional highlights, and choose a card style.
 3. Publish the passage and copy its share link. Preparation alone does not publish.
 
-Published wording is fixed. Private conversations are not supported. Known unsupported media, tools, and artifacts are marked as omissions. Confirmed removal of the source disables its existing passages; availability checks are not instantaneous.
+Published wording is fixed. Owners can revise into a new passage or delete their own links through My passages. Guest creation allows 5 new summary generations per UTC month; verified Free accounts allow 25. Cached reuse, manual edits and publishing do not consume generation allowance. Private conversations are not supported. Known unsupported media, tools, and artifacts are marked as omissions. Confirmed removal of the source disables its existing passages; availability checks are not instantaneous.
 
 ## For agents
 

@@ -1,4 +1,6 @@
 allowBuilds:
+  '@swc/core': true
+  cbor-extract: true
   esbuild: true
   simple-git-hooks: true
 
@@ -8,3 +10,6 @@ minimumReleaseAge: 1440
 
 minimumReleaseAgeExclude:
   - '@fisch0920/config'
+
+patchedDependencies:
+  '@better-auth/stripe@1.7.4': patches/@better-auth__stripe@1.7.4.patch

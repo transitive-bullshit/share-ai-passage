@@ -5,7 +5,13 @@ import './social-card-fonts'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import type { CardAppearance } from '@/lib/card-appearance'
-import { initialCardTextFit, nextCardTextFit } from '@/lib/card-text-fit'
+import type { ResolvedCardDesign } from '@/lib/paid-design'
+import {
+  cardTextIsReadable,
+  cardTextReadabilityMessage,
+  initialCardTextFit,
+  nextCardTextFit
+} from '@/lib/card-text-fit'
 import type { GeneratedPreview, Provider } from '@/lib/domain'
 import { SocialCard } from '@/lib/social-card'
 import { getSocialTemplate } from '@/lib/social-templates'
@@ -15,26 +21,53 @@ export type CardPreviewStatus = {
   attempt: number
   loaded: boolean
   error?: string
+  retryable?: boolean
 }
 
-/** Mount a fresh preview for each draft, template, or retry attempt. */
-export function SocialCardPreview({
-  preview,
-  provider,
-  appearance,
-  attempt = 0,
-  onStatusChange
-}: {
+type SocialCardPreviewProps = {
   preview: GeneratedPreview
   provider: Provider
   appearance: CardAppearance
   attempt?: number
+  resolvedDesign?: ResolvedCardDesign
+  artwork?: { background?: string; logo?: string }
   onStatusChange?: (status: CardPreviewStatus) => void
-}) {
+}
+
+/** Every visual input owns its loading and fit state, including paid fonts/artwork. */
+export function SocialCardPreview(props: SocialCardPreviewProps) {
+  const identity = JSON.stringify([
+    props.preview,
+    props.provider,
+    props.appearance,
+    props.attempt ?? 0,
+    props.resolvedDesign,
+    props.artwork
+  ])
+  return <CardPreviewCanvas key={identity} {...props} />
+}
+
+function CardPreviewCanvas({
+  preview,
+  provider,
+  appearance,
+  attempt = 0,
+  resolvedDesign,
+  artwork,
+  onStatusChange
+}: SocialCardPreviewProps) {
   const canvasRef = useRef<HTMLDivElement>(null)
   const [assetsReady, setAssetsReady] = useState(false)
   const [fit, setFit] = useState(initialCardTextFit)
-  const template = getSocialTemplate(appearance.templateId)
+  const template =
+    resolvedDesign?.template ?? getSocialTemplate(appearance.templateId)
+  const readable =
+    !fit.done || cardTextIsReadable(fit.scale, template.layout.highlightSize)
+
+  // Clear the parent's prior ready state before this new canvas is painted.
+  useLayoutEffect(() => {
+    onStatusChange?.({ appearance, attempt, loaded: false })
+  }, [appearance, attempt, onStatusChange])
 
   useEffect(() => {
     const canvas = canvasRef.current!
@@ -70,12 +103,30 @@ export function SocialCardPreview({
     return () => {
       cancelled = true
     }
-  }, [preview, provider, template, appearance, attempt, onStatusChange])
+  }, [
+    preview,
+    provider,
+    template,
+    appearance,
+    attempt,
+    artwork,
+    onStatusChange
+  ])
 
   useLayoutEffect(() => {
     if (!assetsReady) return
     if (fit.done) {
-      onStatusChange?.({ appearance, attempt, loaded: true })
+      onStatusChange?.(
+        readable
+          ? { appearance, attempt, loaded: true }
+          : {
+              appearance,
+              attempt,
+              loaded: false,
+              error: cardTextReadabilityMessage,
+              retryable: false
+            }
+      )
       return
     }
     const canvas = canvasRef.current!
@@ -93,7 +144,22 @@ export function SocialCardPreview({
         error: 'The card text could not fit within this style.'
       })
     }
-  }, [assetsReady, fit, template, appearance, attempt, onStatusChange])
+  }, [
+    assetsReady,
+    fit,
+    readable,
+    template,
+    appearance,
+    attempt,
+    onStatusChange
+  ])
+
+  if (!readable)
+    return (
+      <div className='card-loading'>
+        Shorten your highlights to preview this card.
+      </div>
+    )
 
   return (
     <div
@@ -106,6 +172,9 @@ export function SocialCardPreview({
           data={{ ...preview, provider }}
           appearance={appearance}
           scale={fit.scale}
+          design={resolvedDesign}
+          background={artwork?.background}
+          logo={artwork?.logo}
         />
       </div>
     </div>

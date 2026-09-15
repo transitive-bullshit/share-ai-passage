@@ -430,3 +430,66 @@ it('renders the expanded hard limits without overflowing the tightest template',
     height: 630
   })
 })
+
+it.each(socialTemplates)(
+  'rejects unreadable new $name cards without changing ordinary or legacy delivery',
+  async (template) => {
+    const appearance = { templateId: template.id }
+    const ordinary = {
+      title: 'A clearer way to share',
+      highlights: ['Keep the useful idea.', 'Make the next step clear.'],
+      provider: 'claude' as const
+    }
+    const legacy = await renderCard(ordinary, appearance)
+    const readable = await renderCard(
+      ordinary,
+      appearance,
+      undefined,
+      undefined,
+      {
+        requireReadableText: true
+      }
+    )
+    expect(Buffer.from(await readable.arrayBuffer())).toEqual(
+      Buffer.from(await legacy.arrayBuffer())
+    )
+    const long = {
+      title: 'The full title is still saved',
+      highlights: ['A'.repeat(1000), 'B'.repeat(1000), 'C'.repeat(637)],
+      provider: 'claude' as const
+    }
+    await expect(
+      renderCard(long, appearance, undefined, undefined, {
+        requireReadableText: true
+      })
+    ).rejects.toMatchObject({
+      status: 400,
+      message: expect.stringContaining('Shorten')
+    })
+    expect(long.highlights.map((highlight) => highlight.length)).toEqual([
+      1000, 1000, 637
+    ])
+    // Existing public image callers intentionally omit the new-work policy.
+    expect((await renderCard(long, appearance)).status).toBe(200)
+  }
+)
+
+it('keeps a maximum saved title and its two-line ellipsis under the new-work readability policy', async () => {
+  const data = {
+    title: 'W'.repeat(600),
+    highlights: ['Keep the full title in the passage.'],
+    provider: 'claude' as const
+  }
+  const template = socialTemplates[0]!
+  await renderCard(data, { templateId: template.id }, undefined, undefined, {
+    requireReadableText: true
+  })
+  const title = renderedLayout().find(
+    ({ node }) => node.className === 'social-card-title'
+  )!
+  expect(title.height).toBeLessThanOrEqual(
+    template.layout.titleSize * template.layout.titleLineHeight * 2 + 1
+  )
+  expect(layoutText()).toContain(data.title)
+  expect(data.title.length).toBe(600)
+})

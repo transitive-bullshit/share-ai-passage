@@ -51,3 +51,8 @@ yarn-error.log*
 
 # Generated from pinned local font packages before dev/build.
 /assets/fonts/
+
+# Generated Workflow routes and local execution history.
+/app/.well-known/workflow/
+/.workflow-data/
+/.swc

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { createHash } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { readFile, stat, writeFile } from 'node:fs/promises'
 import { createInterface } from 'node:readline/promises'
 
@@ -12,6 +12,10 @@ Usage:
   passage.mjs prepare <url> [--out draft.json] [--json] [--base-url URL]
   passage.mjs publish <draft.json> [--json] [--base-url URL]
   passage.mjs share <url> [--out draft.json] [--yes] [--json] [--base-url URL]
+  passage.mjs resume <draft.json> [--json]
+  passage.mjs status <draft.json> [--json]
+  passage.mjs image <draft.json> [--json]
+  passage.mjs apply-image <draft.json> [--json]
   passage.mjs <url> [options]       Alias for share
 
 prepare prints a generated title and highlights without publishing.
@@ -29,8 +33,14 @@ Options:
 
 Draft files contain a private publication token. Their preview is read-only.
 Requests time out after 60 seconds and do not follow redirects.
+Set PASSAGE_API_KEY to use your account defaults and allowances. The key is bound
+to PASSAGE_URL (or the default server). Authenticated prepare/share require --out.
+resume continues a saved operation; status only retrieves saved state. image is
+an explicit paid image generation; apply-image applies its completed result.
 Exit codes: 0 success or unpublished preview, 1 API/network/file error, 2 invalid input.
 `
+let apiKey = ''
+let apiKeyOrigin = ''
 
 class CliError extends Error {
   constructor(message, exitCode = 1, details = {}) {
@@ -41,10 +51,12 @@ class CliError extends Error {
 }
 
 function safeText(value) {
-  return String(value)
-    // oxlint-disable-next-line eslint/no-control-regex -- Strip terminal controls from untrusted output.
-    .replace(/[\u0000-\u001f\u007f-\u009f]/gu, ' ')
-    .slice(0, 500)
+  return (
+    String(value)
+      // oxlint-disable-next-line eslint/no-control-regex -- Strip terminal controls from untrusted output.
+      .replace(/[\u0000-\u001f\u007f-\u009f]/gu, ' ')
+      .slice(0, 500)
+  )
 }
 
 function parseOptions(args) {
@@ -73,7 +85,15 @@ function parseOptions(args) {
   const alias = /^https?:\/\//u.test(positional[0] || '')
   const command = alias ? 'share' : positional.shift()
   if (
-    !['prepare', 'publish', 'share'].includes(command) ||
+    ![
+      'prepare',
+      'publish',
+      'share',
+      'resume',
+      'status',
+      'image',
+      'apply-image'
+    ].includes(command) ||
     positional.length !== 1
   )
     throw new CliError(
@@ -82,7 +102,7 @@ function parseOptions(args) {
     )
   if (options.yes && command !== 'share')
     throw new CliError('--yes is only available with share.', 2)
-  if (options.out && command === 'publish')
+  if (options.out && !['prepare', 'share'].includes(command))
     throw new CliError('--out is only available with prepare or share.', 2)
   return { ...options, command, target: positional[0] }
 }
@@ -212,21 +232,29 @@ async function readResponse(response) {
   }
 }
 
-async function post(baseUrl, route, body) {
+async function post(baseUrl, route, body, method = 'POST') {
+  if (apiKey && baseUrl !== apiKeyOrigin)
+    throw new CliError(
+      'PASSAGE_API_KEY is bound to PASSAGE_URL. Set the intended server explicitly before using this draft or --base-url.',
+      2
+    )
   try {
-    const response = await fetch(new URL(route, baseUrl), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-        Origin: baseUrl,
-        'Sec-Fetch-Site': 'same-origin',
-        'User-Agent': 'Passage CLI/1.0'
-      },
-      body: JSON.stringify(body),
+    const headers = new Headers({
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Origin: baseUrl,
+      'Sec-Fetch-Site': 'same-origin',
+      'User-Agent': 'Passage CLI/2.0'
+    })
+    if (apiKey) headers.set('Authorization', `Bearer ${apiKey}`)
+    const options = {
+      method,
+      headers,
       redirect: 'error',
       signal: AbortSignal.timeout(60_000)
-    })
+    }
+    if (body !== undefined) options.body = JSON.stringify(body)
+    const response = await fetch(new URL(route, baseUrl), options)
     const result = await readResponse(response)
     if (!response.ok) {
       const retryAfter = response.headers.get('retry-after')
@@ -235,6 +263,16 @@ async function post(baseUrl, route, body) {
           ? safeText(result.error)
           : 'The Passage request failed.'
       const details = { status: response.status }
+      if (isRecord(result))
+        for (const key of [
+          'code',
+          'resetAt',
+          'billingUrl',
+          'operationId',
+          'draftId'
+        ])
+          if (typeof result[key] === 'string')
+            details[key] = safeText(result[key])
       if (retryAfter) details.retryAfter = safeText(retryAfter)
       throw new CliError(
         `${message} (HTTP ${response.status})${retryAfter ? ` Retry after: ${safeText(retryAfter)}.` : ''}`,
@@ -298,6 +336,31 @@ async function loadDraft(file) {
       2
     )
   }
+  if (isRecord(value) && value.version === 2) {
+    const uuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu
+    if (
+      !uuid.test(value.requestKey || '') ||
+      typeof value.sourceUrl !== 'string' ||
+      typeof value.baseUrl !== 'string' ||
+      (value.draftId && !uuid.test(value.draftId)) ||
+      (value.imageJobId && !uuid.test(value.imageJobId)) ||
+      (value.imageRequestKey && !uuid.test(value.imageRequestKey))
+    )
+      throw new CliError('The saved account draft is invalid.', 2)
+    baseOrigin(value.baseUrl)
+    parseUrl(value.sourceUrl, 'The draft source URL')
+    if (value.status === 'prepared') {
+      validatePrepared(value, 2)
+      if (
+        !value.draftId ||
+        !Number.isInteger(value.revision) ||
+        value.revision < 0
+      )
+        throw new CliError('The saved account draft is invalid.', 2)
+    }
+    return value
+  }
   if (
     !isRecord(value) ||
     value.version !== 1 ||
@@ -317,9 +380,26 @@ async function loadDraft(file) {
 }
 
 async function publishDraft(draft) {
-  const result = await post(draft.baseUrl, '/api/publish', {
-    draftToken: draft.draftToken
-  })
+  if (draft.version === 2 && !apiKey)
+    throw new CliError('Set PASSAGE_API_KEY to publish this account draft.', 2)
+  if (
+    draft.version === 2 &&
+    (draft.status !== 'prepared' ||
+      draft.imageJobId ||
+      draft.needsImage ||
+      draft.imageGenerationError)
+  )
+    throw new CliError(
+      'Resume and review the saved draft before publishing. Its required image is not ready.'
+    )
+  const result =
+    draft.version === 2
+      ? await post(draft.baseUrl, `/api/drafts/${draft.draftId}/publish`, {
+          revision: draft.revision
+        })
+      : await post(draft.baseUrl, '/api/publish', {
+          draftToken: draft.draftToken
+        })
   if (
     typeof result.publicationId !== 'string' ||
     !result.publicationId ||
@@ -348,10 +428,217 @@ async function publishDraft(draft) {
   }
 }
 
+async function updateAccountFile(file, draft) {
+  await writeFile(file, `${JSON.stringify(draft, null, 2)}\n`, { mode: 0o600 })
+  return draft
+}
+
+function accountResult(saved, result) {
+  if (typeof result.draftId !== 'string')
+    throw new CliError('The server did not return a saved draft ID.')
+  const next = { ...saved, draftId: result.draftId, status: 'pending' }
+  if (result.status === 'ready') {
+    Object.assign(next, validatePrepared(result), {
+      status: 'prepared',
+      revision: result.revision
+    })
+    if (!Number.isInteger(next.revision) || next.revision < 0)
+      throw new CliError('The server returned an invalid draft revision.')
+    next.needsImage =
+      result.design?.recipe?.background?.mode === 'generated' &&
+      !result.design.generatedImage
+    if (!next.needsImage) delete next.imageGenerationError
+  }
+  if (result.imageJobId) next.imageJobId = result.imageJobId
+  if (result.imageGenerationError)
+    next.imageGenerationError = result.imageGenerationError
+  if (result.generationBlock) next.generationBlock = result.generationBlock
+  else delete next.generationBlock
+  if (result.errorMessage) next.errorMessage = result.errorMessage
+  else delete next.errorMessage
+  return next
+}
+
+async function prepareAccountDraft(baseUrl, sourceUrl, file) {
+  if (!file)
+    throw new CliError(
+      'Authenticated prepare/share requires --out draft.json so interrupted requests can resume safely.',
+      2
+    )
+  if (baseUrl !== apiKeyOrigin)
+    throw new CliError(
+      'PASSAGE_API_KEY is bound to PASSAGE_URL. Choose the same server.',
+      2
+    )
+  const saved = {
+    version: 2,
+    status: 'pending',
+    baseUrl,
+    sourceUrl,
+    requestKey: randomUUID()
+  }
+  await saveDraft(file, saved)
+  const response = await post(baseUrl, '/api/drafts', {
+    url: sourceUrl,
+    requestKey: saved.requestKey
+  })
+  return updateAccountFile(file, accountResult(saved, response))
+}
+
+async function continueAccountDraft(saved, file, command) {
+  let draft = saved
+  if (draft.baseUrl !== apiKeyOrigin)
+    throw new CliError(
+      'PASSAGE_API_KEY is bound to PASSAGE_URL. Choose the same server.',
+      2
+    )
+  if (!draft.draftId) {
+    if (command === 'status') return draft
+    if (command !== 'resume')
+      throw new CliError(
+        'Resume this saved preparation before generating or applying an image.',
+        2
+      )
+    draft = accountResult(
+      draft,
+      await post(draft.baseUrl, '/api/drafts', {
+        url: draft.sourceUrl,
+        requestKey: draft.requestKey
+      })
+    )
+    await updateAccountFile(file, draft)
+  } else {
+    const path = `/api/drafts/${draft.draftId}`
+    const response =
+      command === 'resume' &&
+      (draft.status !== 'prepared' ||
+        (!draft.imageJobId && !draft.imageRequestKey))
+        ? await post(draft.baseUrl, `${path}/resume`, {})
+        : await post(draft.baseUrl, path, undefined, 'GET')
+    draft = accountResult(draft, response)
+  }
+  if (command === 'image') {
+    if (draft.status !== 'prepared')
+      throw new CliError(
+        'Wait for the saved summary before generating an image.'
+      )
+    if (
+      draft.imageJobId &&
+      !['failed', 'cancelled', 'succeeded'].includes(draft.imageStatus)
+    )
+      throw new CliError(
+        'An image is already pending. Use resume or status to retrieve that operation.'
+      )
+    if (
+      !draft.imageRequestKey ||
+      draft.imageJobId ||
+      draft.imageStatus === 'succeeded'
+    ) {
+      draft.imageRequestKey = randomUUID()
+      draft.imageRevision = draft.revision
+      delete draft.imageJobId
+      delete draft.imageStatus
+    }
+    delete draft.imageGenerationError
+    await updateAccountFile(file, draft)
+    const job = await post(
+      draft.baseUrl,
+      `/api/drafts/${draft.draftId}/image`,
+      { revision: draft.imageRevision, requestKey: draft.imageRequestKey }
+    )
+    draft.imageJobId = job.id
+    draft.imageStatus = job.status
+    await updateAccountFile(file, draft)
+  } else if (
+    command === 'resume' &&
+    draft.imageRequestKey &&
+    !draft.imageJobId &&
+    draft.imageStatus !== 'succeeded'
+  ) {
+    const job = await post(
+      draft.baseUrl,
+      `/api/drafts/${draft.draftId}/image`,
+      { revision: draft.imageRevision, requestKey: draft.imageRequestKey }
+    )
+    draft.imageJobId = job.id
+  }
+  if (!draft.imageJobId && draft.needsImage) {
+    const operations = await post(
+      draft.baseUrl,
+      `/api/drafts/${draft.draftId}/operations`,
+      undefined,
+      'GET'
+    )
+    if (operations.images?.[0]?.id) draft.imageJobId = operations.images[0].id
+  }
+  if (draft.imageJobId) {
+    const job = await post(
+      draft.baseUrl,
+      `/api/image-jobs/${draft.imageJobId}`,
+      undefined,
+      'GET'
+    )
+    draft.imageStatus = job.status
+    if (job.error) draft.imageGenerationError = job.error
+    if (command === 'apply-image') {
+      if (job.status !== 'succeeded' || (!job.applied && !job.canApply))
+        throw new CliError('This image is not available to apply.')
+      const applied = await post(
+        draft.baseUrl,
+        `/api/image-jobs/${draft.imageJobId}/apply`,
+        { revision: saved.revision }
+      )
+      draft = accountResult(draft, applied.draft)
+      delete draft.imageJobId
+    } else if (job.applied) {
+      draft = accountResult(
+        draft,
+        await post(
+          draft.baseUrl,
+          `/api/drafts/${draft.draftId}`,
+          undefined,
+          'GET'
+        )
+      )
+      delete draft.imageJobId
+    }
+  } else if (command === 'apply-image')
+    throw new CliError('There is no saved image operation to apply.', 2)
+  return updateAccountFile(file, draft)
+}
+
 async function main() {
   const options = parseOptions(process.argv.slice(2))
   if (options.help) {
     process.stdout.write(help)
+    return
+  }
+  apiKey = process.env.PASSAGE_API_KEY?.trim() || ''
+  apiKeyOrigin = baseOrigin(process.env.PASSAGE_URL || defaultBaseUrl)
+  if (apiKey && /\s/u.test(apiKey))
+    throw new CliError('PASSAGE_API_KEY must contain one API key.', 2)
+
+  if (['resume', 'status', 'image', 'apply-image'].includes(options.command)) {
+    if (!apiKey)
+      throw new CliError('Set PASSAGE_API_KEY to access account drafts.', 2)
+    const draft = await loadDraft(options.target)
+    if (draft.version !== 2)
+      throw new CliError('Use an account draft saved with PASSAGE_API_KEY.', 2)
+    const result = await continueAccountDraft(
+      draft,
+      options.target,
+      options.command
+    )
+    if (options.json) printJson(result)
+    else if (result.preview) {
+      displayPreview(result)
+      process.stdout.write(
+        `${result.imageJobId ? 'Image generation is pending.' : 'Draft retrieved. Nothing has been published.'}\n`
+      )
+    } else
+      process.stdout.write(
+        'Draft preparation is pending. Its saved operation can be resumed.\n'
+      )
     return
   }
 
@@ -374,14 +661,18 @@ async function main() {
   )
   const sourceUrl = options.target.trim()
   parseUrl(sourceUrl, 'The conversation URL')
-  const draft = {
-    version: 1,
-    status: 'prepared',
-    baseUrl,
-    ...validatePrepared(await post(baseUrl, '/api/prepare', { url: sourceUrl }))
-  }
-  if (options.out) await saveDraft(options.out, draft)
-  if (!options.json) displayPreview(draft)
+  let draft = apiKey
+    ? await prepareAccountDraft(baseUrl, sourceUrl, options.out)
+    : {
+        version: 1,
+        status: 'prepared',
+        baseUrl,
+        ...validatePrepared(
+          await post(baseUrl, '/api/prepare', { url: sourceUrl })
+        )
+      }
+  if (options.out && !apiKey) await saveDraft(options.out, draft)
+  if (!options.json && draft.preview) displayPreview(draft)
 
   let publish = options.command === 'share' && options.yes
   if (
@@ -406,6 +697,14 @@ async function main() {
   }
 
   if (publish) {
+    if (draft.version === 2 && draft.imageJobId) {
+      const deadline = Date.now() + 5 * 60_000
+      while (draft.imageJobId && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 3000))
+        draft = await continueAccountDraft(draft, options.out, 'status')
+        if (['failed', 'cancelled'].includes(draft.imageStatus)) break
+      }
+    }
     const result = await publishDraft(draft)
     if (options.json) printJson(result)
     else process.stdout.write(`Published: ${result.shareUrl}\n`)

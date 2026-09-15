@@ -52,6 +52,56 @@ The app derives its public origin from Portless in development, Vercel system va
 
 The public `/llms.txt` is served from `public/llms.txt`. Keep its product summary, supported link formats, and documentation links aligned with current behavior.
 
+## Accounts development
+
+Apply pending migrations before running the accounts app. Better Auth uses the existing database with `BETTER_AUTH_SECRET` (or the stable `APP_SECRET` fallback) and an optional explicit `BETTER_AUTH_URL` matching the local or hosted origin. Google/GitHub require their client IDs and secrets; email signup, verification and recovery require `RESEND_API_KEY` and a verified `RESEND_FROM_EMAIL`. See [.env.example](.env.example) and the [service setup checklist](docs/THIRD_PARTY_SETUP.md). The earlier `EMAIL_FROM`/`EMAIL_REPLY_TO` names remain accepted as aliases. Missing providers are visibly unavailable; guest creation still works with local PostgreSQL and no email credentials.
+
+Use `/account` for account settings and `/passages` for saved work. The browser starts its guest session only on creation. Authenticated draft endpoints live under `/api/drafts`; mutations require the same origin and JSON. `GET /api/account/usage` returns `allowance`, `used`, `reserved`, `remaining` and `resetAt`. New summaries consume the guest/Free calendar-month allowance; cached work and publishing remain available at exhaustion. Generation limit errors include `code` (`SUMMARY_LIMIT` or `FREE_BUDGET_LIMIT`) and `resetAt`.
+
+The anonymous CLI remains supported. Account API keys, default templates and resumable jobs are implemented; see [authenticated CLI](#authenticated-cli). New metered summary calls require the supported `gpt-5.4-nano` task bounds. Changing a model or prompt/input limit requires updating its conservative cost policy before exposing it through the app.
+
+### Google sign-in with local HTTPS
+
+Google rejects `.localhost` subdomains. Follow the [Portless Google OAuth guide](https://github.com/vercel-labs/portless/tree/main/examples/google-oauth) using a hostname under the owned domain. The isolated accounts setup below preserves the normal development proxy and routes HTTPS port 8443 to the accounts backend on `127.0.0.1:3107`.
+
+The exact Vercel DNS record `share-ai-passage-accounts-afc0.local` under `share-ai-passage.com` is an **A** record pointing to `127.0.0.1`, TTL **60**. DNS resolution and trusted HTTPS serving have been verified. Current client provisioning and completed sign-in checks are recorded in the [production guide](docs/PRODUCTION.md#google-development-with-portless).
+
+Run from the accounts checkout:
+
+```sh
+(
+  export PORTLESS_STATE_DIR="$HOME/.portless-passage-accounts-https"
+  export PORTLESS_PORT=8443 PORTLESS_HTTPS=1 PORTLESS_LAN=0 PORTLESS_SYNC_HOSTS=0
+  pnpm exec portless proxy start --port 8443 --https --tld local.share-ai-passage.com
+  pnpm exec portless alias share-ai-passage-accounts-afc0 3107
+)
+```
+
+Portless generates a local CA and attempts to trust it; approve the macOS authorization dialog if requested. Keep hosts sync disabled: separate proxies otherwise replace the same managed `/etc/hosts` block. DNS supplies the mapping here. Do not stop the shared proxy or run global hosts sync/cleanup for this setup.
+
+The static alias does not configure the backend's origin. Set both values in this checkout's ignored `.env.local`, alongside its isolated development database and separate **development** OAuth credentials:
+
+```dotenv
+PORTLESS_URL=https://share-ai-passage-accounts-afc0.local.share-ai-passage.com:8443
+BETTER_AUTH_URL=https://share-ai-passage-accounts-afc0.local.share-ai-passage.com:8443
+```
+
+Restart only that backend with these settings. To start it after preparing the bundled fonts, use `pnpm exec next dev --hostname 127.0.0.1 --port 3107`. Keep the main checkout on its existing `pnpm dev` workflow.
+
+Register the HTTPS origin above as the development Google client's authorized JavaScript origin. Its exact redirect URI is that origin plus `/api/auth/callback/google`; add `/api/auth/callback/github` to the development GitHub app when enabling GitHub on this origin too. Keep the scheme, hostname and port identical to the backend settings, and verify each complete sign-in roundtrip. Use [service setup notes](docs/PRODUCTION.md) for current provisioning status; production credentials stay in production.
+
+## Paid-feature development
+
+Gate A is approved; Phase 2 is implemented locally and still awaiting Gate B. No accounts/paid production migration or deployment has run. Development Stripe/R2 setup and representative service and browser checks are complete; see the [review](docs/PAID_REVIEW.md) for the verified scope and remaining billing, hosted, production and model qualification gates. The [handoff](docs/ACCOUNTS_PAID_FEATURES_PLAN.md) and [measured economics](docs/research/PHASE2_MEASURED_ECONOMICS.md) record the plan and cost evidence. The pending 25-call qualification batch requires the approval already requested; ordinary tests do not spend its budget.
+
+Use a migrated development database and the environment-specific values in [.env.example](.env.example):
+
+- Stripe sandbox checkout requires `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` and all four subscription price IDs; packs also require `STRIPE_IMAGE_PACK_PRICE_ID`. Keep `STRIPE_LIVE_CHECKOUT_ENABLED=false` until Gate B.
+- R2 accepts `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_API_ENDPOINT`, `S3_BUCKET_NAME` (public cards), a required different `S3_PRIVATE_BUCKET_NAME`, and `S3_PUBLIC_URL`. For US jurisdiction use `https://<account-id>.us.r2.cloudflarestorage.com`; both buckets must use that jurisdiction. Existing `R2_*` names remain supported and take precedence per setting. `R2_ACCOUNT_ID` is optional when the endpoint identifies the account. Uploads, references and draft artwork remain private. The public bucket can use its `r2.dev` URL during development while its custom domain is pending; production delivery needs the custom domain. See the [R2 setup and alias mapping](docs/PRODUCTION.md#r2).
+- Keep `IMAGE_GENERATION_ENABLED=0` until qualification. Enabling new work requires `1` and an explicit positive `IMAGE_AI_MONTHLY_BUDGET_USD`. `IMAGE_AI_MODEL` pins the model snapshot; `IMAGE_GENERATION_CONCURRENCY` defaults to 4. Images use `OPENAI_API_KEY`. Monetary reservations are operational estimates, not provider-enforced caps; accepted jobs retain their saved configuration.
+
+The normal Next.js server includes `withWorkflow()` and its generated routes. A local queue/step roundtrip passed without a provider call; managed Vercel Workflow, R2 persistence and cloud charges still require hosted checks. See [production guidance](docs/PRODUCTION.md#paid-services-and-launch-gate) for deployment configuration and [generation reconciliation](docs/GENERATION_RECONCILIATION.md) for safe status, recovery and explicit outcome/cost repairs. Paid submission never retries automatically.
+
 ## CLI and agent skill
 
 Install the portable [passage-share skill](.agents/skills/passage-share/SKILL.md) with the [skills CLI](https://skills.sh):
@@ -83,9 +133,25 @@ API clients can send an optional `preview: { title, highlights }` with the exist
 
 `node .agents/skills/passage-share/scripts/passage.mjs share '<public-url>'` displays the preview and asks before publishing in a terminal. Noninteractive use prepares only unless `--yes` is supplied. Use `--json` for structured output and `node .agents/skills/passage-share/scripts/passage.mjs --help` for options.
 
+### Authenticated CLI
+
+Create/revoke a named key at `/account/keys`. Keep `PASSAGE_API_KEY` in your local environment; keys are shown once and never saved in draft files. Set `PASSAGE_URL` to that key’s service origin. The CLI rejects a different `--base-url` or saved-draft origin before sending the key and refuses redirects. Billing and account-security administration remain in the browser.
+
+Authenticated `prepare`/`share` require `--out`: the private recovery file is written before dispatch and retains request/job identity. New creation uses account defaults and allowances; a generated default background can start a paid image job after the summary. Use `resume` to continue saved work and `status` to retrieve it without starting fresh work. Resuming an untouched draft can start its original template image if preparation stopped before scheduling it. It reuses an existing request, including failed or uncertain work; only `image` explicitly requests another generation. Use `status` for repeated polling. Each invocation retrieves current state and returns.
+
+```sh
+# With PASSAGE_URL and PASSAGE_API_KEY already configured locally:
+node .agents/skills/passage-share/scripts/passage.mjs prepare '<public-url>' --out work/account-draft.json --json
+node .agents/skills/passage-share/scripts/passage.mjs resume work/account-draft.json --json
+node .agents/skills/passage-share/scripts/passage.mjs status work/account-draft.json --json
+node .agents/skills/passage-share/scripts/passage.mjs publish work/account-draft.json --json
+```
+
+`image <draft.json>` explicitly requests another paid generation. `apply-image <draft.json>` applies a completed result when an intervening edit prevented automatic application; neither command publishes. Customize templates and reviewed text in the webapp, then refresh the saved draft. `--json` returns structured errors with available `code`, `resetAt`, `billingUrl` and operation IDs. Requests time out after 60 seconds; recover the saved operation after interruption rather than preparing a replacement. Anonymous drafts and explicit `publish`/`share --yes` behavior remain supported.
+
 ## Fork an existing passage
 
-Paste a Passage reader URL into the same creation form or pass it to the CLI's `prepare` command. The server reads the existing publication from its database and prepares a fork with the saved title, highlights, and card style. It reuses that publication's exact snapshot, even if a newer source capture exists, and preserves the original provider link. No provider or AI request runs.
+Paste a Passage reader URL into the same creation form or pass it to the CLI's `prepare` command. The server reads the existing publication from its database and prepares a fork with the saved title and highlights. Owned revisions and legacy anonymous CLI forks preserve the saved card style; browser forks of someone else’s passage use the new sharer’s defaults. It reuses that publication's exact snapshot, even if a newer source capture exists, and preserves the original provider link. No provider fetch or summary generation runs. A new sharer’s generated default background can still start an image generation under their account allowance.
 
 Edit and publish normally. Even an unchanged fork receives a distinct URL from its parent; repeated publication of the same fork is idempotent. Missing or disabled passages cannot be forked, and source removal affects forks too. Production www/apex links and the configured application origin are accepted; the referenced publication must exist in the current deployment's database.
 
@@ -97,7 +163,7 @@ For API consumers, preparation returns an optional `appearance` for a fork. Omit
 - The reader preserves extracted text and Markdown, folds reasoning/activity by default, highlights and copies fenced code, and supports wide desktop tables with contained mobile scrolling. Links use local favicon glyphs. Unsupported media, tools, and artifacts retain explicit omission markers. Provider HTML is not executed and saved conversation media is not loaded. Published chat links have optional hover previews with remote artwork; see the [message model](docs/MESSAGE_MODEL.md#reader-link-previews).
 - Removing public access at the provider initiates removal here. Availability checks run lazily after seven days or through the rate-limited manual check. Confirmed removal disables all existing passages and cards from that source; temporary failures leave them available.
 - External platforms may retain previews they already fetched. Disabled content remains stored but is not served. Old links stay disabled if the source returns.
-- There are no accounts, editors for published passages, private deletion links, or public discovery directory.
+- Accounts provide saved drafts, My passages, curated preference sync and owner deletion. Published passages remain immutable; revise them into a new URL. Public discovery and private deletion links are not part of this release.
 - Available production passages and their public cards may appear in search results. Preview/staging/local builds, drafts, and unavailable content stay `noindex`. Page canonicals, social metadata, and safely serialized JSON-LD describe the same saved presentation. See [hosting configuration](docs/PRODUCTION.md#hosting-configuration) for the environment policy.
 
 See [product behavior and limits](docs/MVP_PLAN.md), [supported extraction](docs/EXTRACTION.md), and the [message model](docs/MESSAGE_MODEL.md).
@@ -132,13 +198,13 @@ Inspect the final saved HTML samples after fonts and artwork load alongside thei
 
 ## Marketing examples
 
-The homepage and two [README previews](readme.md#example-passages) feature **Give your public AI chats a facelift**, with approved highlights and no trailing periods. [lib/marketing-examples.ts](lib/marketing-examples.ts) records the real public Codex source, reviewed wording, and production publication URLs for Margin notes and Midnight observatory. Both cards link directly to database-backed production readers. The legacy example reader URLs redirect to those publications; local example image routes render the same wording and styles without database access. Keep the provider source public so the publications remain available. Changes to published wording require new publications and updated URLs.
+The homepage and [saved example cards](docs/readme-assets/example-passage-01.webp) feature **Give your public AI chats a facelift**, with approved highlights and no trailing periods. [lib/marketing-examples.ts](lib/marketing-examples.ts) records the real public Codex source, reviewed wording, and production publication URLs for Margin notes and Midnight observatory. Both cards link directly to database-backed production readers. The legacy example reader URLs redirect to those publications; local example image routes render the same wording and styles without database access. Keep the provider source public so the publications remain available. Changes to published wording require new publications and updated URLs.
 
 The landing-page X comparison uses the committed `public/images/landing-passage-card.webp`, generated from `featuredExample`. It loads eagerly with high fetch priority through a static image import, bypassing both the dynamic Takumi route and runtime image optimization. After changing the featured example or card design, regenerate it with `pnpm fonts:prepare && pnpm exec tsx scripts/build-landing-card.ts` and visually review the output. Sharp is used only during asset generation.
 
 After updating the reviewed example, fetch these card routes from the normal local development origin:
 
-| Route | README image |
+| Route | Saved example image |
 | --- | --- |
 | `/examples/share-your-ai-chats/image` | `docs/readme-assets/example-passage-01.webp` |
 | `/examples/share-your-ai-chats-after-dark/image` | `docs/readme-assets/example-passage-02.webp` |

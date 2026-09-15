@@ -9,6 +9,8 @@ import type { GeneratedPreview } from './domain'
 const draftSchema = z.object({
   snapshotId: z.uuid(),
   publicationId: z.uuid().optional(),
+  savedDraftId: z.uuid().optional(),
+  revision: z.number().int().nonnegative().optional(),
   generation: z.number().int().nonnegative(),
   previewHash: z.string().regex(/^[a-f0-9]{64}$/),
   expiresAt: z.number().int().positive()
@@ -23,12 +25,14 @@ export function createDraftToken(
   generation: number,
   preview: GeneratedPreview,
   now = Date.now(),
-  publicationId?: string
+  publicationId?: string,
+  saved?: { savedDraftId: string; revision: number }
 ) {
   const payload = Buffer.from(
     JSON.stringify({
       snapshotId,
       publicationId,
+      ...saved,
       generation,
       previewHash: previewHash(preview),
       expiresAt: now + 24 * 60 * 60 * 1000

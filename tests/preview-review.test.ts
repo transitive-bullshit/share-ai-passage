@@ -348,3 +348,137 @@ it('removes every highlight and restores an optional empty field', async () => {
   await finishArtwork('margin-notes')
   expect(publishButton().disabled).toBe(false)
 })
+
+it('resets readiness and text fitting when paid font or artwork inputs change within the same style', async () => {
+  const { SocialCardPreview } = await import('@/components/social-card-preview')
+  const { defaultTemplateRecipe, resolveCardDesign } =
+    await import('@/lib/paid-design')
+  const onStatusChange =
+    vi.fn<
+      (
+        status: import('@/components/social-card-preview').CardPreviewStatus
+      ) => void
+    >()
+  const appearance: CardAppearance = { templateId: 'margin-notes' }
+  const recipe = defaultTemplateRecipe()
+  const firstDesign = resolveCardDesign(appearance, {
+    version: 1,
+    recipe,
+    fromTemplate: null,
+    generatedImage: null
+  })!
+  const props = {
+    preview: draft.preview,
+    provider: draft.provider,
+    appearance,
+    onStatusChange
+  }
+  await act(async () =>
+    root.render(
+      createElement(SocialCardPreview, {
+        ...props,
+        resolvedDesign: firstDesign
+      })
+    )
+  )
+  await finishArtwork('margin-notes')
+  expect(onStatusChange).toHaveBeenLastCalledWith(
+    expect.objectContaining({ loaded: true })
+  )
+  const nextDesign = resolveCardDesign(appearance, {
+    version: 1,
+    recipe: {
+      ...recipe,
+      fontPairing: 'dm-sans-inter',
+      background: {
+        mode: 'uploaded',
+        assetId: '00000000-0000-4000-8000-000000000001'
+      }
+    },
+    fromTemplate: null,
+    generatedImage: null
+  })!
+  await act(async () =>
+    root.render(
+      createElement(SocialCardPreview, {
+        ...props,
+        resolvedDesign: nextDesign,
+        artwork: { background: '/fixture-new-artwork.webp' }
+      })
+    )
+  )
+  expect(onStatusChange).toHaveBeenLastCalledWith(
+    expect.objectContaining({ loaded: false })
+  )
+  expect(loadFont).toHaveBeenCalledWith(
+    '700 16px "DM Sans"',
+    expect.any(String)
+  )
+  const nextArtwork = imageDecodes.filter(
+    (image) => image.source === '/fixture-new-artwork.webp'
+  )
+  expect(nextArtwork.length).toBeGreaterThan(0)
+  await act(async () => {
+    for (const image of nextArtwork) image.resolve()
+  })
+  expect(onStatusChange).toHaveBeenLastCalledWith(
+    expect.objectContaining({ loaded: true })
+  )
+  await act(async () =>
+    root.render(
+      createElement(SocialCardPreview, {
+        ...props,
+        resolvedDesign: nextDesign,
+        artwork: { background: '/fixture-renewed-artwork.webp' }
+      })
+    )
+  )
+  expect(onStatusChange).toHaveBeenLastCalledWith(
+    expect.objectContaining({ loaded: false })
+  )
+  await act(async () => {
+    for (const image of nextArtwork) image.resolve()
+  })
+  expect(onStatusChange).toHaveBeenLastCalledWith(
+    expect.objectContaining({ loaded: false })
+  )
+  await act(async () => {
+    for (const image of imageDecodes.filter(
+      (image) => image.source === '/fixture-renewed-artwork.webp'
+    ))
+      image.resolve()
+  })
+  expect(onStatusChange).toHaveBeenLastCalledWith(
+    expect.objectContaining({ loaded: true })
+  )
+})
+
+it('keeps oversized text saved in the editor and requires shortening instead of publishing tiny highlights', async () => {
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
+    function (this: HTMLElement) {
+      let height = 630
+      if (this.classList.contains('social-card-copy')) {
+        const title = this.querySelector<HTMLElement>('.social-card-title')!
+        const scale = Number.parseFloat(title.style.fontSize) / 68
+        const long = (this.textContent?.length ?? 0) > 500
+        height = long ? 780 * scale : 200
+      }
+      return new DOMRect(0, 0, 1200, height)
+    }
+  )
+  await act(async () => root.render(createElement(ReviewHarness)))
+  const full = 'A'.repeat(1000)
+  await editField('summary-highlight-1', full)
+  await finishArtwork('margin-notes')
+  expect(publishButton().disabled).toBe(true)
+  expect(container.textContent).toContain('Shorten the highlights')
+  expect(
+    container.querySelector<HTMLTextAreaElement>('#summary-highlight-1')?.value
+  ).toBe(full)
+  expect(container.textContent).not.toContain('Try preview again')
+  await editField('summary-highlight-1', 'A shorter highlight.')
+  await finishArtwork('margin-notes')
+  expect(publishButton().disabled).toBe(false)
+  expect(container.textContent).not.toContain('Shorten the highlights')
+  expect(requests).not.toHaveBeenCalled()
+})

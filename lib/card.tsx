@@ -7,8 +7,15 @@ import { Renderer } from 'takumi-js/node'
 
 import { brand } from './brand'
 import type { CardAppearance } from './card-appearance'
+import type { ResolvedCardDesign } from './paid-design'
 import { cardFonts, type CardFont } from './card-fonts'
-import { initialCardTextFit, nextCardTextFit } from './card-text-fit'
+import {
+  cardTextIsReadable,
+  cardTextReadabilityMessage,
+  initialCardTextFit,
+  nextCardTextFit
+} from './card-text-fit'
+import { AppError } from './errors'
 import { privateHeaders } from './http'
 import { SocialCard, footerText, type CardData } from './social-card'
 import { getSocialTemplate, type SocialTemplate } from './social-templates'
@@ -65,20 +72,51 @@ function copyLayout(
   }
 }
 
-async function prepareCard(data: CardData, appearance?: CardAppearance) {
+export type CardArtwork = { background?: string; logo?: string }
+export type CardRenderOptions = { requireReadableText?: boolean }
+async function prepareCard(
+  data: CardData,
+  appearance?: CardAppearance,
+  design?: ResolvedCardDesign,
+  artwork: CardArtwork = {},
+  policy: CardRenderOptions & { measureOnly?: boolean } = {}
+) {
+  if (
+    !policy.measureOnly &&
+    !data.disabled &&
+    design?.background.kind === 'asset' &&
+    !artwork.background
+  )
+    throw new Error('The selected card background is missing')
+  if (
+    !policy.measureOnly &&
+    !data.disabled &&
+    design?.branding.mode === 'custom' &&
+    !artwork.logo
+  )
+    throw new Error('The selected card logo is missing')
+  for (const value of Object.values(artwork))
+    if (value && !value.startsWith('data:image/webp;base64,'))
+      throw new Error('Card artwork must be trusted normalized image bytes')
   const text = data.disabled
     ? 'This passage is unavailable The original is no longer publicly available. Its saved conversation and preview have been disabled. Saved passage Original unavailable Passage'
-    : `${data.title} … HIGHLIGHTS ${data.highlights.join(' ')} ${data.example ? 'Example passage ' : ''}${footerText(data)} ${brand.name} 01 02 03`
+    : `${data.title} … HIGHLIGHTS ${data.highlights.join(' ')} ${data.example ? 'Example passage ' : ''}${footerText(data, design?.branding)} ${design?.branding.mode === 'custom' ? (design.branding.name ?? '') : brand.name} 01 02 03`
   const template =
-    appearance && !data.disabled
-      ? getSocialTemplate(appearance.templateId)
+    !data.disabled && (design || appearance)
+      ? (design?.template ?? getSocialTemplate(appearance!.templateId))
       : undefined
   const [fonts, background] = await Promise.all([
     cardFonts(
       text,
       template ? [template.font.title, template.font.body] : undefined
     ),
-    template ? cardBackground(template) : Promise.resolve('')
+    template && !policy.measureOnly
+      ? design?.background.kind === 'asset'
+        ? Promise.resolve(artwork.background!)
+        : design?.background.kind === 'pending'
+          ? Promise.resolve('')
+          : cardBackground(template)
+      : Promise.resolve('')
   ])
   await registerFonts(fonts)
   // Pin fallbacks per render so earlier requests cannot change glyph selection.
@@ -107,6 +145,8 @@ async function prepareCard(data: CardData, appearance?: CardAppearance) {
         appearance={appearance}
         background={background}
         scale={fit.scale}
+        design={design}
+        logo={artwork.logo}
       />
     )
     const { node, css } = await fromJsx(element)
@@ -118,12 +158,30 @@ async function prepareCard(data: CardData, appearance?: CardAppearance) {
     }
     fit = nextCardTextFit(fit, copy.height <= maxHeight)
   }
+  if (
+    policy.requireReadableText &&
+    !data.disabled &&
+    !cardTextIsReadable(fit.scale, template?.layout.highlightSize ?? 28)
+  )
+    throw new AppError(cardTextReadabilityMessage, 400)
   if (fitted) return fitted
   throw new Error('Social card text could not fit within its template')
 }
 
-export async function renderCard(data: CardData, appearance?: CardAppearance) {
-  const { node, css, options } = await prepareCard(data, appearance)
+export async function renderCard(
+  data: CardData,
+  appearance?: CardAppearance,
+  design?: ResolvedCardDesign,
+  artwork?: CardArtwork,
+  policy?: CardRenderOptions
+) {
+  const { node, css, options } = await prepareCard(
+    data,
+    appearance,
+    design,
+    artwork,
+    policy
+  )
   const webp = await render(node, {
     ...options,
     css,
@@ -148,9 +206,18 @@ function fontCss(font: CardFont) {
 /** Same fitted JSX and bundled assets, with browser layout and no image encoding. */
 export async function renderCardPreview(
   data: CardData,
-  appearance?: CardAppearance
+  appearance?: CardAppearance,
+  design?: ResolvedCardDesign,
+  artwork?: CardArtwork,
+  policy?: CardRenderOptions
 ) {
-  const { element, fonts } = await prepareCard(data, appearance)
+  const { element, fonts } = await prepareCard(
+    data,
+    appearance,
+    design,
+    artwork,
+    policy
+  )
   const html = await renderToReadableStream(
     <html lang='en'>
       <head>
@@ -170,4 +237,22 @@ export async function renderCardPreview(
   return new Response(html, {
     headers: { ...privateHeaders, 'Content-Type': 'text/html; charset=utf-8' }
   })
+}
+
+/** Validate new work without encoding an image or reading any private artwork. */
+export async function assertReadableCardText(
+  data: CardData,
+  appearance: CardAppearance,
+  design?: ResolvedCardDesign
+) {
+  await prepareCard(
+    data,
+    appearance,
+    design,
+    {},
+    {
+      requireReadableText: true,
+      measureOnly: true
+    }
+  )
 }
