@@ -23,6 +23,17 @@ const provider = vi.hoisted(() => ({
   retrieveSubscription: vi.fn<(id: string) => Promise<unknown>>(),
   listSubscriptions: vi.fn<() => Promise<unknown>>(),
   retrievePrice: vi.fn<(id: string) => Promise<unknown>>(),
+  createSchedule:
+    vi.fn<
+      (input: Stripe.SubscriptionScheduleCreateParams) => Promise<unknown>
+    >(),
+  updateSchedule:
+    vi.fn<
+      (
+        id: string,
+        input: Stripe.SubscriptionScheduleUpdateParams
+      ) => Promise<unknown>
+    >(),
   createPortal:
     vi.fn<
       (input: Stripe.BillingPortal.SessionCreateParams) => Promise<unknown>
@@ -40,6 +51,10 @@ vi.mock('@/lib/billing-config', async (original) => {
         provider.listSubscriptions as unknown as typeof client.subscriptions.list
       client.prices.retrieve =
         provider.retrievePrice as typeof client.prices.retrieve
+      client.subscriptionSchedules.create =
+        provider.createSchedule as typeof client.subscriptionSchedules.create
+      client.subscriptionSchedules.update =
+        provider.updateSchedule as typeof client.subscriptionSchedules.update
       client.billingPortal.sessions.create =
         provider.createPortal as typeof client.billingPortal.sessions.create
       return client
@@ -296,6 +311,92 @@ describe.skipIf(!testUrl)('native Stripe endpoint boundaries', () => {
       expect(
         (await call('/subscription/upgrade', body, owner.cookie)).status
       ).toBe(status)
+  })
+
+  it('bills a deferred annual change at its phase boundary and preserves current paid access', async () => {
+    const { owner, subscriptionId, subscription } = await upgradeFixture()
+    const start = Math.floor(Date.now() / 1000) - 28 * 86400
+    const end = Math.floor(Date.now() / 1000) + 86400
+    const scheduleId = `sub_sched_${owner.id}`
+    const targetPrice = 'price_STRIPE_PLUS_ANNUAL_PRICE_ID'
+    provider.retrievePrice.mockResolvedValue({
+      ...subscription.items.data[0]!.price,
+      id: targetPrice,
+      unit_amount: 9600,
+      recurring: { interval: 'year', interval_count: 1, usage_type: 'licensed' }
+    })
+    provider.createSchedule.mockResolvedValue({
+      id: scheduleId,
+      phases: [
+        {
+          items: [{ price: subscription.items.data[0]!.price, quantity: 1 }],
+          start_date: start,
+          end_date: end
+        }
+      ]
+    })
+    provider.updateSchedule.mockResolvedValue({ id: scheduleId })
+    const response = await call(
+      '/subscription/upgrade',
+      {
+        plan: 'plus',
+        annual: true,
+        subscriptionId,
+        scheduleAtPeriodEnd: true,
+        disableRedirect: true,
+        returnUrl: '/account/billing'
+      },
+      owner.cookie
+    )
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      url: `${origin}/account/billing`
+    })
+    expect(provider.createSchedule).toHaveBeenCalledExactlyOnceWith({
+      from_subscription: subscriptionId
+    })
+    // Stripe otherwise retains the monthly anchor and can switch plans without
+    // collecting the first annual payment (confirmed with a sandbox test clock).
+    expect(provider.updateSchedule).toHaveBeenCalledExactlyOnceWith(
+      scheduleId,
+      {
+        metadata: { source: '@better-auth/stripe' },
+        end_behavior: 'release',
+        phases: [
+          {
+            items: [
+              { price: 'price_STRIPE_PLUS_MONTHLY_PRICE_ID', quantity: 1 }
+            ],
+            start_date: start,
+            end_date: end
+          },
+          {
+            items: [{ price: targetPrice, quantity: 1 }],
+            start_date: end,
+            billing_cycle_anchor: 'phase_start',
+            proration_behavior: 'none'
+          }
+        ]
+      }
+    )
+    const [mirror] = await getDb()
+      .select()
+      .from(billingSubscriptions)
+      .where(eq(billingSubscriptions.referenceId, owner.id))
+    expect(mirror).toMatchObject({
+      stripeScheduleId: scheduleId,
+      plan: 'plus',
+      billingInterval: 'month'
+    })
+    const [billing] = await getDb()
+      .select()
+      .from(billingAccounts)
+      .where(eq(billingAccounts.userId, owner.id))
+    expect(billing).toMatchObject({
+      paidPlan: 'plus',
+      billingInterval: 'month'
+    })
+    expect(provider.createPortal).not.toHaveBeenCalled()
   })
 
   it('uses only the server-owned confirmation configuration for a verified same-interval upgrade', async () => {

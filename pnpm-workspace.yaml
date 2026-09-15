@@ -10,3 +10,6 @@ minimumReleaseAge: 1440
 
 minimumReleaseAgeExclude:
   - '@fisch0920/config'
+
+patchedDependencies:
+  '@better-auth/stripe@1.7.4': patches/@better-auth__stripe@1.7.4.patch
