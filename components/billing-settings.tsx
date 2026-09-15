@@ -61,7 +61,11 @@ function localDate(value: string | null | undefined) {
     : ''
 }
 
-export function BillingSettings() {
+export function BillingSettings({
+  initialInterval = 'month'
+}: {
+  initialInterval?: BillingInterval
+}) {
   const { data: session, isPending } = useAccountSession()
   const userId =
     session?.user.emailVerified && !session.user.isAnonymous
@@ -72,20 +76,23 @@ export function BillingSettings() {
       key={userId || 'guest'}
       userId={userId}
       isPending={isPending}
+      initialInterval={initialInterval}
     />
   )
 }
 
 function BillingDetails({
   userId,
-  isPending
+  isPending,
+  initialInterval
 }: {
   userId: string | null
   isPending: boolean
+  initialInterval: BillingInterval
 }) {
   const [billing, setBilling] = useState<BillingView | null>(null)
   const [attempt, setAttempt] = useState(0)
-  const [interval, setInterval] = useState<BillingInterval>('month')
+  const [interval, setInterval] = useState<BillingInterval>(initialInterval)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -194,9 +201,28 @@ function BillingDetails({
           <h1>Plans and billing</h1>
           <p>Sign in to manage your plan and image generations.</p>
         </div>
-        <Button asChild>
-          <a href={authHref('/sign-in', '/account/billing')}>Sign in</a>
-        </Button>
+        <div className='flex flex-wrap gap-3'>
+          <Button asChild>
+            <a
+              href={authHref(
+                '/sign-up',
+                `/account/billing?interval=${interval}`
+              )}
+            >
+              Create account
+            </a>
+          </Button>
+          <Button asChild variant='outline'>
+            <a
+              href={authHref(
+                '/sign-in',
+                `/account/billing?interval=${interval}`
+              )}
+            >
+              Sign in
+            </a>
+          </Button>
+        </div>
       </main>
     )
 
@@ -334,7 +360,7 @@ function BillingDetails({
               Annual · Save 20%
             </Button>
           </div>
-          <div className='grid gap-4 md:grid-cols-3'>
+          <div className='grid gap-4 md:grid-cols-3 md:gap-y-0'>
             {(['free', 'plus', 'pro'] as const).map((id) => {
               const plan = billing.plans[id]
               const current =
@@ -350,7 +376,7 @@ function BillingDetails({
               return (
                 <section
                   key={id}
-                  className='flex flex-col rounded-2xl border border-border p-5'
+                  className='flex flex-col rounded-2xl border border-border p-5 md:row-span-5 md:grid md:grid-rows-subgrid'
                 >
                   <h2 className='text-lg font-medium'>{plan.name}</h2>
                   <p className='my-3 text-3xl font-medium'>
@@ -376,7 +402,7 @@ function BillingDetails({
                     )}
                   </ul>
                   <Button
-                    className='mt-auto'
+                    className='mt-auto md:mt-0'
                     variant={current ? 'outline' : 'default'}
                     disabled={
                       pending ||

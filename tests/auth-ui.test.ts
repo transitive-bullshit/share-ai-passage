@@ -170,6 +170,20 @@ it('keeps local draft continuations and rejects external, encoded, API, and auth
   ).toBe('/?draft=abc')
 })
 
+it('preserves annual billing intent when switching from sign-in to account creation', async () => {
+  const returnTo = '/account/billing?interval=year'
+  await act(async () =>
+    root.render(createElement(AuthForm, { mode: 'sign-in', returnTo }))
+  )
+  const signUp = [...container.querySelectorAll('a')].find(
+    (link) => new URL(link.href).pathname === '/sign-up'
+  )
+  expect(signUp).toBeDefined()
+  expect(new URL(signUp!.href).searchParams.get('returnTo')).toBe(returnTo)
+  expect(mocks.signIn).not.toHaveBeenCalled()
+  expect(mocks.signUp).not.toHaveBeenCalled()
+})
+
 it('keeps password errors on the form and offers verification without losing the draft', async () => {
   mocks.signIn.mockResolvedValue({
     error: { code: 'EMAIL_NOT_VERIFIED', status: 403 }

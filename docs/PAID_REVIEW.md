@@ -60,6 +60,12 @@ Actual browser upload, template save and reload passed. The **R2 browser smoke**
 
 The final combined sources passed the full `pnpm test` run with **796 tests in 65 files**, including the isolated PostgreSQL suites, formatting, lint and TypeScript. The final production build passed with 35 static pages, six Workflow steps and one workflow. These results include the cancellation-state fix, guarded upgrade confirmation, schedule-event reconciliation, storage aliases and preview container. The earlier 752/767 totals remain historical checkpoints.
 
+The plan comparison now uses shared desktop grid rows for headings, prices, features, actions and billing notes, keeping the current-plan button aligned with its neighbors. Monthly and annual desktop layouts and the stacked 390px mobile layout were checked in Chrome; focused formatting and lint checks passed. This layout-only follow-up did not rerun the historical full-suite/build checks above.
+
+The public `/pricing` follow-up adds a server-rendered plan comparison, monthly/annual totals, generation and upload terms, header/footer links, and annual-cadence continuation through signup/sign-in to billing. The page uses the existing plan catalog and checkout gate. On `15806ed` plus these workspace changes, `node work/phase2/run-local.mjs test test` passed **803 tests in 66 files**, including isolated PostgreSQL, formatting, lint, and TypeScript. After the final tablet-layout and copy refinements, 43 focused pricing/billing/auth/SEO tests and the production build passed again (36 static pages, including `/pricing`). Chrome checks covered desktop monthly/annual alignment, 390px mobile and 768px tablet layouts, and annual navigation into billing without a purchase. A cookie-free local HTTP request returned 200 with all plan content, a canonical `/pricing` URL, local `noindex`, and no new session cookie. No production deployment or live charge occurred.
+
+The expanded global footer groups Product, Your account, and Developers links, including the new pricing, template, billing, and API-key pages. Desktop and 390px layouts, the FAQ anchor, and pricing navigation were checked in Chrome. The combined pricing/footer checkpoint then passed the full **803-test / 66-file** repository checks and a fresh production build with 36 static pages. The footer remains server-rendered and adds no account or billing requests.
+
 Public `r2.dev` delivery is for development. A production custom domain, hosted operational checks and actual social unfurls remain open.
 
 ## Outstanding gates
