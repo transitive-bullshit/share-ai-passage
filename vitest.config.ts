@@ -41,6 +41,7 @@ export default defineConfig({
       WORKFLOW_TARGET_WORLD: 'local',
       WORKFLOW_LOCAL_BASE_URL: '',
       WORKFLOW_LOCAL_DATA_DIR: '',
+      CRON_SECRET: '',
       RESEND_API_KEY: '',
       RESEND_FROM_EMAIL: '',
       RESEND_REPLY_TO: '',
