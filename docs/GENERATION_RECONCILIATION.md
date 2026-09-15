@@ -43,3 +43,25 @@ pnpm reconcile:billing status <account-id>
 This read-only command reports `aiSpending.subscription` and `aiSpending.purchasedImages`, with `limitMicros` and `liabilityMicros` in USD micros. The subscription bucket also reports `resetAt`; it is null when paid access is unavailable. Summaries and included images share the original anchored month. Purchased images use lifetime pack funding, reduced by refunds/disputes without erasing historical charges. New paid packs add funding; that pool has no monthly reset. Exact ceilings and assumptions are in [measured economics](research/PHASE2_MEASURED_ECONOMICS.md#supported-cost-bounds).
 
 Inspect the operation status and reconcile unknown costs only from definitive provider evidence using the commands above. Normal settlement may restore headroom before a monthly reset. Late image metering can fill a recovered terminal operation's unknown cost under the same account lock; it never replaces a known charge, changes the result or debits/refunds another unit. Never invent a zero charge, clear operation rows, or rewrite known costs to lift a pause. These controls limit admission; they cannot cap a provider's first charge or guarantee all hosting and retention costs.
+
+## Aggregate operations check and optional digest
+
+```sh
+pnpm reconcile:operations check
+pnpm reconcile:operations check --notify <operator-email> --apply
+```
+
+Set `DATABASE_URL` explicitly; neither command loads environment files. The default check takes one read-only database snapshot and emits aggregate JSON: exit **0** when healthy, **1** when action is needed, or **2** if the check or requested notification fails. Output excludes account/operation IDs, recipients, private content, object URLs and credentials. It never repairs a ledger or calls a generation provider.
+
+The check reports:
+
+- Summary/image operations older than 30 minutes that remain unresolved, plus a separate count of terminal operations with unknown costs. Creation time determines age; status polling does not postpone an alert.
+- Unprocessed billing events with a recorded failure immediately, other unprocessed events after 30 minutes, and closing accounts whose cancellation is incomplete after 30 minutes. Processed events and completed cancellations are excluded.
+- Current UTC-month Free and image service budgets that cannot accept the next configured reservation, including outstanding liabilities. Disabled image generation does not raise an exhausted-image-budget alert. No provider credentials are required for inspection.
+- Known actual summary/image charges greater than their accepted reservation, for operations created in the current UTC month only. This specific cost-overrun signal is not comprehensive anomaly detection; historical overruns age out without rewriting their costs.
+
+`--notify` requires both `--apply` and the existing `RESEND_API_KEY` plus `RESEND_FROM_EMAIL` (or `EMAIL_FROM`). It reuses account email's sender/reply-to and sanitized delivery handling. Healthy reports send nothing. Actionable reports send one bounded text digest and retain exit 1 after provider acceptance; acceptance is not proof of inbox delivery. Missing notification configuration fails without echoing the address. No actual operator recipient or schedule is configured by this implementation.
+
+Repeated identical reports for the same UTC day, target fingerprint and normalized recipient use identical message bodies and Resend idempotency keys. Changing the day, report, target or recipient produces a new key. Resend retains keys for 24 hours; this is retry deduplication, not a permanent notification history. [Resend idempotency](https://resend.com/docs/dashboard/emails/idempotency-keys)
+
+Use the existing status/list commands to inspect affected operations and failed events. For closing cancellations, inspect the retained `billing_accounts` closing markers in the selected database, then use `pnpm reconcile:billing cancel-closing <account-id> --apply` with the intended Stripe configuration. Investigate cost overruns and budget exhaustion before changing limits; resolve unknown costs only from definitive evidence. Scheduling, an operator-selected destination and actual delivery verification remain separate setup steps; this command installs no scheduler, HTTP endpoint or cloud setting.
