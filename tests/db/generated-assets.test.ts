@@ -12,8 +12,6 @@ import {
 } from 'vitest'
 
 import {
-  cleanupPrivateAssets,
-  queueAccountAssetCleanup,
   recoverGeneratedAsset,
   storePreauthorizedGeneratedAsset
 } from '@/lib/assets'
@@ -27,7 +25,6 @@ import {
 } from '@/lib/db/schema'
 import {
   assetSha256,
-  deletePrivateObject,
   headAsset,
   putImmutableAsset,
   readAssetBytes
@@ -249,29 +246,6 @@ describe.skipIf(!testUrl)('durable generated image assets', () => {
       .from(assets)
       .where(eq(assets.id, f.operationId))
     expect(slot?.status).toBe('pending')
-  })
-  it('keeps the durable slot during deletion until a late provider result is settled', async () => {
-    const f = await fixture()
-    await getDb().transaction(async (tx) => {
-      await queueAccountAssetCleanup(f.userId, tx)
-    })
-    await cleanupPrivateAssets(100)
-    expect(deletePrivateObject).not.toHaveBeenCalledWith(f.key)
-    await expect(
-      storePreauthorizedGeneratedAsset({ ...f, bytes: await image() })
-    ).rejects.toMatchObject({ status: 410 })
-    expect(storage.objects.has(f.key)).toBe(true)
-    await cleanupPrivateAssets(100)
-    expect(storage.objects.has(f.key)).toBe(true)
-    await getDb()
-      .update(imageOperations)
-      .set({ status: 'succeeded' })
-      .where(eq(imageOperations.id, f.operationId))
-    await cleanupPrivateAssets(100)
-    expect(storage.objects.has(f.key)).toBe(false)
-    expect(
-      await getDb().select().from(assets).where(eq(assets.id, f.operationId))
-    ).toHaveLength(0)
   })
   it('does not recreate a deleted draft when recovering its completed object', async () => {
     const f = await fixture()

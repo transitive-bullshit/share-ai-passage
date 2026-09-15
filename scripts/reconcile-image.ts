@@ -20,6 +20,7 @@ const usage = `Image reconciliation (never makes a model request):
   fail|cost <operation UUID> --evidence <JSON file> --apply
 
 Set DATABASE_URL explicitly. No environment files or production configuration are loaded.
+list-stale uses operation age, oldest first; status polling does not reset that age.
 Recovery needs the existing R2 configuration; it verifies/reuses a durable object only.
 Failure/cost evidence must bind action and operationId. Keep evidence files private.
 Timeouts are not definitive failure evidence. There is no provider retry or asserted success.`
@@ -179,7 +180,7 @@ export async function runImageReconciliation(args: string[]) {
       command.action === 'list-stale'
         ? and(
             lt(
-              operations.updatedAt,
+              operations.createdAt,
               new Date(now.getTime() - command.olderThanMinutes * 60_000)
             ),
             or(
@@ -216,7 +217,7 @@ export async function runImageReconciliation(args: string[]) {
       .from(operations)
       .leftJoin(grants, eq(grants.id, operations.grantId))
       .where(condition)
-      .orderBy(asc(operations.updatedAt), asc(operations.id))
+      .orderBy(asc(operations.createdAt), asc(operations.id))
       .limit(command.action === 'list-stale' ? command.limit : 1)
     if (!rows.length && command.action !== 'list-stale')
       throw new ReconciliationError(

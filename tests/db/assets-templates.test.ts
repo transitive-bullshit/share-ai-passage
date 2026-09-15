@@ -3,6 +3,7 @@ import { eq, inArray } from 'drizzle-orm'
 import sharp from 'sharp'
 import {
   afterAll,
+  afterEach,
   beforeAll,
   beforeEach,
   describe,
@@ -19,6 +20,7 @@ import {
   queueAccountAssetCleanup,
   removeAsset,
   reserveUpload,
+  storePreauthorizedGeneratedAsset,
   validateDraftDesign
 } from '@/lib/assets'
 import { closeDatabase, getDb } from '@/lib/db'
@@ -27,6 +29,9 @@ import {
   assets,
   authUsers,
   billingAccounts,
+  imageCreditGrants,
+  imageOperations,
+  savedDrafts,
   rateLimits
 } from '@/lib/db/schema'
 import { defaultTemplateRecipe } from '@/lib/paid-design'
@@ -370,5 +375,318 @@ describe.skipIf(!testUrl)('owned asset and template transactions', () => {
       await getDb().select().from(assets).where(eq(assets.id, publicCard.id))
     ).toHaveLength(1)
     expect(deletePrivateObject).not.toHaveBeenCalledWith(publicCard.objectKey)
+  })
+})
+
+describe.skipIf(!testUrl)('private asset cleanup', () => {
+  const assetIds: string[] = [],
+    userIds: string[] = [],
+    operationIds: string[] = [],
+    grantIds: string[] = [],
+    draftIds: string[] = []
+  const past = new Date('2000-01-01T00:00:00Z')
+  const later = new Date('2001-01-01T00:00:00Z')
+  async function asset(overrides: Partial<typeof assets.$inferInsert> = {}) {
+    const id = randomUUID()
+    assetIds.push(id)
+    const [record] = await getDb()
+      .insert(assets)
+      .values({
+        id,
+        purpose: 'background',
+        visibility: 'private',
+        status: 'failed',
+        cleanupPending: true,
+        objectKey: `${overrides.purpose === 'generated' ? 'generated' : 'assets'}/${id}.webp`,
+        updatedAt: past,
+        ...overrides
+      })
+      .returning()
+    return record!
+  }
+  async function user() {
+    const id = randomUUID()
+    userIds.push(id)
+    await getDb()
+      .insert(authUsers)
+      .values({
+        id,
+        name: 'Cleanup fixture',
+        email: `${id}@example.invalid`,
+        emailVerified: true
+      })
+    return id
+  }
+  async function activeGeneratedAsset(ownerId?: string) {
+    const record = await asset({ purpose: 'generated', ownerId })
+    let draftId: string | undefined
+    if (ownerId) {
+      const [draft] = await getDb()
+        .insert(savedDrafts)
+        .values({
+          ownerId,
+          namespace: ownerId,
+          requestKey: randomUUID(),
+          sourceUrl: 'https://chatgpt.com/share/fixture',
+          status: 'ready'
+        })
+        .returning()
+      draftId = draft!.id
+      draftIds.push(draftId)
+    }
+    const grantId = randomUUID()
+    grantIds.push(grantId)
+    operationIds.push(record.id)
+    await getDb().insert(imageCreditGrants).values({
+      id: grantId,
+      userId: record.id,
+      grantKey: record.id,
+      kind: 'included',
+      startsAt: past,
+      allowance: 0
+    })
+    await getDb().insert(imageOperations).values({
+      id: record.id,
+      ownerId,
+      draftId,
+      subjectKey: record.id,
+      requestKey: record.id,
+      inputHash: 'fixture',
+      draftRevision: 0,
+      grantId,
+      recipeHash: 'fixture',
+      model: 'fixture',
+      configVersion: 'fixture',
+      promptVersion: 'fixture',
+      config: {},
+      status: 'uncertain',
+      reservedCostMicros: 0,
+      clientRequestId: record.id
+    })
+    return record
+  }
+
+  beforeAll(() => {
+    process.env.DATABASE_URL = testUrl!
+  })
+  beforeEach(() => {
+    vi.mocked(deletePrivateObject).mockReset().mockResolvedValue()
+  })
+  afterEach(async () => {
+    if (operationIds.length)
+      await getDb()
+        .delete(imageOperations)
+        .where(inArray(imageOperations.id, operationIds.splice(0)))
+    if (assetIds.length)
+      await getDb()
+        .delete(assets)
+        .where(inArray(assets.id, assetIds.splice(0)))
+    if (grantIds.length)
+      await getDb()
+        .delete(imageCreditGrants)
+        .where(inArray(imageCreditGrants.id, grantIds.splice(0)))
+    if (draftIds.length)
+      await getDb()
+        .delete(savedDrafts)
+        .where(inArray(savedDrafts.id, draftIds.splice(0)))
+    if (userIds.length)
+      await getDb()
+        .delete(authUsers)
+        .where(inArray(authUsers.id, userIds.splice(0)))
+  })
+  afterAll(closeDatabase)
+
+  it('filters active jobs, processing leases and live upload URLs before the batch limit', async () => {
+    const future = new Date(Date.now() + 60_000)
+    const protectedAssets = [
+      await activeGeneratedAsset(),
+      await asset({ expiresAt: past, processingLeaseUntil: future }),
+      await asset({ expiresAt: future }),
+      await asset({ purpose: 'card', visibility: 'public' }),
+      await asset({
+        status: 'ready',
+        cleanupPending: false,
+        libraryDeletedAt: past
+      })
+    ]
+    const eligible = await asset({ updatedAt: later })
+    expect(await cleanupPrivateAssets(1)).toEqual({
+      examined: 1,
+      cleaned: 1,
+      skipped: 0,
+      failed: 0
+    })
+    expect(deletePrivateObject).toHaveBeenCalledExactlyOnceWith(
+      eligible.objectKey
+    )
+    expect(
+      await getDb().select().from(assets).where(eq(assets.id, eligible.id))
+    ).toHaveLength(0)
+    expect(
+      await getDb()
+        .select()
+        .from(assets)
+        .where(
+          inArray(
+            assets.id,
+            protectedAssets.map((row) => row.id)
+          )
+        )
+    ).toHaveLength(protectedAssets.length)
+  })
+
+  it('retains failed cleanup but advances the retry order so later work is not starved', async () => {
+    const failing = await asset()
+    const next = await asset({ updatedAt: later })
+    vi.mocked(deletePrivateObject).mockRejectedValueOnce(
+      new Error('Fixture storage failure')
+    )
+    expect(await cleanupPrivateAssets(1)).toEqual({
+      examined: 1,
+      cleaned: 0,
+      skipped: 0,
+      failed: 1
+    })
+    expect(
+      await getDb().select().from(assets).where(eq(assets.id, failing.id))
+    ).toHaveLength(1)
+    expect(await cleanupPrivateAssets(1)).toEqual({
+      examined: 1,
+      cleaned: 1,
+      skipped: 0,
+      failed: 0
+    })
+    expect(deletePrivateObject).toHaveBeenNthCalledWith(2, next.objectKey)
+    expect(
+      await getDb().select().from(assets).where(eq(assets.id, next.id))
+    ).toHaveLength(0)
+    expect((await cleanupPrivateAssets(100)).failed).toBe(0)
+    expect(
+      vi
+        .mocked(deletePrivateObject)
+        .mock.calls.filter(([key]) => key === failing.objectKey)
+    ).toHaveLength(2)
+    expect(
+      await getDb().select().from(assets).where(eq(assets.id, failing.id))
+    ).toHaveLength(0)
+  })
+
+  it('does no storage work during an overlapping run and releases the lock afterward', async () => {
+    const record = await asset()
+    const entered = Promise.withResolvers<void>()
+    const release = Promise.withResolvers<void>()
+    vi.mocked(deletePrivateObject).mockImplementationOnce(async () => {
+      entered.resolve()
+      await release.promise
+    })
+    const first = cleanupPrivateAssets(1)
+    try {
+      await entered.promise
+      expect(await cleanupPrivateAssets(1)).toEqual({
+        examined: 0,
+        cleaned: 0,
+        skipped: 0,
+        failed: 0
+      })
+      expect(deletePrivateObject).toHaveBeenCalledExactlyOnceWith(
+        record.objectKey
+      )
+    } finally {
+      release.resolve()
+      await first
+    }
+    const next = await asset()
+    expect(await cleanupPrivateAssets(1)).toEqual({
+      examined: 1,
+      cleaned: 1,
+      skipped: 0,
+      failed: 0
+    })
+    expect(deletePrivateObject).toHaveBeenLastCalledWith(next.objectKey)
+  })
+
+  it('preserves an accepted image while cleaning staging and retains deletion queued during that cleanup', async () => {
+    const ownerId = await user()
+    const record = await asset({
+      ownerId,
+      status: 'ready',
+      cleanupPending: false,
+      expiresAt: past,
+      stagingKey: `uploads/${randomUUID()}.upload`,
+      libraryDeletedAt: past
+    })
+    vi.mocked(deletePrivateObject).mockImplementationOnce(async (key) => {
+      expect(key).toBe(record.stagingKey)
+      await getDb().transaction(async (tx) => {
+        await lockUsageSubjects(tx, accountSubject(ownerId))
+        await queueAccountAssetCleanup(ownerId, tx)
+      })
+    })
+    expect(await cleanupPrivateAssets(1)).toEqual({
+      examined: 1,
+      cleaned: 1,
+      skipped: 0,
+      failed: 0
+    })
+    expect(deletePrivateObject).not.toHaveBeenCalledWith(record.objectKey)
+    const [queued] = await getDb()
+      .select()
+      .from(assets)
+      .where(eq(assets.id, record.id))
+    expect(queued).toMatchObject({ ownerId: null, cleanupPending: true })
+    expect(await cleanupPrivateAssets(1)).toEqual({
+      examined: 1,
+      cleaned: 1,
+      skipped: 0,
+      failed: 0
+    })
+    expect(deletePrivateObject).toHaveBeenLastCalledWith(record.objectKey)
+    expect(
+      await getDb().select().from(assets).where(eq(assets.id, record.id))
+    ).toHaveLength(0)
+  })
+
+  it('keeps the durable slot during deletion until a late provider result is settled', async () => {
+    const ownerId = await user()
+    const record = await activeGeneratedAsset(ownerId)
+    const objects = new Map<string, Uint8Array>()
+    vi.mocked(putImmutableAsset).mockImplementationOnce(
+      async ({ key, bytes }) => {
+        objects.set(key, bytes)
+        return { byteSize: bytes.length, sha256: assetSha256(bytes) }
+      }
+    )
+    vi.mocked(deletePrivateObject).mockImplementation(async (key) => {
+      objects.delete(key)
+    })
+    await getDb().transaction(async (tx) => {
+      await queueAccountAssetCleanup(ownerId, tx)
+    })
+    await cleanupPrivateAssets(100)
+    expect(deletePrivateObject).not.toHaveBeenCalledWith(record.objectKey)
+    const bytes = await sharp({
+      create: { width: 1200, height: 640, channels: 3, background: '#c9ac84' }
+    })
+      .png()
+      .toBuffer()
+    await expect(
+      storePreauthorizedGeneratedAsset({
+        userId: ownerId,
+        operationId: record.id,
+        bytes
+      })
+    ).rejects.toMatchObject({ status: 410 })
+    expect(objects.has(record.objectKey)).toBe(true)
+    await cleanupPrivateAssets(100)
+    expect(objects.has(record.objectKey)).toBe(true)
+    await getDb()
+      .update(imageOperations)
+      .set({ status: 'succeeded' })
+      .where(eq(imageOperations.id, record.id))
+    await cleanupPrivateAssets(100)
+    expect(objects.has(record.objectKey)).toBe(false)
+    expect(
+      await getDb().select().from(assets).where(eq(assets.id, record.id))
+    ).toHaveLength(0)
   })
 })

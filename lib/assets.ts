@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { and, desc, eq, inArray, isNull, lte, or, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, isNull, lte, or, sql } from 'drizzle-orm'
 import sharp from 'sharp'
 import { z } from 'zod'
 
@@ -697,51 +697,63 @@ export async function queueAccountAssetCleanup(
     .set({ ownerId: null })
     .where(and(eq(assets.ownerId, userId), eq(assets.visibility, 'public')))
 }
+function privateCleanupEligibility(now: Date) {
+  return and(
+    eq(assets.visibility, 'private'),
+    or(eq(assets.cleanupPending, true), lte(assets.expiresAt, now)),
+    or(isNull(assets.expiresAt), lte(assets.expiresAt, now)),
+    or(
+      isNull(assets.processingLeaseUntil),
+      lte(assets.processingLeaseUntil, now)
+    ),
+    // A cleanup request is only destructive after ownership is detached.
+    or(eq(assets.cleanupPending, false), isNull(assets.ownerId)),
+    sql`(${assets.purpose} <> 'generated' or not exists (
+      select 1 from ${imageOperations}
+      where ${imageOperations.id} = ${assets.id}
+        and ${imageOperations.status} in ('reserved', 'dispatching', 'running', 'uncertain')
+    ))`
+  )
+}
+
 /** Safe periodic cleanup: never deletes public objects or archived accepted inputs. */
 export async function cleanupPrivateAssets(limit = 50) {
+  // A transaction lock works through Neon's pooler and releases on interruption.
+  // Keep per-owner changes in their own transactions: this guard holds no asset
+  // rows or usage locks while storage requests are in flight.
+  return getDb().transaction(async (guard) => {
+    const [lock] = await guard.execute<{ acquired: boolean }>(
+      sql`select pg_try_advisory_xact_lock(hashtextextended('private-asset-cleanup', 0)) as acquired`
+    )
+    if (!lock?.acquired)
+      return { examined: 0, cleaned: 0, skipped: 0, failed: 0 }
+    return cleanupPrivateAssetBatch(limit)
+  })
+}
+
+async function cleanupPrivateAssetBatch(limit: number) {
   const now = new Date()
   const rows = await getDb()
-    .select()
+    .select({ id: assets.id })
     .from(assets)
-    .where(
-      and(
-        eq(assets.visibility, 'private'),
-        or(eq(assets.cleanupPending, true), lte(assets.expiresAt, now))
-      )
-    )
+    .where(privateCleanupEligibility(now))
+    .orderBy(asc(assets.updatedAt), asc(assets.id))
     .limit(Math.min(100, Math.max(1, limit)))
   let cleaned = 0,
     skipped = 0,
     failed = 0
-  for (const row of rows) {
-    if (row.purpose === 'generated') {
-      const [active] = await getDb()
-        .select({ id: imageOperations.id })
-        .from(imageOperations)
-        .where(
-          and(
-            eq(imageOperations.id, row.id),
-            inArray(imageOperations.status, [
-              'reserved',
-              'dispatching',
-              'running',
-              'uncertain'
-            ])
-          )
-        )
-      if (active) {
-        skipped++
-        continue
-      }
-    }
-    if (row.processingLeaseUntil && row.processingLeaseUntil > now) {
+  for (const candidate of rows) {
+    // Recheck after earlier rows' storage calls, before touching either object.
+    const [row] = await getDb()
+      .select()
+      .from(assets)
+      .where(
+        and(eq(assets.id, candidate.id), privateCleanupEligibility(new Date()))
+      )
+    if (!row) {
       skipped++
       continue
     }
-    if (row.expiresAt && row.expiresAt > now) {
-      skipped++
-      continue
-    } // staging URL must no longer authorize PUT
     try {
       if (row.stagingKey) await deletePrivateObject(row.stagingKey)
       if (!row.cleanupPending && row.status !== 'ready')
@@ -757,10 +769,12 @@ export async function cleanupPrivateAssets(limit = 50) {
               isNull(assets.ownerId)
             )
           )
-      } else if (row.ownerId) {
+      } else {
         await getDb().transaction(async (tx) => {
-          await lockUsageSubjects(tx, accountSubject(row.ownerId!))
-          await expireReservations(row.ownerId!, tx, now)
+          if (row.ownerId) {
+            await lockUsageSubjects(tx, accountSubject(row.ownerId))
+            await expireReservations(row.ownerId, tx, now)
+          }
           await tx
             .update(assets)
             .set({ stagingKey: null, expiresAt: null })
@@ -770,7 +784,11 @@ export async function cleanupPrivateAssets(limit = 50) {
       cleaned++
     } catch {
       failed++
-      /* Retain the durable cleanup record for the next pass. */
+      // Retain the cleanup request, but let unattempted rows go first next time.
+      await getDb()
+        .update(assets)
+        .set({ updatedAt: new Date() })
+        .where(eq(assets.id, row.id))
     }
   }
   return { examined: rows.length, cleaned, skipped, failed }

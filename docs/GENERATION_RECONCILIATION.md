@@ -9,6 +9,8 @@ pnpm exec tsx scripts/reconcile-image.ts status <operation-uuid>
 pnpm exec tsx scripts/reconcile-image.ts list-stale --older-than-minutes 30 --limit 50
 ```
 
+Image `list-stale` filters and orders by operation creation time, so status polling cannot hide an old unresolved job or unknown charge. `inactiveMinutes` remains a separate diagnostic; recent operations and terminal operations with known costs are excluded.
+
 Image recovery uses the existing explicit R2 configuration to verify and recover the operation's immutable object. It can settle a valid saved result and apply it only under the existing draft-revision rules. It never submits a provider request or blindly retries generation. Missing objects/timeouts remain uncertain, not proof of failure.
 
 ```sh
