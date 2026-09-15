@@ -89,6 +89,9 @@ function BillingDetails({
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const pendingCancellation = Boolean(
+    billing?.subscription?.cancelAtPeriodEnd || billing?.subscription?.cancelAt
+  )
 
   useEffect(() => {
     if (!userId) return
@@ -97,23 +100,25 @@ function BillingDetails({
       localStorage.removeItem(`passage:pack:${userId}`)
       window.history.replaceState(null, '', '/account/billing')
     }
-    const controller = new AbortController()
-    void fetch('/api/billing', { signal: controller.signal, cache: 'no-store' })
+    let active = true
+    void fetch('/api/billing', { cache: 'no-store' })
       .then(async (response) => {
         const data = (await response.json()) as BillingView & { error?: string }
-        if (controller.signal.aborted) return
+        if (!active) return
         if (!response.ok)
           throw new Error(data.error || 'Billing couldn’t load.')
         setBilling(data)
         setError('')
       })
       .catch((err: unknown) => {
-        if (!controller.signal.aborted)
+        if (active)
           setError(
             err instanceof Error ? err.message : 'Billing couldn’t load.'
           )
       })
-    return () => controller.abort()
+    return () => {
+      active = false
+    }
   }, [userId, attempt])
 
   async function perform(action: Action) {
@@ -262,12 +267,12 @@ function BillingDetails({
                 Your next allowance starts{' '}
                 {localDate(billing.entitlements.allowanceWindow.endsAt)}.
               </p>
-              {billing.subscription?.cancelAtPeriodEnd ? (
+              {pendingCancellation ? (
                 <p>
                   Your plan ends{' '}
                   {localDate(
-                    billing.subscription.cancelAt ||
-                      billing.subscription.periodEnd
+                    billing.subscription?.cancelAt ||
+                      billing.subscription?.periodEnd
                   )}
                   . Your published passages and saved work remain.
                 </p>
@@ -290,8 +295,7 @@ function BillingDetails({
                     <ArrowUpRight data-icon='inline-end' />
                   </Button>
                 ) : null}
-                {billing.subscription?.cancelAtPeriodEnd ||
-                billing.subscription?.pendingPlan ? (
+                {pendingCancellation || billing.subscription?.pendingPlan ? (
                   <Button
                     variant='outline'
                     disabled={pending}

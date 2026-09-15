@@ -76,6 +76,46 @@ it('shows confirmed billing data without treating a hosted return query as payme
   expect(requests.mock.calls[0]![0]).toBe('/api/billing')
 })
 
+it('shows timestamp-only cancellation and restores it through the existing action', async () => {
+  const cancelAt = '2026-10-15T05:30:18.000Z'
+  requests.mockResolvedValueOnce(
+    Response.json({
+      ...billing,
+      subscription: {
+        ...billing.subscription,
+        cancelAtPeriodEnd: false,
+        cancelAt,
+        periodEnd: cancelAt
+      }
+    })
+  )
+  await act(async () => root.render(createElement(BillingSettings)))
+  expect(container.textContent).toContain(
+    `Your plan ends ${new Date(cancelAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}`
+  )
+  const restore = Array.from(container.querySelectorAll('button')).find(
+    (button) => button.textContent === 'Keep current plan'
+  )
+  expect(restore).toBeDefined()
+  requests.mockResolvedValueOnce(Response.json({})).mockResolvedValueOnce(
+    Response.json({
+      ...billing,
+      subscription: {
+        ...billing.subscription,
+        cancelAtPeriodEnd: false,
+        cancelAt: null
+      }
+    })
+  )
+  await act(async () => restore!.click())
+  expect(requests.mock.calls[1]![0]).toBe('/api/billing/action')
+  expect(JSON.parse(requests.mock.calls[1]![1]!.body as string)).toEqual({
+    action: 'restore'
+  })
+  expect(container.textContent).not.toContain('Your plan ends')
+  expect(container.textContent).not.toContain('Keep current plan')
+})
+
 it('keeps live Checkout disabled when the server launch gate is closed', async () => {
   requests.mockResolvedValue(
     Response.json({
@@ -102,27 +142,60 @@ it('keeps live Checkout disabled when the server launch gate is closed', async (
   ).toBe(true)
 })
 
-it('handles aborted requests during StrictMode cleanup and subsequent account navigation', async () => {
-  requests.mockImplementation(
-    (_input, options) =>
-      new Promise<Response>((_resolve, reject) => {
-        options!.signal!.addEventListener(
-          'abort',
-          () =>
-            reject(
-              new DOMException('The operation was aborted.', 'AbortError')
-            ),
-          { once: true }
-        )
-      })
-  )
+it('ignores a late request failure from StrictMode cleanup', async () => {
+  const stale = Promise.withResolvers<Response>()
+  requests
+    .mockReturnValueOnce(stale.promise)
+    .mockResolvedValueOnce(Response.json(billing))
   await act(async () =>
     root.render(createElement(StrictMode, null, createElement(BillingSettings)))
   )
   expect(requests).toHaveBeenCalledTimes(2)
-  expect(container.textContent).not.toContain('The operation was aborted')
-  await act(async () => root.render(createElement('p', null, 'Navigated')))
-  expect(container.textContent).toBe('Navigated')
+  expect(container.textContent).toContain('8 included and 43 purchased')
+  await act(async () => stale.reject(new Error('Stale billing failure')))
+  expect(container.textContent).not.toContain('Stale billing failure')
+  expect(container.textContent).toContain('8 included and 43 purchased')
+})
+
+it('ignores a late response body after switching accounts', async () => {
+  const staleBody = Promise.withResolvers<unknown>()
+  const staleResponse = Response.json(billing)
+  staleResponse.json = () => staleBody.promise
+  requests.mockResolvedValueOnce(staleResponse).mockResolvedValueOnce(
+    Response.json({
+      ...billing,
+      imageBalance: { included: 2, purchased: 3 }
+    })
+  )
+  await act(async () => root.render(createElement(BillingSettings)))
+  state.userId = 'different-reader'
+  await act(async () => root.render(createElement(BillingSettings)))
+  expect(container.textContent).toContain('2 included and 3 purchased')
+  await act(async () => staleBody.resolve(billing))
+  expect(container.textContent).not.toContain('8 included and 43 purchased')
+  expect(container.textContent).toContain('2 included and 3 purchased')
+})
+
+it('shows current request errors and clears them after a successful refresh', async () => {
+  requests
+    .mockResolvedValueOnce(
+      Response.json(
+        { error: 'Billing is temporarily unavailable.' },
+        { status: 503 }
+      )
+    )
+    .mockResolvedValueOnce(Response.json(billing))
+  await act(async () => root.render(createElement(BillingSettings)))
+  expect(container.textContent).toContain('Billing is temporarily unavailable.')
+  await act(async () => {
+    Array.from(container.querySelectorAll('button'))
+      .find((button) => button.textContent === 'Refresh billing')!
+      .click()
+  })
+  expect(container.textContent).not.toContain(
+    'Billing is temporarily unavailable.'
+  )
+  expect(container.textContent).toContain('8 included and 43 purchased')
 })
 
 it('shows a newly created key only in the current account view and clears it on identity change', async () => {

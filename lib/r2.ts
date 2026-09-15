@@ -11,20 +11,24 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { AppError } from './errors'
 
 export type AssetVisibility = 'private' | 'public'
-export function r2Configured() {
-  return [
-    'R2_ACCOUNT_ID',
-    'R2_ACCESS_KEY_ID',
-    'R2_SECRET_ACCESS_KEY',
-    'R2_PUBLIC_BUCKET',
-    'R2_PRIVATE_BUCKET',
-    'R2_PUBLIC_URL'
-  ].every((name) => Boolean(process.env[name]?.trim()))
+function configuredValue(name: string, alias?: string) {
+  return (
+    process.env[name]?.trim() || (alias ? process.env[alias]?.trim() : '') || ''
+  )
+}
+function storageError() {
+  return new AppError('Asset storage is not configured correctly.', 503)
 }
 export function validateR2Endpoint(value: string, accountId: string) {
-  const url = new URL(value)
+  let url: URL
+  try {
+    url = new URL(value)
+  } catch {
+    throw storageError()
+  }
   const owned = [
     `${accountId}.r2.cloudflarestorage.com`,
+    `${accountId}.us.r2.cloudflarestorage.com`,
     `${accountId}.eu.r2.cloudflarestorage.com`,
     `${accountId}.fedramp.r2.cloudflarestorage.com`
   ].includes(url.hostname)
@@ -39,26 +43,73 @@ export function validateR2Endpoint(value: string, accountId: string) {
     url.pathname !== '/' ||
     (!fixture && (!owned || url.protocol !== 'https:' || url.port)) ||
     (fixture && !['http:', 'https:'].includes(url.protocol))
-  ) {
-    throw new AppError('Asset storage is not configured correctly.', 503)
-  }
+  )
+    throw storageError()
   return url.origin
 }
-function storage() {
-  if (!r2Configured())
+function storageConfig() {
+  const suppliedEndpoint = configuredValue('R2_ENDPOINT', 'S3_API_ENDPOINT')
+  let accountId = configuredValue('R2_ACCOUNT_ID')
+  if (!accountId && suppliedEndpoint) {
+    let hostname: string
+    try {
+      hostname = new URL(suppliedEndpoint).hostname
+    } catch {
+      throw storageError()
+    }
+    const match =
+      /^([a-f0-9]{32})\.(?:(?:us|eu|fedramp)\.)?r2\.cloudflarestorage\.com$/.exec(
+        hostname
+      )
+    if (!match) throw storageError()
+    accountId = match[1]!
+  }
+  const accessKeyId = configuredValue('R2_ACCESS_KEY_ID', 'S3_ACCESS_KEY_ID')
+  const secretAccessKey = configuredValue(
+    'R2_SECRET_ACCESS_KEY',
+    'S3_SECRET_ACCESS_KEY'
+  )
+  const publicBucket = configuredValue('R2_PUBLIC_BUCKET', 'S3_BUCKET_NAME')
+  // Private inputs must never fall back to the public delivery bucket.
+  const privateBucket = configuredValue(
+    'R2_PRIVATE_BUCKET',
+    'S3_PRIVATE_BUCKET_NAME'
+  )
+  const publicUrl = configuredValue('R2_PUBLIC_URL', 'S3_PUBLIC_URL')
+  if (
+    ![
+      accountId,
+      accessKeyId,
+      secretAccessKey,
+      publicBucket,
+      privateBucket,
+      publicUrl
+    ].every(Boolean)
+  )
     throw new AppError('Image uploads are not configured yet.', 503)
-  const accountId = process.env.R2_ACCOUNT_ID!.trim()
+  if (publicBucket === privateBucket) throw storageError()
   const endpoint = validateR2Endpoint(
-    process.env.R2_ENDPOINT?.trim() ||
-      `https://${accountId}.r2.cloudflarestorage.com`,
+    suppliedEndpoint || `https://${accountId}.r2.cloudflarestorage.com`,
     accountId
   )
+  return { endpoint, accessKeyId, secretAccessKey, publicBucket, privateBucket }
+}
+export function r2Configured() {
+  try {
+    storageConfig()
+    return true
+  } catch {
+    return false
+  }
+}
+function storage() {
+  const config = storageConfig()
   return new S3Client({
     region: 'auto',
-    endpoint,
+    endpoint: config.endpoint,
     credentials: {
-      accessKeyId: process.env.R2_ACCESS_KEY_ID!.trim(),
-      secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!.trim()
+      accessKeyId: config.accessKeyId,
+      secretAccessKey: config.secretAccessKey
     },
     maxAttempts: 2,
     requestChecksumCalculation: 'WHEN_REQUIRED',
@@ -66,9 +117,8 @@ function storage() {
   })
 }
 function bucket(visibility: AssetVisibility) {
-  return process.env[
-    visibility === 'private' ? 'R2_PRIVATE_BUCKET' : 'R2_PUBLIC_BUCKET'
-  ]!.trim()
+  const config = storageConfig()
+  return visibility === 'private' ? config.privateBucket : config.publicBucket
 }
 function validateKey(key: string) {
   if (
@@ -225,7 +275,7 @@ export async function deletePrivateObject(key: string) {
 }
 export function publicAssetUrl(key: string) {
   validateKey(key)
-  const url = new URL(process.env.R2_PUBLIC_URL || '')
+  const url = new URL(configuredValue('R2_PUBLIC_URL', 'S3_PUBLIC_URL'))
   const fixture =
     process.env.NODE_ENV !== 'production' &&
     ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)

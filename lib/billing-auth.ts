@@ -15,13 +15,114 @@ import {
   billingConfiguration,
   billingPriceId,
   getStripe,
-  requireBillingCheckout
+  requireBillingCheckout,
+  type BillingInterval
 } from './billing-config'
 import { reconcileStripeEvent } from './billing-reconciliation'
 import { getDb } from './db'
 import { authUsers, billingAccounts } from './db/schema'
-import { isPaidPlan, paidPlanIds, planCatalog } from './plans'
+import { isPaidPlan, paidPlanIds, planCatalog, type PaidPlanId } from './plans'
 import { AppError } from './errors'
+
+/** A separate Portal configuration permits only the upgrade selected here;
+ * general billing management must keep subscription updates disabled. */
+async function upgradeConfirmation(
+  billing: typeof billingAccounts.$inferSelect,
+  plan: PaidPlanId,
+  interval: BillingInterval,
+  returnUrl: string
+) {
+  const configuration =
+    process.env.STRIPE_UPGRADE_PORTAL_CONFIGURATION_ID?.trim()
+  if (!configuration)
+    throw new APIError('SERVICE_UNAVAILABLE', {
+      message:
+        'Plan upgrades are not configured yet. Your current plan remains active.'
+    })
+  if (
+    !billing.stripeCustomerId ||
+    !billing.stripeSubscriptionId ||
+    !isPaidPlan(billing.paidPlan) ||
+    billing.billingInterval !== interval
+  )
+    throw new APIError('CONFLICT', {
+      message: 'Refresh billing before changing this subscription.'
+    })
+  const client = getStripe()
+  const subscription = await client.subscriptions.retrieve(
+    billing.stripeSubscriptionId
+  )
+  const item = subscription.items.data[0]
+  const currentPrice = item?.price
+  const expectedAmount = (id: PaidPlanId) =>
+    interval === 'year'
+      ? planCatalog[id].annualPriceCents
+      : planCatalog[id].monthlyPriceCents
+  const targetPriceId = billingPriceId(plan, interval)
+  if (
+    subscription.id !== billing.stripeSubscriptionId ||
+    subscription.customer !== billing.stripeCustomerId ||
+    subscription.status !== 'active' ||
+    subscription.livemode !== (billingConfiguration().mode === 'live') ||
+    subscription.currency !== 'usd' ||
+    subscription.items.data.length !== 1 ||
+    item?.quantity !== 1 ||
+    currentPrice?.id !== billingPriceId(billing.paidPlan, interval) ||
+    currentPrice.currency !== 'usd' ||
+    currentPrice.unit_amount !== expectedAmount(billing.paidPlan) ||
+    currentPrice.recurring?.interval !== interval ||
+    currentPrice.recurring.interval_count !== 1 ||
+    currentPrice.recurring.usage_type !== 'licensed' ||
+    expectedAmount(plan) <= expectedAmount(billing.paidPlan)
+  )
+    throw new APIError('CONFLICT', {
+      message: 'Your subscription changed. Refresh billing before upgrading.'
+    })
+  if (subscription.cancel_at || subscription.cancel_at_period_end)
+    throw new APIError('CONFLICT', {
+      message:
+        'Your plan is scheduled to end. Choose Keep current plan before upgrading.'
+    })
+  if (subscription.schedule)
+    throw new APIError('CONFLICT', {
+      message:
+        'A billing change is scheduled. Choose Keep current plan before upgrading.'
+    })
+  if (subscription.pending_update)
+    throw new APIError('CONFLICT', {
+      message:
+        'A subscription payment is still pending. Resolve it in Manage billing before upgrading.'
+    })
+  const price = await client.prices.retrieve(targetPriceId)
+  if (
+    price.id !== targetPriceId ||
+    !price.active ||
+    price.currency !== 'usd' ||
+    price.unit_amount !== expectedAmount(plan) ||
+    price.recurring?.interval !== interval ||
+    price.recurring.interval_count !== 1 ||
+    price.recurring.usage_type !== 'licensed'
+  )
+    throw new APIError('SERVICE_UNAVAILABLE', {
+      message: 'This upgrade price is not available.'
+    })
+  return client.billingPortal.sessions.create({
+    customer: billing.stripeCustomerId,
+    configuration,
+    return_url: returnUrl,
+    flow_data: {
+      type: 'subscription_update_confirm',
+      after_completion: {
+        type: 'redirect',
+        redirect: { return_url: returnUrl }
+      },
+      subscription_update_confirm: {
+        subscription: subscription.id,
+        items: [{ id: item.id, price: price.id, quantity: 1 }]
+      }
+    }
+  })
+}
 
 /** The native plugin skips authorizeReference for own-user references. */
 const guardBilling = createAuthMiddleware(
@@ -104,6 +205,32 @@ const guardBilling = createAuthMiddleware(
         message:
           'Downgrades and billing interval changes take effect at period end.'
       })
+    if (
+      active &&
+      !deferred &&
+      input.scheduleAtPeriodEnd !== true &&
+      planCatalog[plan].summaryGenerations > entitlements.summaryLimit
+    ) {
+      if (!entitlements.paidActions)
+        throw new APIError('CONFLICT', {
+          message: 'Confirm your current payment before upgrading.'
+        })
+      try {
+        const portal = await upgradeConfirmation(
+          billing,
+          plan,
+          interval,
+          new URL('/account/billing', ctx.context.baseURL).href
+        )
+        return ctx.json({ url: portal.url, redirect: !input.disableRedirect })
+      } catch (err) {
+        if (err instanceof APIError) throw err
+        throw new APIError('SERVICE_UNAVAILABLE', {
+          message:
+            'Upgrade confirmation could not start. Your current plan remains active.'
+        })
+      }
+    }
     if (!active) {
       try {
         const checkout = await prepareSubscriptionCheckout(
