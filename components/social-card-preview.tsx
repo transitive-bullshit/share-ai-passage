@@ -6,7 +6,12 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import type { CardAppearance } from '@/lib/card-appearance'
 import type { ResolvedCardDesign } from '@/lib/paid-design'
-import { initialCardTextFit, nextCardTextFit } from '@/lib/card-text-fit'
+import {
+  cardTextIsReadable,
+  cardTextReadabilityMessage,
+  initialCardTextFit,
+  nextCardTextFit
+} from '@/lib/card-text-fit'
 import type { GeneratedPreview, Provider } from '@/lib/domain'
 import { SocialCard } from '@/lib/social-card'
 import { getSocialTemplate } from '@/lib/social-templates'
@@ -16,6 +21,7 @@ export type CardPreviewStatus = {
   attempt: number
   loaded: boolean
   error?: string
+  retryable?: boolean
 }
 
 type SocialCardPreviewProps = {
@@ -55,6 +61,8 @@ function CardPreviewCanvas({
   const [fit, setFit] = useState(initialCardTextFit)
   const template =
     resolvedDesign?.template ?? getSocialTemplate(appearance.templateId)
+  const readable =
+    !fit.done || cardTextIsReadable(fit.scale, template.layout.highlightSize)
 
   // Clear the parent's prior ready state before this new canvas is painted.
   useLayoutEffect(() => {
@@ -108,7 +116,17 @@ function CardPreviewCanvas({
   useLayoutEffect(() => {
     if (!assetsReady) return
     if (fit.done) {
-      onStatusChange?.({ appearance, attempt, loaded: true })
+      onStatusChange?.(
+        readable
+          ? { appearance, attempt, loaded: true }
+          : {
+              appearance,
+              attempt,
+              loaded: false,
+              error: cardTextReadabilityMessage,
+              retryable: false
+            }
+      )
       return
     }
     const canvas = canvasRef.current!
@@ -126,7 +144,22 @@ function CardPreviewCanvas({
         error: 'The card text could not fit within this style.'
       })
     }
-  }, [assetsReady, fit, template, appearance, attempt, onStatusChange])
+  }, [
+    assetsReady,
+    fit,
+    readable,
+    template,
+    appearance,
+    attempt,
+    onStatusChange
+  ])
+
+  if (!readable)
+    return (
+      <div className='card-loading'>
+        Shorten your highlights to preview this card.
+      </div>
+    )
 
   return (
     <div

@@ -45,6 +45,7 @@ import {
   lockUsageSubjects
 } from './usage'
 import { usageLimitError } from './usage-policy'
+import { aiSpendingPause } from './ai-spending-policy'
 
 export const draftEditSchema = z.strictObject({
   revision: z.number().int().nonnegative(),
@@ -188,11 +189,10 @@ async function pendingGenerationBlock(draft: SavedDraft, actor: Actor) {
   if (operation || !snapshot || snapshot.preview) return
   const usage = await getSummaryUsage(actor.subjectKey, actor.allowance)
   if (usage.remaining > 0 && !usage.generationPaused) return
-  const error = usageLimitError(
-    usage.resetAt,
-    new Date(),
-    usage.generationPaused
-  )
+  const error =
+    usage.generationPauseCode === 'AI_SPEND_LIMIT'
+      ? aiSpendingPause({ scope: 'subscription', resetAt: usage.resetAt })
+      : usageLimitError(usage.resetAt, new Date(), usage.generationPaused)
   return {
     ...error.details!,
     message: error.message,

@@ -206,3 +206,23 @@ it('keeps the saved summary usable if initial-background resumption is interrupt
     })
   )
 })
+
+it('keeps spend-pause guidance and retry controls without promising a monthly restart', async () => {
+  const message =
+    'New summaries are paused while outstanding work is reconciled.'
+  fetchMock.mockResolvedValueOnce(
+    response({
+      ...blocked,
+      errorMessage: message,
+      generationBlock: { code: 'AI_SPEND_LIMIT', resetAt, canSignUp: false }
+    })
+  )
+  await render(Date.parse(resetAt))
+  expect(container.textContent).toContain(message)
+  expect(container.textContent).toContain('Resume preparation')
+  expect(container.textContent).toContain('Check saved status')
+  expect(container.textContent).not.toContain(
+    'New summaries are available after'
+  )
+  expect(container.querySelector('a[href^="/sign-up"]')).toBeNull()
+})

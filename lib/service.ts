@@ -10,7 +10,7 @@ import {
   resolveOwnedCardDesign
 } from './assets'
 import { requirePaidAccount } from './billing'
-import { renderCard } from './card'
+import { assertReadableCardText, renderCard } from './card'
 import { lockUsageSubjects } from './usage'
 import { generateSummary } from './summary-generation'
 import { DEFAULT_CARD_APPEARANCE, type CardAppearance } from './card-appearance'
@@ -616,44 +616,50 @@ export async function publishPreview(
         410
       )
     }
-    const [created] = await tx
-      .insert(publications)
-      .values({
-        ownerId,
-        dedupeScope,
-        sourceId: source.id,
-        snapshotId: snapshot.id,
-        fingerprint,
-        generation: draft.generation,
-        title: preview.title,
-        highlights: preview.highlights,
-        appearance,
-        cardVersion: 4
-      })
-      .onConflictDoNothing({
-        target: [
-          publications.sourceId,
-          publications.generation,
-          publications.fingerprint
-        ]
-      })
-      .returning()
-    const record =
-      created ||
-      (
-        await tx
-          .select()
-          .from(publications)
-          .where(
-            and(
-              eq(publications.dedupeScope, dedupeScope),
-              isNull(publications.deletedAt),
-              eq(publications.sourceId, source.id),
-              eq(publications.generation, draft.generation),
-              eq(publications.fingerprint, fingerprint)
-            )
-          )
-      )[0]
+    const matchingPublication = and(
+      eq(publications.dedupeScope, dedupeScope),
+      isNull(publications.deletedAt),
+      eq(publications.sourceId, source.id),
+      eq(publications.generation, draft.generation),
+      eq(publications.fingerprint, fingerprint)
+    )
+    let [record] = await tx
+      .select()
+      .from(publications)
+      .where(matchingPublication)
+    if (!record) {
+      // Existing URLs retain their original presentation. Only new work must
+      // fit readably; the source/owner locks keep reuse and creation atomic.
+      await assertReadableCardText(
+        { ...preview, provider: source.provider },
+        appearance
+      )
+      const [created] = await tx
+        .insert(publications)
+        .values({
+          ownerId,
+          dedupeScope,
+          sourceId: source.id,
+          snapshotId: snapshot.id,
+          fingerprint,
+          generation: draft.generation,
+          title: preview.title,
+          highlights: preview.highlights,
+          appearance,
+          cardVersion: 4
+        })
+        .onConflictDoNothing({
+          target: [
+            publications.sourceId,
+            publications.generation,
+            publications.fingerprint
+          ]
+        })
+        .returning()
+      record =
+        created ??
+        (await tx.select().from(publications).where(matchingPublication))[0]
+    }
     if (!record || record.disabledAt)
       throw new AppError('This passage is unavailable.', 410)
     if (saved)
@@ -707,12 +713,15 @@ async function publishPaidPreview(
       )
     return source
   }
-  const resolved = await db.transaction(async (tx) => {
-    await lockCurrent(tx)
-    return resolveOwnedCardDesign(saved.ownerId, saved.design!, {
-      tx,
-      frozen: saved.resolvedDesign
-    })
+  const { design: resolved, provider } = await db.transaction(async (tx) => {
+    const source = await lockCurrent(tx)
+    return {
+      provider: source.provider,
+      design: await resolveOwnedCardDesign(saved.ownerId, saved.design!, {
+        tx,
+        frozen: saved.resolvedDesign
+      })
+    }
   })
   const contentFingerprint = createHash('sha256')
     .update(
@@ -761,6 +770,7 @@ async function publishPaidPreview(
     }
   })
   if (reused) return reused
+  await assertReadableCardText({ ...preview, provider }, appearance, resolved)
   const card = await freezeCardPresentation({
     userId: saved.ownerId,
     presentationHash: contentFingerprint,

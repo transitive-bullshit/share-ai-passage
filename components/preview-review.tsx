@@ -509,9 +509,11 @@ export function PreviewReview({
             <Alert variant='destructive'>
               <AlertDescription>
                 {currentCardError}
-                <Button type='button' variant='outline' onClick={retryCard}>
-                  Try preview again
-                </Button>
+                {currentCard?.retryable !== false && (
+                  <Button type='button' variant='outline' onClick={retryCard}>
+                    Try preview again
+                  </Button>
+                )}
               </AlertDescription>
             </Alert>
           ) : null}

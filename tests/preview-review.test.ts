@@ -452,3 +452,33 @@ it('resets readiness and text fitting when paid font or artwork inputs change wi
     expect.objectContaining({ loaded: true })
   )
 })
+
+it('keeps oversized text saved in the editor and requires shortening instead of publishing tiny highlights', async () => {
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
+    function (this: HTMLElement) {
+      let height = 630
+      if (this.classList.contains('social-card-copy')) {
+        const title = this.querySelector<HTMLElement>('.social-card-title')!
+        const scale = Number.parseFloat(title.style.fontSize) / 68
+        const long = (this.textContent?.length ?? 0) > 500
+        height = long ? 780 * scale : 200
+      }
+      return new DOMRect(0, 0, 1200, height)
+    }
+  )
+  await act(async () => root.render(createElement(ReviewHarness)))
+  const full = 'A'.repeat(1000)
+  await editField('summary-highlight-1', full)
+  await finishArtwork('margin-notes')
+  expect(publishButton().disabled).toBe(true)
+  expect(container.textContent).toContain('Shorten the highlights')
+  expect(
+    container.querySelector<HTMLTextAreaElement>('#summary-highlight-1')?.value
+  ).toBe(full)
+  expect(container.textContent).not.toContain('Try preview again')
+  await editField('summary-highlight-1', 'A shorter highlight.')
+  await finishArtwork('margin-notes')
+  expect(publishButton().disabled).toBe(false)
+  expect(container.textContent).not.toContain('Shorten the highlights')
+  expect(requests).not.toHaveBeenCalled()
+})

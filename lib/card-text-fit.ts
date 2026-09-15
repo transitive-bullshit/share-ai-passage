@@ -26,3 +26,12 @@ export function nextCardTextFit(fit: CardTextFit, fits: boolean): CardTextFit {
     done
   }
 }
+
+/** Highlight size on the 1200×630 card, shared by browser and native new-work checks. */
+export const minimumCardBodySize = 22
+export const cardTextReadabilityMessage =
+  'Shorten the highlights or choose another style so the card stays readable.'
+
+export function cardTextIsReadable(scale: number, bodySize: number) {
+  return scale * bodySize >= minimumCardBodySize
+}

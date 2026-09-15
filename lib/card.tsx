@@ -9,7 +9,13 @@ import { brand } from './brand'
 import type { CardAppearance } from './card-appearance'
 import type { ResolvedCardDesign } from './paid-design'
 import { cardFonts, type CardFont } from './card-fonts'
-import { initialCardTextFit, nextCardTextFit } from './card-text-fit'
+import {
+  cardTextIsReadable,
+  cardTextReadabilityMessage,
+  initialCardTextFit,
+  nextCardTextFit
+} from './card-text-fit'
+import { AppError } from './errors'
 import { privateHeaders } from './http'
 import { SocialCard, footerText, type CardData } from './social-card'
 import { getSocialTemplate, type SocialTemplate } from './social-templates'
@@ -67,19 +73,27 @@ function copyLayout(
 }
 
 export type CardArtwork = { background?: string; logo?: string }
+export type CardRenderOptions = { requireReadableText?: boolean }
 async function prepareCard(
   data: CardData,
   appearance?: CardAppearance,
   design?: ResolvedCardDesign,
-  artwork: CardArtwork = {}
+  artwork: CardArtwork = {},
+  policy: CardRenderOptions & { measureOnly?: boolean } = {}
 ) {
   if (
+    !policy.measureOnly &&
     !data.disabled &&
     design?.background.kind === 'asset' &&
     !artwork.background
   )
     throw new Error('The selected card background is missing')
-  if (!data.disabled && design?.branding.mode === 'custom' && !artwork.logo)
+  if (
+    !policy.measureOnly &&
+    !data.disabled &&
+    design?.branding.mode === 'custom' &&
+    !artwork.logo
+  )
     throw new Error('The selected card logo is missing')
   for (const value of Object.values(artwork))
     if (value && !value.startsWith('data:image/webp;base64,'))
@@ -96,7 +110,7 @@ async function prepareCard(
       text,
       template ? [template.font.title, template.font.body] : undefined
     ),
-    template
+    template && !policy.measureOnly
       ? design?.background.kind === 'asset'
         ? Promise.resolve(artwork.background!)
         : design?.background.kind === 'pending'
@@ -144,6 +158,12 @@ async function prepareCard(
     }
     fit = nextCardTextFit(fit, copy.height <= maxHeight)
   }
+  if (
+    policy.requireReadableText &&
+    !data.disabled &&
+    !cardTextIsReadable(fit.scale, template?.layout.highlightSize ?? 28)
+  )
+    throw new AppError(cardTextReadabilityMessage, 400)
   if (fitted) return fitted
   throw new Error('Social card text could not fit within its template')
 }
@@ -152,13 +172,15 @@ export async function renderCard(
   data: CardData,
   appearance?: CardAppearance,
   design?: ResolvedCardDesign,
-  artwork?: CardArtwork
+  artwork?: CardArtwork,
+  policy?: CardRenderOptions
 ) {
   const { node, css, options } = await prepareCard(
     data,
     appearance,
     design,
-    artwork
+    artwork,
+    policy
   )
   const webp = await render(node, {
     ...options,
@@ -186,13 +208,15 @@ export async function renderCardPreview(
   data: CardData,
   appearance?: CardAppearance,
   design?: ResolvedCardDesign,
-  artwork?: CardArtwork
+  artwork?: CardArtwork,
+  policy?: CardRenderOptions
 ) {
   const { element, fonts } = await prepareCard(
     data,
     appearance,
     design,
-    artwork
+    artwork,
+    policy
   )
   const html = await renderToReadableStream(
     <html lang='en'>
@@ -213,4 +237,22 @@ export async function renderCardPreview(
   return new Response(html, {
     headers: { ...privateHeaders, 'Content-Type': 'text/html; charset=utf-8' }
   })
+}
+
+/** Validate new work without encoding an image or reading any private artwork. */
+export async function assertReadableCardText(
+  data: CardData,
+  appearance: CardAppearance,
+  design?: ResolvedCardDesign
+) {
+  await prepareCard(
+    data,
+    appearance,
+    design,
+    {},
+    {
+      requireReadableText: true,
+      measureOnly: true
+    }
+  )
 }
