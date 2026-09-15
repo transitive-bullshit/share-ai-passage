@@ -1,6 +1,6 @@
 # Accounts implementation review
 
-Status: Phase 1 implemented and validated locally; live development Google, GitHub, password recovery/sign-in and summary generation checks pass. The owner approved the accounts feedback gate on September 15, 2026 and directed Phase 2 to proceed after committing this work. Hosted environment checks remain open; accounts are not deployed.
+Status: Phase 1 implemented and validated locally; live development Google, GitHub, password recovery/sign-in and summary generation checks pass. The owner approved the accounts feedback gate on September 15, 2026 and directed Phase 2 to proceed after committing this work. Accounts and paid features are now deployed to isolated shared Preview; hosted Google linking/sign-in/reload and a fresh GitHub sign-in return pass. Remaining hosted and production checks are tracked in the [paid review](PAID_REVIEW.md#hosted-preview). This rollout has not migrated or deployed production.
 
 Implementation branch: `codex/accounts-first-launch`, rebased onto `main` at `70aeefb` to incorporate the committed OAuth/Resend setup and logo asset. Development uses a dedicated local PostgreSQL instance on port 55437, database `passage_accounts_afc0`; tests use the separate disposable `passage_accounts_afc0_test`. The review app is `https://share-ai-passage-accounts-afc0.local.share-ai-passage.com:8443`, routed to the isolated backend on port 3107. Use that origin for authentication; the main checkout retains its separate development route. The review instance uses separate development Google, GitHub and Resend configuration. With explicit owner approval, OpenAI development uses the existing normal API key; fresh summary generation has passed a live check. Automated validation used fixtures and disabled external credentials.
 
@@ -44,9 +44,13 @@ The requested password policy is now 4–128 characters, shared by Better Auth, 
 
 A follow-up browser review at a 375px viewport inspected Account settings and the sign-in callback-error screen. Labels, connected methods, password guidance and the error message remained readable without horizontal overflow. Tab navigation reached the new-password field from current password and the sign-in password field through the recovery link; visible focus was retained. The viewport was restored afterward. This was a layout/focus check, not another provider rejection or password mutation. Same-browser sign-out/sign-in and refresh recovery pass; a separate browser profile or physical second-device UI walkthrough remains a manual review item.
 
+## Hosted follow-up
+
+On September 15, Google linked to the existing Preview account and passed fresh sign-in plus a full reload. The same account showed both Google and GitHub connected. A later fresh sign-out/GitHub sign-in returned to the authenticated homepage on READY `e0182da` / `dpl_7MfcxbXyHJnxQ6VW6jZL6JNqCd9X`. Chrome then blocked the additional Account-page action because another extension UI was open; a new post-GitHub reload is not claimed. These checks use the owner's Vercel session and do not prove anonymous access or email/password setup, which remains unset on Preview. No credentials or access settings changed. Evidence: `work/phase2/hosted-readiness/{google-oauth-evidence,github-oauth-evidence}.json`.
+
 ## Migration and rollback
 
-Production remains at `0006`; nothing has been applied there. Apply the full pending `0007`–`0008` batch using the repository Drizzle migration command. The installed PostgreSQL migrator wraps all pending migrations in one transaction. Do not deploy only the intermediate `0007` schema.
+Phase 1 added migrations `0007`–`0008`; Phase 2 extends through `0012`. Shared Preview has all 13 migrations. Before the eventual production release, verify its actual migration state and apply the complete pending batch for the release revision using the repository Drizzle command; do not use only the older Phase 1 batch with Phase 2 code. The installed PostgreSQL migrator wraps pending migrations in one transaction. See the [production guide](PRODUCTION.md#accounts-release-readiness) for the release and recovery requirements.
 
 The final schema retains the original global publication uniqueness constraint. Existing anonymous fingerprints remain unchanged; new owned fingerprints include their immutable namespace. Deletion records both current and older-reader disablement fields and uses a deterministic tombstone fingerprint. Rolling application code back therefore retains legacy writes and does not expose deleted publications. Older request-driven cleanup may log a foreign-key-protected failure for saved-draft-only content; protected snapshots remain intact until accounts code is restored. Preserve the new tables and columns during an application rollback; do not drop owned data or run a destructive down migration.
 
@@ -55,7 +59,7 @@ Tested local migration does not establish a production backup or restore. Obtain
 ## Outstanding external checks and feedback gate
 
 - Fresh signup verification delivery and the external Reply-To mailbox remain untested live; development password-reset delivery and subsequent email sign-in pass.
-- Use isolated hosted preview data and verify the target origin, callbacks, session cookies and account removal there. Confirm production backup/recovery before deployment.
+- Isolated hosted Preview, its origin and both OAuth returns are verified within the scope above. Complete remaining hosted email/password and account-removal checks, and production backup/recovery before production deployment. The owner waived the separate Preview backup rehearsal.
 - Gate A is approved: the owner explicitly directed “commit first and then proceed with phase 2” after reviewing the committed accounts work.
 
-Live development checks now establish Google/GitHub sign-in, password recovery/sign-in and model generation. They do not establish hosted preview or production readiness. Review the local accounts experience at Gate A; hosted checks and backup/recovery remain required before deployment, and the owner has now explicitly authorized Phase 2 after feedback.
+Gate A is complete. Local development checks establish all three sign-in methods and model generation; the hosted follow-up above adds Google and GitHub evidence. Remaining integrated paid-flow and production checks belong to Gate B in the [paid review](PAID_REVIEW.md#outstanding-gates).
