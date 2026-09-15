@@ -79,6 +79,7 @@ const accountSettings = [
   'EMAIL_REPLY_TO',
   'STRIPE_SECRET_KEY',
   'STRIPE_WEBHOOK_SECRET',
+  'STRIPE_UPGRADE_PORTAL_CONFIGURATION_ID',
   'STRIPE_PLUS_MONTHLY_PRICE_ID',
   'STRIPE_PLUS_ANNUAL_PRICE_ID',
   'STRIPE_PRO_MONTHLY_PRICE_ID',
@@ -92,6 +93,12 @@ const accountSettings = [
   'R2_PRIVATE_BUCKET',
   'R2_PUBLIC_URL',
   'R2_ENDPOINT',
+  'S3_ACCESS_KEY_ID',
+  'S3_SECRET_ACCESS_KEY',
+  'S3_API_ENDPOINT',
+  'S3_BUCKET_NAME',
+  'S3_PRIVATE_BUCKET_NAME',
+  'S3_PUBLIC_URL',
   'IMAGE_AI_MODEL',
   'IMAGE_GENERATION_ENABLED',
   'IMAGE_AI_MONTHLY_BUDGET_USD',
@@ -215,10 +222,23 @@ describe('explicit production configuration', () => {
         RESEND_FROM_EMAIL: 'Passage <production@example.invalid>',
         RESEND_REPLY_TO: 'reply@example.invalid',
         STRIPE_SECRET_KEY: 'sk_test_explicit_fixture',
+        STRIPE_UPGRADE_PORTAL_CONFIGURATION_ID: 'bpc_explicit_fixture',
         STRIPE_LIVE_CHECKOUT_ENABLED: 'false',
         R2_SECRET_ACCESS_KEY: 'explicit-storage-fixture',
         IMAGE_GENERATION_ENABLED: '0',
         IMAGE_AI_MONTHLY_BUDGET_USD: '20'
+      }
+    },
+    {
+      name: 'explicit supported S3 aliases',
+      settings: {
+        S3_ACCESS_KEY_ID: 'production-alias-storage-key',
+        S3_SECRET_ACCESS_KEY: 'production-alias-storage-secret',
+        S3_API_ENDPOINT:
+          'https://1234567890abcdef1234567890abcdef.us.r2.cloudflarestorage.com',
+        S3_BUCKET_NAME: 'production-public',
+        S3_PRIVATE_BUCKET_NAME: 'production-private',
+        S3_PUBLIC_URL: 'https://assets.example.invalid'
       }
     },
     {

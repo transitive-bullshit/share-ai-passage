@@ -672,14 +672,16 @@ export function TemplateRecipeEditor({
         <div className='min-w-0'>
           <div className='sticky top-8 flex flex-col gap-4'>
             {resolved && !media.loading && !media.error ? (
-              <SocialCardPreview
-                key={JSON.stringify(recipe) + JSON.stringify(media.artwork)}
-                preview={sample}
-                provider='chatgpt'
-                appearance={{ templateId: recipe.baseStyle }}
-                resolvedDesign={resolved}
-                artwork={media.artwork}
-              />
+              <div className='live-card'>
+                <SocialCardPreview
+                  key={JSON.stringify(recipe) + JSON.stringify(media.artwork)}
+                  preview={sample}
+                  provider='chatgpt'
+                  appearance={{ templateId: recipe.baseStyle }}
+                  resolvedDesign={resolved}
+                  artwork={media.artwork}
+                />
+              </div>
             ) : (
               <p className='text-sm text-muted-foreground'>
                 {media.loading

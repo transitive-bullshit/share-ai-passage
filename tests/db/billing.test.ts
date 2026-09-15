@@ -32,6 +32,7 @@ const fixture = vi.hoisted(() => ({
   invoices: [] as unknown[],
   lines: [] as unknown[],
   sessions: new Map<string, unknown>(),
+  schedules: new Map<string, unknown>(),
   cancel: vi.fn<() => Promise<unknown>>(),
   expire: vi.fn<() => Promise<unknown>>()
 }))
@@ -57,6 +58,9 @@ vi.mock('stripe', () => {
           )
       }
       invoicePayments = { list: () => pages([]) }
+      subscriptionSchedules = {
+        retrieve: async (id: string) => fixture.schedules.get(id)
+      }
       checkout = {
         sessions: {
           retrieve: async (id: string) => fixture.sessions.get(id),
@@ -115,7 +119,12 @@ function paidInvoice(plan = 'plus', end = periodEnd) {
   ]
 }
 
-function event(customer: string, type = 'invoice.paid', id?: string) {
+function event(
+  customer: string,
+  type = 'invoice.paid',
+  id?: string,
+  objectId = 'invoice_fixture'
+) {
   const eventId = id ?? `evt_${randomUUID()}`
   events.push(eventId)
   return {
@@ -123,7 +132,7 @@ function event(customer: string, type = 'invoice.paid', id?: string) {
     type,
     livemode: false,
     created: now,
-    data: { object: { id: 'invoice_fixture', customer } }
+    data: { object: { id: objectId, customer } }
   } as Stripe.Event
 }
 
@@ -160,6 +169,7 @@ describe.skipIf(!testUrl)(
           )
       vi.stubEnv('STRIPE_IMAGE_PACK_PRICE_ID', 'price_pack')
       fixture.sessions.clear()
+      fixture.schedules.clear()
       fixture.cancel.mockReset().mockResolvedValue({})
       fixture.expire.mockReset().mockResolvedValue({})
       paidSubscription()
@@ -211,6 +221,87 @@ describe.skipIf(!testUrl)(
       expect(await readEntitlements(owner.id)).toMatchObject({
         plan: 'pro',
         allowanceAnchorAt: first!.allowanceAnchorAt
+      })
+    })
+
+    it('refreshes future phases from schedule-only events and does not revive a released schedule from stale events', async () => {
+      const owner = await account()
+      paidSubscription('pro')
+      paidInvoice('pro')
+      const subscription = fixture.subscriptions[0] as {
+        schedule: string | null
+      }
+      subscription.schedule = 'sub_sched_fixture'
+      const currentPhase = {
+        start_date: now - 86400,
+        items: [{ price: 'price_pro_month' }]
+      }
+      fixture.schedules.set(subscription.schedule, { phases: [currentPhase] })
+      await reconcileStripeEvent(
+        event(owner.customer, 'customer.subscription.updated')
+      )
+      const [initial] = await getDb()
+        .select()
+        .from(billingAccounts)
+        .where(eq(billingAccounts.userId, owner.id))
+      expect(initial!.pendingPlan).toBeNull()
+      fixture.schedules.set(subscription.schedule, {
+        phases: [
+          currentPhase,
+          { start_date: periodEnd, items: [{ price: 'price_plus_year' }] }
+        ]
+      })
+      const changed = event(
+        owner.customer,
+        'subscription_schedule.updated',
+        undefined,
+        'sub_sched_fixture'
+      )
+      await reconcileStripeEvent(changed)
+      await reconcileStripeEvent(changed)
+      const [scheduled] = await getDb()
+        .select()
+        .from(billingAccounts)
+        .where(eq(billingAccounts.userId, owner.id))
+      expect(scheduled).toMatchObject({
+        paidPlan: 'pro',
+        billingInterval: 'month',
+        pendingPlan: 'plus',
+        pendingBillingInterval: 'year',
+        pendingEffectiveAt: new Date(periodEnd * 1000),
+        allowanceAnchorAt: initial!.allowanceAnchorAt,
+        paidThrough: initial!.paidThrough
+      })
+      const [record] = await getDb()
+        .select()
+        .from(billingEvents)
+        .where(eq(billingEvents.id, changed.id))
+      expect(record).toMatchObject({
+        attempts: 1,
+        processedAt: expect.any(Date)
+      })
+      subscription.schedule = null
+      const released = event(
+        owner.customer,
+        'subscription_schedule.released',
+        undefined,
+        'sub_sched_fixture'
+      )
+      await reconcileStripeEvent(released)
+      const stale = event(owner.customer, 'subscription_schedule.updated')
+      stale.created -= 86400
+      await reconcileStripeEvent(stale)
+      const [restored] = await getDb()
+        .select()
+        .from(billingAccounts)
+        .where(eq(billingAccounts.userId, owner.id))
+      expect(restored).toMatchObject({
+        pendingPlan: null,
+        pendingBillingInterval: null,
+        pendingEffectiveAt: null,
+        paidPlan: 'pro',
+        billingInterval: 'month',
+        allowanceAnchorAt: initial!.allowanceAnchorAt
       })
     })
 
