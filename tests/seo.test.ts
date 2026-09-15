@@ -6,6 +6,7 @@ import { GET as publicImage } from '@/app/[provider]/[publicationId]/image/route
 import ReaderPage, {
   generateMetadata
 } from '@/app/[provider]/[publicationId]/page'
+import { generateMetadata as generatePricingMetadata } from '@/app/pricing/page'
 import { JsonLd } from '@/components/json-ld'
 import { brand } from '@/lib/brand'
 import { renderCard } from '@/lib/card'
@@ -108,6 +109,27 @@ describe('environment indexing policy', () => {
       })
     }
   )
+})
+
+it('gives public pricing its own canonical and brand image while honoring production and preview indexing', () => {
+  for (const [environment, origin, index] of [
+    ['production', 'https://passage.example', true],
+    ['preview', 'https://passage-git-feature.vercel.app', false]
+  ] as const) {
+    vi.stubEnv('VERCEL_ENV', environment)
+    expect(generatePricingMetadata()).toMatchObject({
+      alternates: { canonical: `${origin}/pricing` },
+      robots: { index, follow: index },
+      openGraph: {
+        type: 'website',
+        url: `${origin}/pricing`,
+        images: [
+          { url: `${origin}/brand/social-preview.jpg`, type: 'image/jpeg' }
+        ]
+      },
+      twitter: { card: 'summary_large_image' }
+    })
+  }
 })
 
 describe('structured data', () => {

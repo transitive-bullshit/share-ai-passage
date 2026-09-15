@@ -8,12 +8,14 @@ import { BillingSettings } from '@/components/billing-settings'
 import { ApiKeySettings } from '@/components/api-key-settings'
 import { planCatalog, imagePack } from '@/lib/plans'
 
-const state = vi.hoisted(() => ({ userId: 'fixture-reader' }))
+const state = vi.hoisted(() => ({ userId: 'fixture-reader' as string | null }))
 vi.mock('@/components/account-session', () => ({
   useAccountSession: () => ({
-    data: {
-      user: { id: state.userId, emailVerified: true, isAnonymous: false }
-    },
+    data: state.userId
+      ? {
+          user: { id: state.userId, emailVerified: true, isAnonymous: false }
+        }
+      : null,
     isPending: false
   })
 }))
@@ -74,6 +76,58 @@ it('shows confirmed billing data without treating a hosted return query as payme
   expect(window.localStorage.getItem('passage:pack:fixture-reader')).toBeNull()
   expect(requests).toHaveBeenCalledTimes(1)
   expect(requests.mock.calls[0]![0]).toBe('/api/billing')
+})
+
+it('preserves an annual pricing choice in the anonymous sign-in continuation without fetching billing', async () => {
+  state.userId = null
+  window.history.replaceState(null, '', '/account/billing?interval=year')
+  await act(async () =>
+    root.render(createElement(BillingSettings, { initialInterval: 'year' }))
+  )
+  const signIn = [...container.querySelectorAll('a')].find(
+    (link) => link.textContent === 'Sign in'
+  )
+  expect(signIn).toBeDefined()
+  expect(new URL(signIn!.href).searchParams.get('returnTo')).toBe(
+    '/account/billing?interval=year'
+  )
+  const signUp = [...container.querySelectorAll('a')].find(
+    (link) => link.textContent === 'Create account'
+  )
+  expect(signUp).toBeDefined()
+  expect(new URL(signUp!.href).pathname).toBe('/sign-up')
+  expect(new URL(signUp!.href).searchParams.get('returnTo')).toBe(
+    '/account/billing?interval=year'
+  )
+  expect(requests).not.toHaveBeenCalled()
+})
+
+it('selects annual billing from the pricing link and submits that cadence only after an explicit choice', async () => {
+  window.history.replaceState(null, '', '/account/billing?interval=year')
+  requests.mockResolvedValueOnce(Response.json(billing))
+  await act(async () =>
+    root.render(createElement(BillingSettings, { initialInterval: 'year' }))
+  )
+  const buttons = [...container.querySelectorAll('button')]
+  expect(
+    buttons
+      .find((button) => button.textContent === 'Annual · Save 20%')!
+      .getAttribute('aria-pressed')
+  ).toBe('true')
+  expect(requests).toHaveBeenCalledTimes(1)
+  expect(requests.mock.calls[0]![0]).toBe('/api/billing')
+  requests
+    .mockResolvedValueOnce(Response.json({}))
+    .mockResolvedValueOnce(Response.json(billing))
+  await act(async () =>
+    buttons.find((button) => button.textContent === 'Choose Pro')!.click()
+  )
+  expect(requests.mock.calls[1]![0]).toBe('/api/billing/action')
+  expect(JSON.parse(requests.mock.calls[1]![1]!.body as string)).toEqual({
+    action: 'change',
+    plan: 'pro',
+    interval: 'year'
+  })
 })
 
 it('shows timestamp-only cancellation and restores it through the existing action', async () => {
