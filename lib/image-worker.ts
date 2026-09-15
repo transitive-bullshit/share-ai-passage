@@ -1,4 +1,4 @@
-import { and, eq, inArray } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 
 import {
   readOwnedAssetBytes,
@@ -19,6 +19,7 @@ import {
   claimImageOperation,
   failImageOperation,
   markImageUncertain,
+  recordImageResponse,
   succeedImageOperation,
   type ImageOperation
 } from './image-usage'
@@ -36,25 +37,6 @@ const visibleStatus = (operation: ImageOperation) => ({
   operationId: operation.id,
   status: operation.status
 })
-
-async function recordResponse(
-  id: string,
-  input: {
-    providerRequestId: string | null
-    usage: Record<string, unknown> | null
-    actualCostMicros: number | null
-  }
-) {
-  await getDb()
-    .update(imageOperations)
-    .set({ ...input, updatedAt: new Date() })
-    .where(
-      and(
-        eq(imageOperations.id, id),
-        inArray(imageOperations.status, [...pendingStatuses])
-      )
-    )
-}
 
 /** Safe to repeat: only read/finalize an immutable object; never calls the model. */
 export async function recoverImageResult(id: string) {
@@ -174,7 +156,7 @@ export async function runImageGeneration(id: string) {
       return visibleStatus(
         await failImageOperation(id, { ...evidence, errorCode: err.code })
       )
-    await recordResponse(id, evidence).catch(() => {})
+    await recordImageResponse(id, evidence).catch(() => {})
     return visibleStatus(
       await markImageUncertain(id, evidence.providerRequestId ?? undefined)
     )
@@ -184,7 +166,7 @@ export async function runImageGeneration(id: string) {
     usage: result.usage,
     actualCostMicros: result.actualCostMicros
   }
-  await recordResponse(id, evidence).catch(() => {})
+  await recordImageResponse(id, evidence).catch(() => {})
   try {
     const asset = await storePreauthorizedGeneratedAsset({
       userId: operation.ownerId,
@@ -210,7 +192,7 @@ export async function runImageGeneration(id: string) {
           errorCode: 'INVALID_IMAGE'
         })
       )
-    await recordResponse(id, evidence).catch(() => {})
+    await recordImageResponse(id, evidence).catch(() => {})
     return visibleStatus(
       await markImageUncertain(id, result.providerRequestId ?? undefined)
     )

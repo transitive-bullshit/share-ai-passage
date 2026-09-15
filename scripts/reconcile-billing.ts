@@ -13,6 +13,7 @@ const help = `Billing reconciliation:
   cancel-closing <account ID> --apply
 
 Set DATABASE_URL explicitly. Environment files are never loaded.
+status includes the account’s AI spending ceilings and current liabilities.
 refresh retrieves authoritative Stripe payment state; it accepts no asserted plan.
 cancel-closing retries cancellation only for an account already marked closing.
 Mutations require explicit Stripe credentials and --apply. No invoice is created.
@@ -139,20 +140,41 @@ export async function runBillingReconciliation(args: string[]) {
         })
       }
     }
-    const [saved] = await getDb()
-      .select({
-        userId: billingAccounts.userId,
-        status: billingAccounts.status,
-        paidPlan: billingAccounts.paidPlan,
-        paidThrough: billingAccounts.paidThrough,
-        allowanceAnchorAt: billingAccounts.allowanceAnchorAt,
-        reconciledAt: billingAccounts.reconciledAt,
-        closingAt: billingAccounts.closingAt,
-        cancellationCompletedAt: billingAccounts.cancellationCompletedAt
-      })
-      .from(billingAccounts)
-      .where(eq(billingAccounts.userId, command.userId))
-    return JSON.stringify(saved, null, 2)
+    const { lockUsageSubjects } = await import('../lib/usage')
+    const { readEntitlements } = await import('../lib/billing')
+    const { isPaidPlan } = await import('../lib/plans')
+    const { readSubscriptionAiSpending, readPurchasedAiSpending } =
+      await import('../lib/ai-spending')
+    const status = await getDb().transaction(async (tx) => {
+      const subjectKey = `user:${command.userId}`
+      await lockUsageSubjects(tx, subjectKey)
+      const [saved] = await tx
+        .select({
+          userId: billingAccounts.userId,
+          status: billingAccounts.status,
+          paidPlan: billingAccounts.paidPlan,
+          paidThrough: billingAccounts.paidThrough,
+          allowanceAnchorAt: billingAccounts.allowanceAnchorAt,
+          reconciledAt: billingAccounts.reconciledAt,
+          closingAt: billingAccounts.closingAt,
+          cancellationCompletedAt: billingAccounts.cancellationCompletedAt
+        })
+        .from(billingAccounts)
+        .where(eq(billingAccounts.userId, command.userId))
+      const entitlement = await readEntitlements(command.userId, tx)
+      const subscription =
+        entitlement.paidActions && isPaidPlan(entitlement.plan)
+          ? await readSubscriptionAiSpending(
+              tx,
+              subjectKey,
+              entitlement.plan,
+              entitlement.allowanceWindow
+            )
+          : null
+      const purchasedImages = await readPurchasedAiSpending(tx, command.userId)
+      return { ...saved, aiSpending: { subscription, purchasedImages } }
+    })
+    return JSON.stringify(status, null, 2)
   } finally {
     await closeDatabase()
   }

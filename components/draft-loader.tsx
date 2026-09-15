@@ -35,7 +35,10 @@ export function DraftLoader({
     useState<PendingDraft['generationBlock']>()
   const [attempt, setAttempt] = useState(0)
   const generationReset =
-    generationBlock?.resetAt ?? (status === 'loading' ? resetAt : undefined)
+    generationBlock?.code === 'AI_SPEND_LIMIT'
+      ? undefined
+      : (generationBlock?.resetAt ??
+        (status === 'loading' ? resetAt : undefined))
   useEffect(() => {
     let active = true
     let timer: ReturnType<typeof setTimeout> | undefined

@@ -15,7 +15,7 @@ import { GET as publicImage } from '@/app/[provider]/[publicationId]/image/route
 import type { Actor } from '@/lib/actors'
 import { readSavedDraft, reviseOwnedPublication } from '@/lib/account-drafts'
 import { accountSubject } from '@/lib/accounts'
-import { renderCard } from '@/lib/card'
+import { assertReadableCardText, renderCard } from '@/lib/card'
 import { closeDatabase, getDb } from '@/lib/db'
 import {
   assets,
@@ -71,6 +71,9 @@ vi.mock('@/lib/card', async (original) => {
   const actual = await original<typeof import('@/lib/card')>()
   return {
     ...actual,
+    assertReadableCardText: vi.fn<typeof actual.assertReadableCardText>(
+      actual.assertReadableCardText
+    ),
     renderCard: vi.fn<typeof actual.renderCard>(actual.renderCard)
   }
 })
@@ -189,6 +192,75 @@ describe.skipIf(!testUrl)('immutable paid publications', () => {
       await getDb().delete(sources).where(inArray(sources.id, sourceIds))
     await closeDatabase()
   })
+  it.each([false, true])(
+    'rejects unreadable new work before persistence (paid design: %s) and retains full draft text',
+    async (paid) => {
+      const f = await fixture()
+      const long = {
+        title: 'Keep the full title',
+        highlights: ['A'.repeat(1000), 'B'.repeat(1000), 'C'.repeat(637)]
+      }
+      await getDb()
+        .update(savedDrafts)
+        .set({ ...long, design: paid ? f.draft.design : null })
+        .where(eq(savedDrafts.id, f.draft.id))
+      const token = createDraftToken(
+        f.draft.snapshotId!,
+        0,
+        long,
+        Date.now(),
+        undefined,
+        { savedDraftId: f.draft.id, revision: f.draft.revision }
+      )
+      await expect(
+        publishPreview(token, undefined, undefined, f.actor)
+      ).rejects.toMatchObject({
+        status: 400,
+        message: expect.stringContaining('Shorten the highlights')
+      })
+      const [saved] = await getDb()
+        .select()
+        .from(savedDrafts)
+        .where(eq(savedDrafts.id, f.draft.id))
+      expect(saved).toMatchObject({ ...long, publishedPublicationId: null })
+      expect(
+        await getDb()
+          .select()
+          .from(publications)
+          .where(eq(publications.ownerId, f.userId))
+      ).toHaveLength(0)
+      expect(
+        await getDb().select().from(assets).where(eq(assets.ownerId, f.userId))
+      ).toHaveLength(0)
+      expect(renderCard).not.toHaveBeenCalled()
+    }
+  )
+
+  it.each([false, true])(
+    'reuses an existing publication before new readability validation (paid design: %s)',
+    async (paid) => {
+      const f = await fixture()
+      if (!paid)
+        await getDb()
+          .update(savedDrafts)
+          .set({ design: null })
+          .where(eq(savedDrafts.id, f.draft.id))
+      const first = await publishPreview(f.token, undefined, undefined, f.actor)
+      const validations = vi.mocked(assertReadableCardText).mock.calls.length
+      await vi.mocked(assertReadableCardText).withImplementation(
+        async () => {
+          throw new Error('Existing publications must not be revalidated')
+        },
+        async () => {
+          expect(
+            await publishPreview(f.token, undefined, undefined, f.actor)
+          ).toEqual(first)
+        }
+      )
+      expect(assertReadableCardText).toHaveBeenCalledTimes(validations)
+    }
+  )
+
   it('publishes once, serves frozen bytes after template changes, and omits private instructions', async () => {
     const f = await fixture()
     const first = await publishPreview(f.token, undefined, undefined, f.actor)

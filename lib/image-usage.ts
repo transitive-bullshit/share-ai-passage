@@ -3,6 +3,12 @@ import { randomUUID } from 'node:crypto'
 import { and, desc, eq, gte, inArray, isNull, lt, sql } from 'drizzle-orm'
 
 import { readEntitlements } from './billing'
+import {
+  readPurchasedAiSpending,
+  readSubscriptionAiSpending
+} from './ai-spending'
+import { requireAiSpending } from './ai-spending-policy'
+import { isPaidPlan } from './plans'
 import type { BillingEntitlements } from './billing-policy'
 import { getDb, type Transaction } from './db'
 import {
@@ -314,6 +320,19 @@ export async function reserveImage(input: ReserveImageInput) {
           billingUrl: '/account/billing'
         }
       )
+    if (!isPaidPlan(entitlement.plan))
+      throw new Error('Paid image plan is missing.')
+    requireAiSpending(
+      grant.kind === 'pack'
+        ? await readPurchasedAiSpending(tx, input.userId)
+        : await readSubscriptionAiSpending(
+            tx,
+            subjectKey,
+            entitlement.plan,
+            entitlement.allowanceWindow
+          ),
+      input.reservedCostMicros
+    )
     const month = await lockImageBudget(tx, now)
     const [cost] = await tx
       .select({
@@ -422,6 +441,65 @@ async function withImageOperation<T>(
   })
 }
 
+/** Recovery may settle the durable result before the worker saves its bill.
+ * Fill missing metering only; terminal outcomes and customer usage stay frozen. */
+async function recordTerminalImageMetering(
+  tx: Transaction,
+  operation: ImageOperation,
+  input: {
+    actualCostMicros: number | null
+    usage?: Record<string, unknown> | null
+    providerRequestId?: string | null
+  }
+) {
+  if (operation.actualCostMicros !== null || input.actualCostMicros === null)
+    return operation
+  validateCostMicros(input.actualCostMicros)
+  const [saved] = await tx
+    .update(imageOperations)
+    .set({
+      actualCostMicros: input.actualCostMicros,
+      usage: operation.usage ?? input.usage ?? null,
+      providerRequestId:
+        operation.providerRequestId ?? input.providerRequestId ?? null,
+      updatedAt: new Date()
+    })
+    .where(eq(imageOperations.id, operation.id))
+    .returning()
+  return saved!
+}
+
+/** Metering must serialize with summary/image admission, including an unexpectedly
+ * high response cost. Replays never replace already recorded actual charges. */
+export function recordImageResponse(
+  id: string,
+  input: {
+    providerRequestId: string | null
+    usage: Record<string, unknown> | null
+    actualCostMicros: number | null
+  }
+) {
+  if (input.actualCostMicros !== null)
+    validateCostMicros(input.actualCostMicros)
+  return withImageOperation(id, async (tx, operation) => {
+    if (terminal.some((value) => value === operation.status))
+      return recordTerminalImageMetering(tx, operation, input)
+    if (!['running', 'uncertain'].includes(operation.status)) return operation
+    const [saved] = await tx
+      .update(imageOperations)
+      .set({
+        providerRequestId:
+          operation.providerRequestId ?? input.providerRequestId,
+        usage: operation.usage ?? input.usage,
+        actualCostMicros: operation.actualCostMicros ?? input.actualCostMicros,
+        updatedAt: new Date()
+      })
+      .where(eq(imageOperations.id, id))
+      .returning()
+    return saved!
+  })
+}
+
 async function operationDraft(tx: Transaction, operation: ImageOperation) {
   if (!operation.ownerId || !operation.draftId) return null
   const [user] = await tx
@@ -455,7 +533,8 @@ async function finishImage(
     errorCode?: string | null
   }
 ) {
-  if (terminal.some((value) => value === operation.status)) return operation
+  if (terminal.some((value) => value === operation.status))
+    return recordTerminalImageMetering(tx, operation, input)
   if (input.actualCostMicros !== null)
     validateCostMicros(input.actualCostMicros)
   if (
@@ -503,7 +582,7 @@ async function finishImage(
     .set({
       status,
       resultAssetId,
-      actualCostMicros: input.actualCostMicros,
+      actualCostMicros: operation.actualCostMicros ?? input.actualCostMicros,
       usage: input.usage ?? operation.usage,
       providerRequestId: input.providerRequestId ?? operation.providerRequestId,
       errorCode: input.errorCode ?? null,

@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { and, eq, inArray } from 'drizzle-orm'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
+import { mergeGuestAccount } from '@/lib/accounts'
 import { closeDatabase, getDb } from '@/lib/db'
 import {
   aiBudgetPeriods,
@@ -20,6 +21,8 @@ import {
   failImageOperation,
   getImageUsage,
   markImageUncertain,
+  reconcileImageCost,
+  recordImageResponse,
   reserveImage,
   succeedImageOperation,
   type ReserveImageInput
@@ -27,7 +30,9 @@ import {
 import { defaultTemplateRecipe } from '@/lib/paid-design'
 import {
   cancelUndispatchedSummary,
+  failSummaryOperation,
   getSummaryUsage,
+  reconcileSummaryCost,
   reserveSummary,
   startSummaryOperation,
   succeedSummaryOperation
@@ -169,6 +174,506 @@ describe.skipIf(!testUrl)('Paid generation accounting in PostgreSQL', () => {
         .delete(aiBudgetPeriods)
         .where(inArray(aiBudgetPeriods.startsAt, budgetStarts))
     await closeDatabase()
+  })
+
+  it('serializes summary and image spending together without debiting the denied request', async () => {
+    const user = await account()
+    const seed = (await reserveSummary(summary(user))).operation
+    await startSummaryOperation(seed.id)
+    await succeedSummaryOperation(seed.id, preview, 580_000)
+    const summaryInput = summary(user)
+    const imageInput = {
+      ...(await image(user)),
+      reservedCostMicros: 1_000_000,
+      monthlyBudgetMicros: 10_000_000
+    }
+    // Each request fits the remaining $1.007 alone; together they cost $1.02.
+    const [textResult, imageResult] = await Promise.allSettled([
+      reserveSummary(summaryInput),
+      reserveImage(imageInput)
+    ])
+    const results = [textResult, imageResult]
+    expect(
+      results.filter((result) => result.status === 'fulfilled')
+    ).toHaveLength(1)
+    expect(
+      results.find((result) => result.status === 'rejected')
+    ).toMatchObject({
+      reason: { status: 429, details: { code: 'AI_SPEND_LIMIT' } }
+    })
+    const textUsage = await getSummaryUsage(user.subjectKey, 25, user.now)
+    const imageUsage = await getImageUsage(user.id, user.now)
+    expect(textUsage.used).toBe(1)
+    expect(imageUsage.used).toBe(0)
+    expect(textUsage.reserved + imageUsage.reserved).toBe(1)
+    expect(textUsage.remaining + imageUsage.remaining).toBe(108)
+    const summaries = await getDb()
+      .select()
+      .from(generationOperations)
+      .where(eq(generationOperations.ownerId, user.id))
+    const images = await getDb()
+      .select()
+      .from(imageOperations)
+      .where(eq(imageOperations.ownerId, user.id))
+    expect(summaries.length + images.length).toBe(2)
+    const replayed = await Promise.allSettled([
+      reserveSummary(summaryInput),
+      reserveImage(imageInput)
+    ])
+    expect(replayed.map((result) => result.status)).toEqual(
+      results.map((result) => result.status)
+    )
+    expect(
+      replayed.find((result) => result.status === 'rejected')
+    ).toMatchObject({
+      reason: { details: { code: 'AI_SPEND_LIMIT' } }
+    })
+    expect(
+      replayed
+        .filter((result) => result.status === 'fulfilled')
+        .map((result) => ({
+          created: result.value.created,
+          id: result.value.operation.id
+        }))
+    ).toEqual(
+      results
+        .filter((result) => result.status === 'fulfilled')
+        .map((result) => ({
+          created: false,
+          id: result.value.operation.id
+        }))
+    )
+    if (textResult.status === 'fulfilled')
+      await cancelUndispatchedSummary(textResult.value.operation.id)
+    if (imageResult.status === 'fulfilled')
+      await cancelImageOperation(imageResult.value.operation.id)
+  })
+
+  it('retains billed failures and terminal unknown liabilities until authoritative reconciliation', async () => {
+    const user = await account()
+    const billed = (await reserveSummary(summary(user))).operation
+    await startSummaryOperation(billed.id)
+    await failSummaryOperation(billed.id, 1_480_000)
+    const imageInput = {
+      ...(await image(user)),
+      monthlyBudgetMicros: 10_000_000
+    }
+    const unknownImage = (await reserveImage(imageInput)).operation
+    await claimImageOperation(unknownImage.id)
+    await failImageOperation(unknownImage.id, { actualCostMicros: null })
+    expect(await getImageUsage(user.id, user.now)).toMatchObject({
+      used: 0,
+      reserved: 0,
+      remaining: 10
+    })
+    expect(await getSummaryUsage(user.subjectKey, 25, user.now)).toMatchObject({
+      used: 0,
+      reserved: 0,
+      remaining: 100,
+      generationPaused: true,
+      generationPauseCode: 'AI_SPEND_LIMIT'
+    })
+    await expect(reserveSummary(summary(user))).rejects.toMatchObject({
+      details: { code: 'AI_SPEND_LIMIT' }
+    })
+    expect(await reserveImage(imageInput)).toMatchObject({
+      created: false,
+      operation: { id: unknownImage.id, status: 'failed' }
+    })
+    await reconcileImageCost(unknownImage.id, 0)
+    const unknownSummary = (await reserveSummary(summary(user))).operation
+    await startSummaryOperation(unknownSummary.id)
+    await failSummaryOperation(unknownSummary.id, null)
+    // Its restored customer unit does not release the still-unknown $0.02 cost.
+    await expect(
+      reserveImage({ ...imageInput, requestKey: randomUUID() })
+    ).rejects.toMatchObject({ details: { code: 'AI_SPEND_LIMIT' } })
+    await reconcileSummaryCost(unknownSummary.id, 0)
+    expect(await reconcileSummaryCost(unknownSummary.id, 2000)).toMatchObject({
+      actualCostMicros: 0
+    })
+    const next = (
+      await reserveImage({ ...imageInput, requestKey: randomUUID() })
+    ).operation
+    await cancelImageOperation(next.id)
+    expect(await getSummaryUsage(user.subjectKey, 25, user.now)).toMatchObject({
+      used: 0,
+      reserved: 0,
+      remaining: 100,
+      generationPaused: false
+    })
+  })
+
+  it('preserves metered response charges through replay and stale terminal settlement', async () => {
+    const user = await account()
+    const input = { ...(await image(user)), monthlyBudgetMicros: 10_000_000 }
+    const operation = (await reserveImage(input)).operation
+    await claimImageOperation(operation.id)
+    const metering = {
+      providerRequestId: 'fixture-response',
+      usage: { total_tokens: 42 },
+      actualCostMicros: 1_580_000
+    }
+    expect(await recordImageResponse(operation.id, metering)).toMatchObject(
+      metering
+    )
+    expect(
+      await recordImageResponse(operation.id, {
+        providerRequestId: 'stale-response',
+        usage: null,
+        actualCostMicros: 0
+      })
+    ).toMatchObject(metering)
+    expect(
+      await failImageOperation(operation.id, { actualCostMicros: null })
+    ).toMatchObject({
+      status: 'failed',
+      actualCostMicros: 1_580_000,
+      usage: metering.usage
+    })
+    expect(await reconcileImageCost(operation.id, 0)).toMatchObject({
+      actualCostMicros: 1_580_000
+    })
+    expect(
+      await recordImageResponse(operation.id, {
+        providerRequestId: null,
+        usage: null,
+        actualCostMicros: null
+      })
+    ).toMatchObject({ actualCostMicros: 1_580_000 })
+    await expect(reserveSummary(summary(user))).rejects.toMatchObject({
+      details: { code: 'AI_SPEND_LIMIT' }
+    })
+    expect(await reserveImage(input)).toMatchObject({
+      created: false,
+      operation: { id: operation.id, actualCostMicros: 1_580_000 }
+    })
+    expect(await getImageUsage(user.id, user.now)).toMatchObject({
+      used: 0,
+      reserved: 0,
+      remaining: 10
+    })
+  })
+
+  it.each(['settlement', 'response'] as const)(
+    'records late %s metering after unknown-cost recovery without settling quota twice',
+    async (arrival) => {
+      const user = await account()
+      const input = {
+        ...(await image(user)),
+        reservedCostMicros: 1_000_000,
+        monthlyBudgetMicros: 10_000_000
+      }
+      const operation = (await reserveImage(input)).operation
+      await claimImageOperation(operation.id)
+      await durableImage(operation.id, user.id)
+      // Recovery finds the durable image before the worker's metering commits.
+      const recovered = await succeedImageOperation(operation.id, {
+        resultAssetId: operation.id,
+        actualCostMicros: null
+      })
+      expect(recovered).toMatchObject({
+        status: 'succeeded',
+        resultAssetId: operation.id,
+        actualCostMicros: null
+      })
+      const metering = {
+        providerRequestId: 'late-fixture-response',
+        usage: { total_tokens: 42 },
+        actualCostMicros: 1_580_000
+      }
+      const saved =
+        arrival === 'settlement'
+          ? await succeedImageOperation(operation.id, metering)
+          : await recordImageResponse(operation.id, metering)
+      expect(saved).toMatchObject({
+        ...metering,
+        status: recovered.status,
+        resultAssetId: recovered.resultAssetId,
+        completedAt: recovered.completedAt
+      })
+      const replay = {
+        providerRequestId: 'stale-fixture-response',
+        usage: { total_tokens: 1 },
+        actualCostMicros: 0
+      }
+      expect(await succeedImageOperation(operation.id, replay)).toEqual(saved)
+      expect(await recordImageResponse(operation.id, replay)).toEqual(saved)
+      expect(await getImageUsage(user.id, user.now)).toMatchObject({
+        used: 1,
+        reserved: 0,
+        remaining: 9
+      })
+      await expect(reserveSummary(summary(user))).rejects.toMatchObject({
+        details: { code: 'AI_SPEND_LIMIT' }
+      })
+    }
+  )
+
+  it('changes the spend ceiling with paid cadence and upgrades without resetting window costs', async () => {
+    const user = await account()
+    const first = (await reserveSummary(summary(user))).operation
+    await startSummaryOperation(first.id)
+    await failSummaryOperation(first.id, 1_580_000)
+    await expect(reserveSummary(summary(user))).rejects.toMatchObject({
+      details: { code: 'AI_SPEND_LIMIT' }
+    })
+    await getDb()
+      .update(billingAccounts)
+      .set({ billingInterval: 'month' })
+      .where(eq(billingAccounts.userId, user.id))
+    const monthly = (await reserveSummary(summary(user))).operation
+    await startSummaryOperation(monthly.id)
+    await failSummaryOperation(monthly.id, 260_000)
+    await expect(reserveSummary(summary(user))).rejects.toMatchObject({
+      details: { code: 'AI_SPEND_LIMIT' }
+    })
+    await getDb()
+      .update(billingAccounts)
+      .set({ paidPlan: 'pro', billingInterval: 'year' })
+      .where(eq(billingAccounts.userId, user.id))
+    const upgraded = (
+      await reserveImage({
+        ...(await image(user)),
+        reservedCostMicros: 1_000_000,
+        monthlyBudgetMicros: 10_000_000
+      })
+    ).operation
+    await claimImageOperation(upgraded.id)
+    await failImageOperation(upgraded.id, { actualCostMicros: 2_400_000 })
+    // The original $1.840 plus the upgrade's $2.400 still share this window.
+    await expect(reserveSummary(summary(user))).rejects.toMatchObject({
+      details: { code: 'AI_SPEND_LIMIT' }
+    })
+    expect(await getSummaryUsage(user.subjectKey, 25, user.now)).toMatchObject({
+      allowance: 300,
+      used: 0,
+      reserved: 0,
+      remaining: 300,
+      generationPaused: true
+    })
+  })
+
+  it('settles old unknown costs in their accepted period without consuming the next annual refill', async () => {
+    const user = await account()
+    const unknownSummary = (await reserveSummary(summary(user))).operation
+    await startSummaryOperation(unknownSummary.id)
+    await failSummaryOperation(unknownSummary.id, null)
+    const input = {
+      ...(await image(user)),
+      reservedCostMicros: 1_000_000,
+      monthlyBudgetMicros: 10_000_000
+    }
+    const unknownImage = (await reserveImage(input)).operation
+    await claimImageOperation(unknownImage.id)
+    await failImageOperation(unknownImage.id, { actualCostMicros: null })
+    const billed = (await reserveSummary(summary(user))).operation
+    await startSummaryOperation(billed.id)
+    await failSummaryOperation(billed.id, 560_000)
+    await expect(reserveSummary(summary(user))).rejects.toMatchObject({
+      details: { code: 'AI_SPEND_LIMIT' }
+    })
+    const next = new Date(
+      Date.UTC(user.now.getUTCFullYear(), user.now.getUTCMonth() + 1, 15)
+    )
+    const newSummary = (await reserveSummary(summary(user, next))).operation
+    await reconcileSummaryCost(unknownSummary.id, 40_000)
+    await reconcileImageCost(unknownImage.id, 2_000_000)
+    const newImage = (
+      await reserveImage({ ...input, now: next, requestKey: randomUUID() })
+    ).operation
+    expect(newSummary.periodId).not.toBe(unknownSummary.periodId)
+    expect(newImage.grantId).not.toBe(unknownImage.grantId)
+    expect(await getSummaryUsage(user.subjectKey, 25, next)).toMatchObject({
+      used: 0,
+      reserved: 1,
+      remaining: 99,
+      generationPaused: false
+    })
+    expect(await getImageUsage(user.id, next)).toMatchObject({
+      used: 0,
+      reserved: 1,
+      remaining: 9
+    })
+    await cancelUndispatchedSummary(newSummary.id)
+    await cancelImageOperation(newImage.id)
+  })
+
+  it('pools purchased funding across periods and later packs while retaining refund debt, costs and credit order', async () => {
+    const user = await account()
+    await getImageUsage(user.id, user.now)
+    await getDb()
+      .update(imageCreditGrants)
+      .set({ used: 10 })
+      .where(eq(imageCreditGrants.userId, user.id))
+    const [older] = await getDb()
+      .insert(imageCreditGrants)
+      .values({
+        userId: user.id,
+        grantKey: randomUUID(),
+        kind: 'pack',
+        startsAt: user.now,
+        allowance: 50,
+        paidCents: 1000
+      })
+      .returning()
+    const input = {
+      ...(await image(user)),
+      reservedCostMicros: 1_000_000,
+      monthlyBudgetMicros: 10_000_000
+    }
+    const first = (await reserveImage(input)).operation
+    expect(first.grantId).toBe(older!.id)
+    await claimImageOperation(first.id)
+    await durableImage(first.id, user.id)
+    await succeedImageOperation(first.id, {
+      resultAssetId: first.id,
+      actualCostMicros: 1_220_000
+    })
+    const next = new Date(
+      Date.UTC(user.now.getUTCFullYear(), user.now.getUTCMonth() + 1, 15)
+    )
+    await getImageUsage(user.id, next)
+    await getDb()
+      .update(imageCreditGrants)
+      .set({ used: 10 })
+      .where(
+        and(
+          eq(imageCreditGrants.userId, user.id),
+          eq(imageCreditGrants.kind, 'included')
+        )
+      )
+    const retry = { ...input, now: next, requestKey: randomUUID() }
+    await expect(reserveImage(retry)).rejects.toMatchObject({
+      details: { code: 'AI_SPEND_LIMIT' }
+    })
+    expect(await getImageUsage(user.id, next)).toMatchObject({
+      purchased: 49,
+      reserved: 0
+    })
+    // Seed prior customer consumption to exercise refund debt without 29 image runs.
+    await getDb()
+      .update(imageCreditGrants)
+      .set({ used: 30, refundedCents: 500, revoked: 25 })
+      .where(eq(imageCreditGrants.id, older!.id))
+    expect(await getImageUsage(user.id, next)).toMatchObject({
+      debt: 5,
+      remaining: 0
+    })
+    const [newer] = await getDb()
+      .insert(imageCreditGrants)
+      .values({
+        userId: user.id,
+        grantKey: randomUUID(),
+        kind: 'pack',
+        startsAt: next,
+        allowance: 50,
+        paidCents: 1000
+      })
+      .returning()
+    const second = (await reserveImage(retry)).operation
+    expect(second.grantId).toBe(newer!.id)
+    expect(await getImageUsage(user.id, next)).toMatchObject({
+      debt: 0,
+      purchased: 44,
+      reserved: 1
+    })
+    await getDb()
+      .update(imageCreditGrants)
+      .set({ disputed: true, revoked: 50 })
+      .where(eq(imageCreditGrants.id, older!.id))
+    expect(await getImageUsage(user.id, next)).toMatchObject({
+      debt: 0,
+      purchased: 19,
+      reserved: 1
+    })
+    await expect(
+      reserveImage({ ...retry, requestKey: randomUUID() })
+    ).rejects.toMatchObject({ details: { code: 'AI_SPEND_LIMIT' } })
+    await getDb()
+      .update(imageCreditGrants)
+      .set({ disputed: false, revoked: 25 })
+      .where(eq(imageCreditGrants.id, older!.id))
+    // Winning restores only unrefunded funding; the same historical cost remains.
+    const restored = (
+      await reserveImage({ ...retry, requestKey: randomUUID() })
+    ).operation
+    expect(restored.grantId).toBe(older!.id)
+    await cancelImageOperation(second.id)
+    await cancelImageOperation(restored.id)
+    expect(await getImageUsage(user.id, next)).toMatchObject({
+      debt: 0,
+      purchased: 45,
+      reserved: 0
+    })
+    const savedGrants = await getDb()
+      .select()
+      .from(imageCreditGrants)
+      .where(inArray(imageCreditGrants.id, [older!.id, newer!.id]))
+    expect(savedGrants.find((grant) => grant.id === older!.id)).toMatchObject({
+      used: 30,
+      debtRecovered: 30,
+      refundedCents: 500,
+      revoked: 25
+    })
+    expect(savedGrants.find((grant) => grant.id === newer!.id)).toMatchObject({
+      used: 0,
+      debtApplied: 30
+    })
+    expect(await reconcileImageCost(first.id, 0)).toMatchObject({
+      actualCostMicros: 1_220_000
+    })
+  })
+
+  it('charges imported request identities to their current account while retaining the separate Free subsidy', async () => {
+    const user = await account()
+    const guest = await account()
+    await getDb()
+      .update(authUsers)
+      .set({ isAnonymous: true })
+      .where(eq(authUsers.id, guest.id))
+    const month = utcUsagePeriod(user.now)
+    budgetStarts.push(month.startsAt)
+    const free = (await reserveSummary(summary(guest, user.now))).operation
+    await startSummaryOperation(free.id)
+    await failSummaryOperation(free.id, 1_580_000)
+    await mergeGuestAccount(guest.id, user.id)
+    // A resumed guest draft retains its request namespace after the import.
+    const importedInput = {
+      ...summary(user),
+      requestSubjectKey: guest.subjectKey
+    }
+    const paid = (await reserveSummary(importedInput)).operation
+    expect(paid).toMatchObject({
+      subjectKey: guest.subjectKey,
+      budgetPeriodId: null
+    })
+    await startSummaryOperation(paid.id)
+    await failSummaryOperation(paid.id, 1_580_000)
+    await expect(reserveSummary(summary(user))).rejects.toMatchObject({
+      details: { code: 'AI_SPEND_LIMIT' }
+    })
+    expect(await reserveSummary(importedInput)).toMatchObject({
+      created: false,
+      operation: { id: paid.id }
+    })
+    expect(await getSummaryUsage(user.subjectKey, 25, user.now)).toMatchObject({
+      remaining: 100,
+      generationPaused: true
+    })
+    const [importedFree] = await getDb()
+      .select()
+      .from(generationOperations)
+      .where(eq(generationOperations.id, free.id))
+    expect(importedFree?.budgetPeriodId).toBe(free.budgetPeriodId)
+    const periods = await getDb()
+      .select()
+      .from(usagePeriods)
+      .where(inArray(usagePeriods.id, [importedFree!.periodId, paid.periodId]))
+    expect(periods).toHaveLength(2)
+    expect(
+      periods.every((period) => period.subjectKey === user.subjectKey)
+    ).toBe(true)
   })
 
   it('charges paid summaries against authoritative allowance while Free subsidy is exhausted', async () => {

@@ -1,6 +1,9 @@
 import { and, eq, gte, inArray, lt, ne, sql } from 'drizzle-orm'
 
 import { readEntitlements } from './billing'
+import { readSubscriptionAiSpending } from './ai-spending'
+import { aiSpendingAvailable, requireAiSpending } from './ai-spending-policy'
+import { isPaidPlan } from './plans'
 import { getDb, type Transaction } from './db'
 import {
   aiBudgetPeriods,
@@ -273,6 +276,16 @@ export async function reserveSummary(input: ReserveSummaryInput) {
     if (consumed.used + consumed.reserved >= usage.allowance) {
       throw usageLimitError(usage.endsAt, now)
     }
+    if (current.paid && isPaidPlan(current.plan))
+      requireAiSpending(
+        await readSubscriptionAiSpending(
+          tx,
+          input.subjectKey,
+          current.plan,
+          period
+        ),
+        SUMMARY_RESERVATION_MICROS
+      )
     await tx
       .update(usagePeriods)
       .set({ reserved: sql`${usagePeriods.reserved} + 1` })
@@ -588,6 +601,18 @@ export async function getSummaryUsage(
           .select()
           .from(aiBudgetPeriods)
           .where(eq(aiBudgetPeriods.startsAt, utcUsagePeriod(now).startsAt))
+    const paidSpending =
+      current.paid && isPaidPlan(current.plan)
+        ? await readSubscriptionAiSpending(tx, subjectKey, current.plan, period)
+        : null
+    const generationPaused = paidSpending
+      ? !aiSpendingAvailable(paidSpending, SUMMARY_RESERVATION_MICROS)
+      : budget
+        ? budget.spentMicros +
+            budget.reservedMicros +
+            SUMMARY_RESERVATION_MICROS >
+          budget.limitMicros
+        : false
     return {
       plan: current.plan,
       allowance: current.allowance,
@@ -595,12 +620,12 @@ export async function getSummaryUsage(
       reserved,
       remaining: Math.max(0, current.allowance - used - reserved),
       resetAt: period.endsAt,
-      generationPaused: budget
-        ? budget.spentMicros +
-            budget.reservedMicros +
-            SUMMARY_RESERVATION_MICROS >
-          budget.limitMicros
-        : false
+      generationPaused,
+      generationPauseCode: generationPaused
+        ? paidSpending
+          ? ('AI_SPEND_LIMIT' as const)
+          : ('FREE_BUDGET_LIMIT' as const)
+        : null
     }
   })
 }

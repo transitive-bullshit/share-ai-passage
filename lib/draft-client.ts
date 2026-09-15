@@ -24,7 +24,7 @@ export type PendingDraft = {
   status: 'preparing' | 'failed'
   errorMessage?: string
   generationBlock?: {
-    code: 'SUMMARY_LIMIT' | 'FREE_BUDGET_LIMIT'
+    code: 'SUMMARY_LIMIT' | 'FREE_BUDGET_LIMIT' | 'AI_SPEND_LIMIT'
     resetAt: string
     canSignUp: boolean
   }
