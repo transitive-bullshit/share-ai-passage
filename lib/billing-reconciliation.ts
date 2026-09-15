@@ -40,6 +40,24 @@ export async function saveBillingCustomer(userId: string, customerId: string) {
   })
 }
 
+async function chargeHasBlockingDispute(client: Stripe, charge: Stripe.Charge) {
+  if (!charge.disputed) return false
+  // Stripe keeps charge.disputed true after a win. Read every dispute, since
+  // another active or lost dispute still blocks this payment after one is won.
+  let found = false
+  for await (const dispute of client.disputes.list({
+    charge: charge.id,
+    limit: 100
+  })) {
+    found = true
+    if (dispute.status !== 'won' && dispute.status !== 'warning_closed')
+      return true
+  }
+  // Missing dispute details must not restore funds; lookup failures propagate
+  // so the event stays retryable instead of being recorded as settled.
+  return !found
+}
+
 async function invoicePaymentAvailable(
   client: Stripe,
   invoice: Stripe.Invoice
@@ -61,7 +79,11 @@ async function invoicePaymentAvailable(
       const chargeId = objectId(payment.payment.charge)
       if (chargeId) charge = await client.charges.retrieve(chargeId)
     }
-    if (charge && (charge.disputed || charge.amount_refunded >= charge.amount))
+    if (
+      charge &&
+      (charge.amount_refunded >= charge.amount ||
+        (await chargeHasBlockingDispute(client, charge)))
+    )
       return false
   }
   return true
@@ -243,7 +265,8 @@ async function reconcilePack(
   const charge = intent.latest_charge
   if (!charge || typeof charge === 'string')
     throw new AppError('Payment confirmation is pending.', 409)
-  const revoked = charge.disputed
+  const disputed = await chargeHasBlockingDispute(client, charge)
+  const revoked = disputed
     ? imagePack.generations
     : Math.min(
         imagePack.generations,
@@ -260,7 +283,7 @@ async function reconcilePack(
       paidCents: session.amount_total,
       currency: session.currency,
       refundedCents: charge.amount_refunded,
-      disputed: charge.disputed,
+      disputed,
       revoked,
       updatedAt: new Date()
     })
