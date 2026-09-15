@@ -208,6 +208,7 @@ export function productionPlan(
     'GOOGLE_CLIENT_SECRET',
     'GITHUB_CLIENT_ID',
     'GITHUB_CLIENT_SECRET',
+    'CRON_SECRET',
     'RESEND_API_KEY',
     'RESEND_FROM_EMAIL',
     'RESEND_REPLY_TO',

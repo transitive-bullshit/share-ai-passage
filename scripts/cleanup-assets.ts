@@ -9,7 +9,8 @@ Set DATABASE_URL and R2 credentials explicitly; no environment files are loaded.
 --apply is required. Each run examines at most 1–100 queued/expired records.
 Public cards and inputs retained by saved work are never deleted.
 Active generation jobs and unexpired upload/processing leases are skipped.
-A scheduler is not installed; repeat this command after queued jobs are reconciled.`
+Daily production Cron is declared in vercel.json; activation needs deployment and CRON_SECRET.
+Use this command for manual catch-up after queued jobs are reconciled.`
 class AssetCleanupError extends Error {}
 type Command = { action: 'help' } | { action: 'apply'; limit: number }
 export function parseAssetCleanupArgs(args: string[]): Command {
