@@ -1,6 +1,6 @@
 # Phase 2 implementation review
 
-September 15, 2026. **Implementation commit: `e5f43dd`**, on `codex/accounts-first-launch`. Accounts were committed and Gate A approval recorded in `15755bc` before paid work began. This is a local implementation checkpoint; **Gate B has not passed**. No accounts/paid production migration, deployment or live checkout occurred.
+September 15, 2026. **Initial implementation: `e5f43dd`; hosted Preview revision: `01bd7e84dc2150d1edf8818890a6ca8670a473a5`**, on `codex/accounts-first-launch`. Accounts were committed and Gate A approval recorded in `15755bc` before paid work began. The shared Preview is deployed; **Gate B has not passed**. This rollout has not connected to, migrated or deployed production, and no live payment occurred.
 
 ## Implemented
 
@@ -30,7 +30,7 @@ The updated sources passed the complete `pnpm test` checks: **767 tests in 64 fi
 
 ## Real-service development checks
 
-September 15 follow-up: the **Passage Development** Stripe sandbox under Agentic (`acct_1UFoiGFCzsOIkvWC`) now has the five expected USD prices, a default management Portal and a separate guarded upgrade-confirmation configuration. The `passage-development` CLI profile's test credential expires December 14, 2026. Catalog evidence is `work/phase2/stripe/catalog-evidence.json`. Only the main ignored development environment and isolated review configuration received these settings; production remains unchanged.
+September 15 follow-up: the **Passage Development** Stripe sandbox under Agentic (`acct_1UFoiGFCzsOIkvWC`) now has the five expected USD prices, a default management Portal and a separate guarded upgrade-confirmation configuration. The `passage-development` CLI profile's test credential expires December 14, 2026. Catalog evidence is `work/phase2/stripe/catalog-evidence.json`. The main ignored development environment, isolated review configuration and shared Vercel Preview reuse these settings; production remains unchanged.
 
 Completed **sandbox browser** billing checks:
 
@@ -42,11 +42,11 @@ Completed **sandbox browser** billing checks:
 - A Plus annual downgrade/cadence change was saved for October 15 and appeared after **Refresh billing**. The initial return was stale; the schedule was not lost. **Keep current plan** then released the schedule. The final refreshed state is monthly Pro with 300 summaries, 25 included images and zero purchased credits, with no pending/cancellation notice or Keep current plan action.
 - Sandbox branding was saved: the existing Passage icon, white background, charcoal buttons, Inter and default rounded Checkout styling. SDK readback confirmed the icon and account colors; the Portal preview visually matched. **Passage Development** remains the sandbox display name; live business onboarding was left untouched. Evidence: `work/phase2/stripe/branding-evidence.json` and `BRANDING.md`.
 
-No live payment occurred. Local events are forwarded to backend 3107; no externally reachable webhook endpoint is registered for the private review hostname. Listener restart and two-configuration setup instructions are in the [production guide](PRODUCTION.md#stripe). Better Auth Stripe 1.7.4 emitted a missing/null subscription log for the one-time pack event; the handler returned 200 and the credit was correct. This remains a known nonblocking upstream log. The saved `confirm-session-evidence.json` covers an earlier session-creation probe; it is not the later browser payment evidence.
+No live payment occurred. Local events are forwarded to backend 3107. Shared Preview now also has its separately signed sandbox endpoint; hosted delivery remains blocked as recorded below. Listener restart and two-configuration setup instructions are in the [production guide](PRODUCTION.md#stripe). Better Auth Stripe 1.7.4 emitted a missing/null subscription log for the one-time pack event; the handler returned 200 and the credit was correct. This remains a known nonblocking upstream log. The saved `confirm-session-evidence.json` covers an earlier session-creation probe; it is not the later browser payment evidence.
 
 Actual Stripe API lifecycle checks also passed against the isolated review database. A synthetic Plus subscription on a Stripe test clock automatically paid its second $10 monthly invoice; direct reconciliation recognized the renewed coverage and 10 included images using the app's real wall clock. Replaying the same event and refreshing authoritative state did not duplicate the grant. The authorized full refund of the review account's $10 pack revoked its 50 credits, leaving purchased balance **zero** while preserving Pro access and used/reserved counters. Reconciliation replay was idempotent. The synthetic clock/customer/subscription and exact database fixtures were cleaned up; the existing review account, Pro subscription and refunded grant were retained. Evidence: `work/phase2/stripe/lifecycle-smoke/evidence.json` and `README.md`.
 
-Separately, the local listener recorded signed `invoice.paid`, `charge.refunded` and `refund.updated` deliveries returning 200. The direct reconciliation harness and listener ran concurrently, so these checks establish both paths' recorded behavior without attributing every database change to one path. They do not establish hosted webhook delivery or the remaining lifecycle checks.
+Separately, the local listener recorded signed `invoice.paid`, `charge.refunded` and `refund.updated` deliveries returning 200. The direct reconciliation harness and listener ran concurrently, so these checks establish both paths' recorded behavior without attributing every database change to one path. They do not establish hosted webhook delivery; later lifecycle checks below have their own evidence.
 
 The reconciler and listener now handle all six subscription-schedule lifecycle events, bringing the listener to 20 billing event types. A metadata-only `subscription_schedule.updated` event (`evt_1UFpikFCzsOIkvWCjjhmE06q`) returned 200 through the signed endpoint. Restoring the plan also delivered `subscription_schedule.released` (`evt_1UFpjPFCzsOIkvWCAQc8rNKG`), `customer.subscription.updated` and `subscription_schedule.updated`, all with 200 responses. This covers schedule changes independently of subscription events; the transition check below provides separate evidence.
 
@@ -68,7 +68,7 @@ Both fixtures started with 50 pack credits and explicitly seeded 40 used units. 
 
 The dispute regression tests failed before the fix and passed afterward. The completed sources passed **806 tests in 66 files**, including all disposable PostgreSQL suites, formatting, lint and TypeScript, using `node work/phase2/run-local.mjs test test`. The separate `PASSAGE_PRODUCTION_LOCAL=1 node work/phase2/run-local.mjs test build` passed with 36 static pages, six Workflow steps and one workflow. Independent code review found no actionable issues. Production and the existing review Pro account remained unchanged.
 
-Real R2 setup now includes the existing public `passage` bucket and newly created `passage-private`, accessed through the supplied US-jurisdiction endpoint and the supported S3 variable names. Private public access stayed disabled. CORS readback covers the exact main development, isolated HTTPS review and canonical hosted origins. The 15-check synthetic smoke passed public and signed-private write/read/hash, preflight, origin/size enforcement and immutable overwrite rejection; both fixture objects were deleted.
+Real R2 setup now includes the existing public `passage` bucket and newly created `passage-private`, accessed through the supplied US-jurisdiction endpoint and the supported S3 variable names. Private public access stayed disabled. CORS readback originally covered the exact main development, isolated HTTPS review and canonical hosted origins. The stable Preview origin was subsequently added while preserving all three and the existing rules; see `work/phase2/hosted-readiness/r2-cors-evidence.json`. The 15-check synthetic smoke passed public and signed-private write/read/hash, preflight, origin/size enforcement and immutable overwrite rejection; both fixture objects were deleted.
 
 A separate application-library smoke against real private R2 and the disposable Postgres database passed upload reservation/replay, finalization/normalization/replay, owner isolation, durable stored-result recovery into the original expired image grant with one debit, and account deletion/queued cleanup. Repeating recovery preserved object hash/ETag and draft revision. All three private objects and exact synthetic database records were removed; only fixture expiry was advanced to exercise cleanup. No actual provider request, live billing or hosted Workflow ran. Evidence: `work/phase2/r2/{inspection,provisioning,smoke,app-smoke}.json` and its `README.md`.
 
@@ -84,7 +84,7 @@ The public `/pricing` follow-up adds a server-rendered plan comparison, monthly/
 
 The expanded global footer groups Product, Your account, and Developers links, including the new pricing, template, billing, and API-key pages. Desktop and 390px layouts, the FAQ anchor, and pricing navigation were checked in Chrome. The combined pricing/footer checkpoint then passed the full **803-test / 66-file** repository checks and a fresh production build with 36 static pages. The footer remains server-rendered and adds no account or billing requests.
 
-Public `r2.dev` delivery is for development. A production custom domain, hosted operational checks and actual social unfurls remain open.
+The owner accepts `r2.dev` for development/shared Preview and deferred the production custom domain; it is not a Preview prerequisite. Production delivery verification, hosted operational checks and actual social unfurls remain open.
 
 ## Approved image qualification batch
 
@@ -100,10 +100,20 @@ The first-result mean image cost was 1.25245¢; the highest boundary-probe cost 
 
 Ignored reproducible evidence: `work/phase2/image-benchmark/{qualification-v2-manifest.json,qualification-final-verification.json,QUALIFICATION_REPORT.md,qualification-metrics.json,qualification-economics.json,qualification.html}`. The provider configuration, prices, allowances and public generation switch remain unchanged.
 
+## Hosted Preview
+
+Commit `01bd7e84dc2150d1edf8818890a6ca8670a473a5` passed CI with **806 tests in 66 files and the production build**. Initial READY deployment `dpl_yGQHNP51AfjzKx4GRDxMEhoQnHUk` uses fresh `passage_accounts_preview` on the no-expiry Neon `preview` branch, reusing `neondb_owner` and ordinary shared Preview variables. All 13 migrations were verified before deployment. Existing development OAuth/Resend, sandbox Stripe and R2 settings are reused; no extra account credential framework was added.
+
+Both hosted queue consumers passed. The exact cancelled-operation workflow reached the Preview database, returned cancelled, retained zero cost/dispatch and unchanged credits, and had all synthetic rows independently verified absent after cleanup. This proves hosted queue → step → Preview DB, not long-running/restart or provider behavior. Evidence: `work/phase2/hosted-readiness/{workflow-health-evidence,cancelled-workflow-state,cancelled-workflow-final-readback}.json`.
+
+The sandbox webhook has all 20 required events and its endpoint-specific `STRIPE_WEBHOOK_SECRET` saved in shared Preview. Second deployment `dpl_Cquj3ZZEoWpaGtkf7QoLvK4MDeZE` reached READY at 08:38 UTC with the same commit and secret. Anonymous GET302/POST401 responses from Vercel Standard Protection still block account entry and signed delivery. Automatic approval review rejected the proposed exact-domain exception; it was not applied, user approval is pending, and no bypass credential was created. GitHub’s exact stable callback is saved but untested hosted; Google registration awaits the owner’s Cloud passkey. Evidence: `work/phase2/hosted-readiness/{deployment-evidence,stripe-deployment-evidence,stripe-webhook-evidence}.json` and the [production setup](PRODUCTION.md#accounts-release-readiness).
+
+The pricing page was visually checked through the owner’s Vercel session. R2 CORS now also includes the exact Preview hostname, preserving the three existing origins.
+
 ## Outstanding gates
 
-1. Configure production R2 delivery and verify hosted webhook/publication delivery. The real won/lost dispute checks are complete. The completed renewal/recovery and corrected annual-transition comparison establish only the recorded scope above; future monthly grant reads used explicit evaluation dates.
+1. Resolve Preview access, then verify hosted OAuth/email, signed Stripe delivery and publication/upload behavior. All recorded sandbox billing lifecycle checks are complete within their stated scope. Production delivery still needs verification before launch; its deferred R2 custom domain does not block Preview checks.
 2. Resolve the supported-input quality and economics limits above: reference-subject leakage, minimum readable text, explicit cost-anomaly handling, and measured operational/failure reserves. The specifically approved 25-call batch is complete; no benchmark approval remains pending.
-3. Verify hosted Workflow identity/replay/duration and measured charges, provider-spend reconciliation, private cleanup scheduling and operational alerts, backup/restore, hosted account email/OAuth and production migration/deployment readiness.
+3. Verify hosted Workflow interruption/replay/duration and measured charges, provider-spend reconciliation, private cleanup scheduling and operational alerts, backup/restore and production migration/deployment readiness. Exact Preview Workflow/DB identity and cancelled-step cleanup are already verified.
 
 Keep `STRIPE_LIVE_CHECKOUT_ENABLED=false` and `IMAGE_GENERATION_ENABLED=0` until the applicable gates pass. Sample image costs are promising but are not a validated worst-case margin or lifetime-serving guarantee. The [measured economics report](research/PHASE2_MEASURED_ECONOMICS.md), [implementation handoff](ACCOUNTS_PAID_FEATURES_PLAN.md), [production guide](PRODUCTION.md#paid-services-and-launch-gate) and [reconciliation guide](GENERATION_RECONCILIATION.md) contain the supporting contracts and next steps.
