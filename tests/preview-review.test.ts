@@ -152,6 +152,27 @@ it('switches the actual review preview locally across rapid style changes withou
   expect(requests).not.toHaveBeenCalled()
 })
 
+it('previews the draft’s current title and highlights in every card style, including live edits', async () => {
+  await act(async () => root.render(createElement(ReviewHarness)))
+  const thumbnails = container.querySelectorAll('.social-template-thumbnail')
+  expect(thumbnails).toHaveLength(5)
+  for (const thumbnail of thumbnails) {
+    expect(thumbnail.textContent).toContain(draft.preview.title)
+    expect(thumbnail.textContent).toContain(draft.preview.highlights[0])
+    expect(thumbnail.textContent).not.toContain('Make room for the unexpected')
+  }
+  await editField('summary-title', 'A clearer introduction for this draft')
+  await editField('summary-highlight-1', 'Bring the context with the link')
+  for (const thumbnail of thumbnails) {
+    expect(thumbnail.textContent).toContain(
+      'A clearer introduction for this draft'
+    )
+    expect(thumbnail.textContent).toContain('Bring the context with the link')
+    expect(thumbnail.textContent).not.toContain(draft.preview.title)
+  }
+  expect(requests).not.toHaveBeenCalled()
+})
+
 it('ignores stale artwork readiness and publishes only the current reviewed style', async () => {
   requests.mockResolvedValue(
     Response.json({ shareUrl: 'http://localhost:3000/claude/example-passage' })
@@ -185,7 +206,7 @@ it('ignores stale artwork readiness and publishes only the current reviewed styl
 })
 
 it('keeps publishing disabled after a font failure until a retried preview finishes loading', async () => {
-  loadFont.mockRejectedValueOnce(new Error('Font request failed'))
+  loadFont.mockRejectedValue(new Error('Font request failed'))
   await act(async () => root.render(createElement(ReviewHarness)))
   expect(publishButton().disabled).toBe(true)
   expect(container.querySelector('[role="alert"]')?.textContent).toContain(
@@ -193,7 +214,7 @@ it('keeps publishing disabled after a font failure until a retried preview finis
   )
 
   const retryFont = Promise.withResolvers<FontFace[]>()
-  loadFont.mockImplementationOnce(() => retryFont.promise)
+  loadFont.mockImplementation(() => retryFont.promise)
   const retryButton = Array.from(container.querySelectorAll('button')).find(
     (button) => button.textContent === 'Try preview again'
   )!

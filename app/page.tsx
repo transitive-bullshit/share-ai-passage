@@ -1,3 +1,5 @@
+import { redirect } from 'next/navigation'
+
 import { JsonLd } from '@/components/json-ld'
 import { ShareFlow } from '@/components/share-flow'
 import { LandingDetails } from '@/components/landing-details'
@@ -32,17 +34,18 @@ export default async function HomePage({
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const query = await searchParams
+  if (query.draft !== undefined || query.template !== undefined) {
+    const params = new URLSearchParams()
+    for (const key of ['draft', 'template']) {
+      const value = query[key]
+      if (typeof value === 'string') params.set(key, value)
+    }
+    redirect(`/create${params.size ? `?${params}` : ''}`)
+  }
   return (
     <main id='main'>
       <JsonLd data={homepageJsonLd()} />
-      <ShareFlow
-        initialTemplateId={
-          typeof query.template === 'string' ? query.template : undefined
-        }
-        initialDraftId={
-          typeof query.draft === 'string' ? query.draft : undefined
-        }
-      >
+      <ShareFlow>
         <LandingDetails />
       </ShareFlow>
     </main>

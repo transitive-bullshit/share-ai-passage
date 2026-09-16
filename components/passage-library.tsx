@@ -136,7 +136,9 @@ function LibraryAccess({
             <ArrowRight data-icon='inline-end' aria-hidden='true' />
           </Link>
         </Button>
-        <Link href='/'>You can still create a passage without an account.</Link>
+        <Link href='/create'>
+          You can still create a passage without an account.
+        </Link>
       </EmptyContent>
     </Empty>
   )
@@ -153,7 +155,7 @@ export function PassageLibrary() {
           <p>Pick up a draft or revisit something you shared.</p>
         </div>
         <Button asChild className='rounded-full'>
-          <Link href='/'>
+          <Link href='/create'>
             <Plus data-icon='inline-start' aria-hidden='true' />
             Create a passage
           </Link>
@@ -282,7 +284,7 @@ function LibraryEntries() {
         `/api/passages/${encodeURIComponent(passage.id)}/revise`,
         { requestKey }
       )
-      router.push(`/?draft=${encodeURIComponent(result.draftId)}`)
+      router.push(`/create?draft=${encodeURIComponent(result.draftId)}`)
     } catch (err) {
       if (err instanceof ClientRequestError && err.status === 401) {
         setData(null)
@@ -431,7 +433,7 @@ function LibraryEntries() {
                 <div className='library-entry'>
                   <Link
                     className='library-title'
-                    href={`/?draft=${encodeURIComponent(draft.id)}`}
+                    href={`/create?draft=${encodeURIComponent(draft.id)}`}
                   >
                     {draft.title || 'Untitled draft'}
                   </Link>
@@ -449,7 +451,9 @@ function LibraryEntries() {
                 </div>
                 <div className='library-row-actions'>
                   <Button asChild variant='outline'>
-                    <Link href={`/?draft=${encodeURIComponent(draft.id)}`}>
+                    <Link
+                      href={`/create?draft=${encodeURIComponent(draft.id)}`}
+                    >
                       Resume
                       <ArrowRight data-icon='inline-end' aria-hidden='true' />
                     </Link>
@@ -577,7 +581,7 @@ function LibraryEntries() {
             </EmptyHeader>
             <EmptyContent>
               <Button asChild variant='outline'>
-                <Link href='/'>
+                <Link href='/create'>
                   Create a passage
                   <ArrowRight data-icon='inline-end' aria-hidden='true' />
                 </Link>

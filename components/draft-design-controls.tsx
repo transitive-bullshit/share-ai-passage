@@ -71,7 +71,7 @@ export function DraftDesignControls({
     }
   }
   return (
-    <details className='flex flex-col gap-4'>
+    <details className='mt-6 flex flex-col gap-4'>
       <summary className='auth-text-link cursor-pointer'>
         Customize this passage
       </summary>

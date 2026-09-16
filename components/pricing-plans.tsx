@@ -209,7 +209,7 @@ export function PricingPlans({
         </p>
         <p>
           Just trying it out?{' '}
-          <a href='/' className='auth-text-link'>
+          <a href='/create' className='auth-text-link'>
             Create a passage
           </a>{' '}
           without an account, with up to 5 summary generations per browser each

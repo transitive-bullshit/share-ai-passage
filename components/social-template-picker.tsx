@@ -12,18 +12,20 @@ import {
 } from '@/components/ui/field'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { type CardAppearance, parseCardAppearance } from '@/lib/card-appearance'
-import type { Provider } from '@/lib/domain'
+import type { GeneratedPreview, Provider } from '@/lib/domain'
 import { socialTemplates } from '@/lib/social-templates'
 
 export function SocialTemplatePicker({
   appearance,
   provider,
+  preview,
   onChange,
   disabled,
   preferencesAvailable
 }: {
   appearance: CardAppearance
   provider: Provider
+  preview: GeneratedPreview
   onChange: (appearance: CardAppearance) => void
   disabled: boolean
   preferencesAvailable: boolean
@@ -63,6 +65,7 @@ export function SocialTemplatePicker({
                 <SocialTemplateThumbnail
                   template={template}
                   provider={provider}
+                  preview={preview}
                 />
                 <span className='social-template-check' aria-hidden='true'>
                   <Check />

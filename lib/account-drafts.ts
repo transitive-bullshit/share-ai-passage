@@ -119,6 +119,9 @@ async function present(draft: SavedDraft, actor: Actor) {
       draftId: draft.id,
       revision: draft.revision,
       status: draft.status,
+      preparationActive:
+        draft.status === 'preparing' &&
+        Boolean(draft.preparationRunId || draft.preparationEnqueueLeaseUntil),
       errorMessage: generationBlock?.message ?? draft.errorMessage,
       generationBlock
     }
@@ -171,7 +174,7 @@ async function present(draft: SavedDraft, actor: Actor) {
 }
 
 async function pendingGenerationBlock(draft: SavedDraft, actor: Actor) {
-  if (draft.status !== 'preparing' || !draft.snapshotId) return
+  if (draft.status === 'ready' || !draft.snapshotId) return
   const db = getDb()
   const [[operation], [snapshot]] = await Promise.all([
     db
@@ -247,6 +250,22 @@ export async function createSavedDraft(
     templateId?: string
   }
 ) {
+  const draft = await allocateSavedDraft(actor, input)
+  return prepareSavedDraft(actor, draft)
+}
+
+/** Allocate the owned identity before any provider fetching or model work. */
+export async function createPendingSavedDraft(
+  actor: Actor,
+  input: Parameters<typeof createSavedDraft>[1]
+) {
+  return present(await allocateSavedDraft(actor, input), actor)
+}
+
+async function allocateSavedDraft(
+  actor: Actor,
+  input: Parameters<typeof createSavedDraft>[1]
+) {
   requireOwnedActor(actor)
   const draft = await getDb().transaction(async (tx) => {
     await lockUsageSubjects(tx, actor.subjectKey)
@@ -301,10 +320,14 @@ export async function createSavedDraft(
       .returning()
     return created!
   })
-  return prepareSavedDraft(actor, draft)
+  return draft
 }
 
-async function prepareSavedDraft(actor: Actor, draft: SavedDraft) {
+async function prepareSavedDraft(
+  actor: Actor,
+  draft: SavedDraft,
+  background = false
+) {
   if (draft.status !== 'preparing') return present(draft, actor)
   try {
     const result = await prepareSource(draft.sourceUrl, {
@@ -370,6 +393,7 @@ async function prepareSavedDraft(actor: Actor, draft: SavedDraft) {
     })
     return present(saved, actor)
   } catch (err) {
+    if (background) throw err
     // Replays retain the same request key. Source leases and the durable operation
     // prevent a second dispatch when completion is uncertain.
     const message =
@@ -387,6 +411,74 @@ async function prepareSavedDraft(actor: Actor, draft: SavedDraft) {
     }).catch(() => {})
     throw err
   }
+}
+
+/** Load current ownership: a guest may have registered since queue submission. */
+export async function loadDraftPreparation(id: string) {
+  const [draft] = await getDb()
+    .select()
+    .from(savedDrafts)
+    .where(and(eq(savedDrafts.id, id), isNull(savedDrafts.deletedAt)))
+  if (!draft) throw new AppError('Draft not found.', 404)
+  const [user] = await getDb()
+    .select()
+    .from(authUsers)
+    .where(eq(authUsers.id, draft.ownerId))
+  if (!user || user.deletionRequestedAt)
+    throw new AppError('Your account is unavailable.', 403)
+  const registered = user.emailVerified && !user.isAnonymous
+  if (!user.isAnonymous && !registered)
+    throw new AppError('Verify your email to continue.', 403)
+  const actor: Actor & { userId: string } = {
+    userId: user.id,
+    subjectKey: accountSubject(user.id),
+    allowance: registered ? 25 : 5,
+    registered
+  }
+  return { actor, draft }
+}
+
+export async function prepareDraftInBackground(id: string) {
+  const { actor, draft } = await loadDraftPreparation(id)
+  return prepareSavedDraft(actor, draft, true)
+}
+
+export async function failDraftPreparation(id: string, message?: string) {
+  await finishDraft(id, async (tx, draft) => {
+    if (draft.status !== 'preparing') return draft
+    const [updated] = await tx
+      .update(savedDrafts)
+      .set({
+        status: 'failed',
+        errorMessage:
+          message ??
+          'We couldn’t prepare this passage. Please try again in a moment.',
+        updatedAt: new Date()
+      })
+      .where(eq(savedDrafts.id, id))
+      .returning()
+    return updated!
+  })
+}
+
+export async function queueSavedDraftResume(actor: Actor, id: string) {
+  const draft = await getDb().transaction(async (tx) => {
+    const current = await ownedDraft(tx, actor, id)
+    if (current.status !== 'failed') return current
+    const [updated] = await tx
+      .update(savedDrafts)
+      .set({
+        status: 'preparing',
+        errorMessage: null,
+        preparationRunId: null,
+        preparationEnqueueLeaseUntil: null,
+        updatedAt: new Date()
+      })
+      .where(eq(savedDrafts.id, id))
+      .returning()
+    return updated!
+  })
+  return present(draft, actor)
 }
 
 export async function resumeSavedDraft(actor: Actor, id: string) {

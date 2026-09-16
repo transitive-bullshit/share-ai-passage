@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { start } from 'workflow/api'
 import { generatePassageBackground } from '@/workflows/generate-background'
+import { preparePassage } from '@/workflows/prepare-passage'
 import { startInitialDraftImage } from '@/lib/initial-image'
 import { accountRequest } from '@/lib/account-http'
 import {
@@ -8,11 +9,12 @@ import {
   draftOperations,
   publishSavedDraft,
   regenerateSavedDraft,
-  resumeSavedDraft
+  queueSavedDraftResume
 } from '@/lib/account-drafts'
 import { AppError } from '@/lib/errors'
 import { clientKey, readJson } from '@/lib/http'
 import { enforceBudget } from '@/lib/service'
+import { ensureDraftEnqueued } from '@/lib/draft-jobs'
 
 type Context = { params: Promise<{ id: string; action: string }> }
 export const maxDuration = 60
@@ -33,7 +35,11 @@ export function POST(request: Request, context: Context) {
     const body = await readJson(request)
     if (action === 'resume') {
       await enforceBudget(`prepare:${clientKey(request)}`, 10)
-      const draft = await resumeSavedDraft(actor, id)
+      const draft = await queueSavedDraftResume(actor, id)
+      if (draft.status === 'preparing' && !draft.generationBlock)
+        await ensureDraftEnqueued(actor, id, (id) =>
+          start(preparePassage, [id])
+        )
       return startInitialDraftImage(actor, draft, (operationId) =>
         start(generatePassageBackground, [operationId])
       )

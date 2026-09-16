@@ -151,7 +151,9 @@ it('loads each opaque cursor independently without replacing the other section',
   )
   await render()
   expect(container.textContent).toContain('22 of 25')
-  expect(container.querySelector('a[href="/?draft=draft-one"]')).not.toBeNull()
+  expect(
+    container.querySelector('a[href="/create?draft=draft-one"]')
+  ).not.toBeNull()
   await click('Load more drafts')
   const requested = new URL(
     fetchMock.mock.calls[1]![0] as string,
@@ -209,7 +211,7 @@ it('reuses a revision request key after a lost response and resumes the returned
   }
   expect(firstBody.requestKey).toBeTruthy()
   expect(secondBody).toEqual(firstBody)
-  expect(push).toHaveBeenCalledWith('/?draft=revised-draft')
+  expect(push).toHaveBeenCalledWith('/create?draft=revised-draft')
 })
 
 it('drops private library content when the account changes or signs out', async () => {

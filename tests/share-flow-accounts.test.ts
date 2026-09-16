@@ -16,7 +16,11 @@ const mocks = vi.hoisted(() => ({
       error: null
     }>
   >(),
-  anonymous: vi.fn<() => Promise<{ data: object; error: null }>>()
+  anonymous: vi.fn<() => Promise<{ data: object; error: null }>>(),
+  push: vi.fn<(path: string) => void>()
+}))
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: mocks.push })
 }))
 vi.mock('@/lib/auth-client', () => ({
   authClient: {
@@ -37,7 +41,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   window.sessionStorage.clear()
   window.localStorage.clear()
-  window.history.replaceState(null, '', '/')
+  window.history.replaceState(null, '', '/create')
   mocks.getSession.mockResolvedValue({ data: null, error: null })
   mocks.anonymous.mockResolvedValue({ data: {}, error: null })
   requests = vi.fn<typeof fetch>()
@@ -268,4 +272,22 @@ it('retains the original appearance and request key when recovering after signin
   expect(JSON.parse(requests.mock.calls[0]![1]!.body as string)).toEqual(
     originalRequest
   )
+})
+
+it('redirects landing-page creation to the allocated draft without waiting for its summary', async () => {
+  window.history.replaceState(null, '', '/')
+  requests.mockResolvedValueOnce(
+    Response.json({
+      draftId: 'allocated-draft',
+      status: 'preparing',
+      preparationActive: true
+    })
+  )
+  await act(async () => root.render(createElement(ShareFlow)))
+  await source(readyDraft.sourceUrl)
+  await submit()
+  expect(mocks.push).toHaveBeenCalledWith('/create?draft=allocated-draft')
+  expect(requests).toHaveBeenCalledTimes(1)
+  expect(preparationRecovery.getSnapshot()).toBeNull()
+  expect(container.textContent).not.toContain('Saved draft ready')
 })

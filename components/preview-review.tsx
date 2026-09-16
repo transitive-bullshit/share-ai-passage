@@ -431,7 +431,7 @@ export function PreviewReview({
                   <div className='account-actions'>
                     {save.status === 'conflict' ? (
                       <Button asChild size='sm' variant='outline'>
-                        <a href={`/?draft=${draft.draftId}`}>
+                        <a href={`/create?draft=${draft.draftId}`}>
                           Reload saved draft
                         </a>
                       </Button>
@@ -454,7 +454,7 @@ export function PreviewReview({
               Your draft is saved for this browser.{' '}
               <a
                 className='auth-text-link'
-                href={authHref('/sign-up', `/?draft=${draft.draftId}`)}
+                href={authHref('/sign-up', `/create?draft=${draft.draftId}`)}
               >
                 Create an account
               </a>{' '}
@@ -522,6 +522,7 @@ export function PreviewReview({
             <SocialTemplatePicker
               appearance={activeAppearance}
               provider={draft.provider}
+              preview={cardPreview}
               onChange={changeAppearance}
               disabled={editingDisabled || !preferencesReady}
               preferencesAvailable={preferencesAvailable}

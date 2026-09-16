@@ -384,6 +384,10 @@ export const savedDrafts = pgTable(
       .notNull()
       .default('preparing'),
     errorMessage: text('error_message'),
+    preparationRunId: text('preparation_run_id'),
+    preparationEnqueueLeaseUntil: timestamp('preparation_enqueue_lease_until', {
+      withTimezone: true
+    }),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()

@@ -38,6 +38,8 @@ const state = vi.hoisted(() => ({
   start:
     vi.fn<(workflow: unknown, args: string[]) => Promise<{ runId: string }>>(),
   workflow: vi.fn<() => Promise<void>>(),
+  prepareWorkflow: vi.fn<() => Promise<void>>(),
+  enqueueDraft: vi.fn<typeof import('@/lib/draft-jobs').ensureDraftEnqueued>(),
   budget: vi.fn<() => Promise<void>>()
 }))
 
@@ -48,8 +50,12 @@ vi.mock('@/lib/account-http', () => ({
   ) => Response.json(await action(state.actor))
 }))
 vi.mock('@/lib/account-drafts', () => ({
-  createSavedDraft: state.create,
-  resumeSavedDraft: state.resume
+  createPendingSavedDraft: state.create,
+  queueSavedDraftResume: state.resume
+}))
+vi.mock('@/lib/draft-jobs', () => ({ ensureDraftEnqueued: state.enqueueDraft }))
+vi.mock('@/workflows/prepare-passage', () => ({
+  preparePassage: state.prepareWorkflow
 }))
 vi.mock('@/lib/image-jobs', () => ({
   requestImageJob: state.requestImage,
@@ -112,6 +118,9 @@ beforeEach(() => {
     await enqueue(id)
   })
   state.start.mockResolvedValue({ runId: 'fixture-run' })
+  state.enqueueDraft.mockImplementation(async (_actor, id, callback) => {
+    await callback(id)
+  })
 })
 
 describe('initial generated background route wiring', () => {
@@ -147,7 +156,14 @@ describe('initial generated background route wiring', () => {
       expect(await (await create()).json()).not.toHaveProperty('imageJobId')
       expect(await (await resume()).json()).not.toHaveProperty('imageJobId')
       expect(state.requestImage).not.toHaveBeenCalled()
-      expect(state.start).not.toHaveBeenCalled()
+      expect(state.start.mock.calls).toEqual(
+        kind === 'pending'
+          ? [
+              [state.prepareWorkflow, [draftId]],
+              [state.prepareWorkflow, [draftId]]
+            ]
+          : []
+      )
     }
   )
 })

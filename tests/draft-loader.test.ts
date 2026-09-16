@@ -68,6 +68,50 @@ async function click(label: string) {
   await act(async () => button!.click())
 }
 
+it('automatically recovers a transient status failure and follows durable work to its completed draft', async () => {
+  fetchMock
+    .mockResolvedValueOnce(
+      response({
+        draftId: 'owned-draft',
+        status: 'preparing',
+        preparationActive: true
+      })
+    )
+    .mockRejectedValueOnce(new TypeError('Connection lost'))
+    .mockResolvedValueOnce(
+      response({ draftId: 'owned-draft', status: 'ready' })
+    )
+  await render()
+  expect(container.textContent).toContain('Your passage is being prepared.')
+  expect(container.textContent).not.toContain('Resume preparation')
+  await act(async () => vi.advanceTimersByTimeAsync(4000))
+  expect(container.textContent).not.toContain('couldn’t connect')
+  expect(container.textContent).toContain('Your passage is being prepared.')
+  await act(async () => vi.advanceTimersByTimeAsync(2000))
+  expect(onReady).toHaveBeenCalledWith({
+    draftId: 'owned-draft',
+    status: 'ready'
+  })
+  expect(
+    fetchMock.mock.calls.every(([, options]) => options?.method === 'GET')
+  ).toBe(true)
+})
+
+it('shows a terminal background failure and stops polling instead of waiting forever', async () => {
+  fetchMock.mockResolvedValueOnce(
+    response({
+      draftId: 'owned-draft',
+      status: 'failed',
+      errorMessage: 'The conversation is unavailable.'
+    })
+  )
+  await render()
+  expect(container.textContent).toContain('The conversation is unavailable.')
+  expect(container.textContent).toContain('Resume preparation')
+  await act(async () => vi.advanceTimersByTimeAsync(12000))
+  expect(fetchMock).toHaveBeenCalledTimes(1)
+})
+
 it('restores quota guidance from a saved draft, stops polling, and keeps cached resume available', async () => {
   fetchMock.mockResolvedValueOnce(response(blocked))
   await render()
@@ -80,7 +124,7 @@ it('restores quota guidance from a saved draft, stops polling, and keeps cached 
   )
   expect(
     container.querySelector(
-      'a[href="/sign-up?returnTo=%2F%3Fdraft%3Downed-draft"]'
+      'a[href="/sign-up?returnTo=%2Fcreate%3Fdraft%3Downed-draft"]'
     )
   ).not.toBeNull()
   expect(container.textContent).not.toContain('Its progress is saved.')

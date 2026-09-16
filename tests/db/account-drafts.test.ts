@@ -14,6 +14,8 @@ import {
 
 import {
   createSavedDraft,
+  createPendingSavedDraft,
+  prepareDraftInBackground,
   deleteOwnedPublication,
   deleteSavedDraft,
   editSavedDraft,
@@ -52,6 +54,7 @@ import {
 } from '@/lib/service'
 import { getSummaryUsage, reserveSummary } from '@/lib/usage'
 import { utcUsagePeriod } from '@/lib/usage-policy'
+import { ensureDraftEnqueued } from '@/lib/draft-jobs'
 
 import type { Actor } from '@/lib/actors'
 import type {
@@ -228,6 +231,114 @@ describe.skipIf(!testUrl)(
         .where(eq(aiBudgetPeriods.startsAt, utcUsagePeriod(now).startsAt))
       await closeDatabase()
       vi.unstubAllEnvs()
+    })
+
+    it('allocates one saved draft immediately and prepares it separately under its original request identity', async () => {
+      const owner = await actor()
+      const input = { url: sourceUrl(), requestKey: randomUUID() }
+      const pending = await createPendingSavedDraft(owner, input)
+      const replay = await createPendingSavedDraft(owner, input)
+      expect(pending.status).toBe('preparing')
+      expect(replay.draftId).toBe(pending.draftId)
+      expect(upstream.fetchSource).not.toHaveBeenCalled()
+      expect(upstream.suggestPreview).not.toHaveBeenCalled()
+      expect(
+        (await getSummaryUsage(owner.subjectKey, owner.allowance)).used
+      ).toBe(0)
+      const ready = await prepareDraftInBackground(pending.draftId)
+      const recovered = await prepareDraftInBackground(pending.draftId)
+      expect(ready.status).toBe('ready')
+      expect(recovered.draftId).toBe(pending.draftId)
+      expect(upstream.suggestPreview).toHaveBeenCalledTimes(1)
+      expect(
+        (await getSummaryUsage(owner.subjectKey, owner.allowance)).used
+      ).toBe(1)
+    })
+
+    it('deduplicates concurrent queue delivery and recovers a lost response after its lease without creating another draft', async () => {
+      const owner = await actor()
+      const pending = await createPendingSavedDraft(owner, {
+        url: sourceUrl(),
+        requestKey: randomUUID()
+      })
+      const enqueue = vi
+        .fn<(id: string) => Promise<{ runId: string }>>()
+        .mockRejectedValueOnce(new TypeError('Queue response lost'))
+        .mockResolvedValue({ runId: 'recovered-workflow-run' })
+      await Promise.all([
+        ensureDraftEnqueued(owner, pending.draftId, enqueue),
+        ensureDraftEnqueued(owner, pending.draftId, enqueue)
+      ])
+      expect(enqueue).toHaveBeenCalledTimes(1)
+      vi.setSystemTime(new Date(now.getTime() + 61000))
+      await ensureDraftEnqueued(owner, pending.draftId, enqueue)
+      await ensureDraftEnqueued(owner, pending.draftId, enqueue)
+      expect(enqueue).toHaveBeenCalledTimes(2)
+      expect(enqueue.mock.calls).toEqual([[pending.draftId], [pending.draftId]])
+      expect((await storedDraft(pending.draftId))?.preparationRunId).toBe(
+        'recovered-workflow-run'
+      )
+      expect(upstream.suggestPreview).not.toHaveBeenCalled()
+    })
+
+    it('prepares a queued guest draft after signup using its transferred owner and original namespace', async () => {
+      const guest = await actor(true)
+      const account = await actor()
+      const pending = await createPendingSavedDraft(guest, {
+        url: sourceUrl(),
+        requestKey: randomUUID()
+      })
+      await mergeGuestAccount(guest.userId, account.userId)
+      expect((await prepareDraftInBackground(pending.draftId)).status).toBe(
+        'ready'
+      )
+      expect((await readSavedDraft(account, pending.draftId)).status).toBe(
+        'ready'
+      )
+      expect((await storedDraft(pending.draftId))?.namespace).toBe(
+        guest.subjectKey
+      )
+      expect(
+        (await getSummaryUsage(account.subjectKey, account.allowance)).used
+      ).toBe(1)
+      expect(upstream.suggestPreview).toHaveBeenCalledTimes(1)
+    })
+
+    it('checks current email verification before preparing a queued account draft', async () => {
+      const owner = await actor()
+      const pending = await createPendingSavedDraft(owner, {
+        url: sourceUrl(),
+        requestKey: randomUUID()
+      })
+      await getDb()
+        .update(authUsers)
+        .set({ emailVerified: false })
+        .where(eq(authUsers.id, owner.userId))
+      await expect(
+        prepareDraftInBackground(pending.draftId)
+      ).rejects.toMatchObject({ status: 403 })
+      expect(upstream.fetchSource).not.toHaveBeenCalled()
+      expect(upstream.suggestPreview).not.toHaveBeenCalled()
+    })
+
+    it('never queues or prepares a deleted draft or another account’s draft', async () => {
+      const owner = await actor()
+      const other = await actor()
+      const pending = await createPendingSavedDraft(owner, {
+        url: sourceUrl(),
+        requestKey: randomUUID()
+      })
+      const enqueue = vi
+        .fn<(id: string) => Promise<{ runId: string }>>()
+        .mockResolvedValue({ runId: 'forbidden-run' })
+      await ensureDraftEnqueued(other, pending.draftId, enqueue)
+      await deleteSavedDraft(owner, pending.draftId)
+      await ensureDraftEnqueued(owner, pending.draftId, enqueue)
+      await expect(
+        prepareDraftInBackground(pending.draftId)
+      ).rejects.toMatchObject({ status: 404 })
+      expect(enqueue).not.toHaveBeenCalled()
+      expect(upstream.suggestPreview).not.toHaveBeenCalled()
     })
 
     it('requires ownership for every private draft read, edit, and publication', async () => {

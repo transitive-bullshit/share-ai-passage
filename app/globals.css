@@ -2069,14 +2069,6 @@ summary:focus-visible,
   pointer-events: none;
   user-select: none;
 }
-/* Scale the same fixed canvas used by the renderer without changing its layout. */
-.social-template-card {
-  all: initial;
-  display: block;
-  width: 1200px;
-  height: 630px;
-  zoom: calc(100cqw / 1200px);
-}
 .social-template-check {
   position: absolute;
   top: 5px;

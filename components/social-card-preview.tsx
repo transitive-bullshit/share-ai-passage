@@ -70,7 +70,8 @@ function CardPreviewCanvas({
   }, [appearance, attempt, onStatusChange])
 
   useEffect(() => {
-    const canvas = canvasRef.current!
+    const canvas = canvasRef.current
+    if (!canvas) return
     let cancelled = false
     const text = canvas.textContent ?? ''
     const fonts = new Set([

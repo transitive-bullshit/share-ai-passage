@@ -22,6 +22,7 @@ export type SavedDraft = {
 export type PendingDraft = {
   draftId: string
   status: 'preparing' | 'failed'
+  preparationActive?: boolean
   errorMessage?: string
   generationBlock?: {
     code:

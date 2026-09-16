@@ -521,7 +521,13 @@ export function AuthForm({
           )}
           <a
             className='auth-guest-link'
-            href={returnTo.startsWith('/?draft=') ? returnTo : '/'}
+            href={
+              returnTo === '/create' ||
+              returnTo.startsWith('/create?') ||
+              returnTo.startsWith('/?draft=')
+                ? returnTo
+                : '/create'
+            }
           >
             Continue without an account
           </a>

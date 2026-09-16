@@ -2,8 +2,10 @@ import { z } from 'zod'
 import { start } from 'workflow/api'
 import { startInitialDraftImage } from '@/lib/initial-image'
 import { generatePassageBackground } from '@/workflows/generate-background'
+import { preparePassage } from '@/workflows/prepare-passage'
 import { accountRequest } from '@/lib/account-http'
-import { createSavedDraft } from '@/lib/account-drafts'
+import { createPendingSavedDraft } from '@/lib/account-drafts'
+import { ensureDraftEnqueued } from '@/lib/draft-jobs'
 import { cardAppearanceSchema } from '@/lib/card-appearance-schema'
 import { AppError } from '@/lib/errors'
 import { clientKey, readJson } from '@/lib/http'
@@ -27,7 +29,11 @@ export function POST(request: Request) {
       throw new AppError(
         'Paste a public conversation URL and start a new draft.'
       )
-    const draft = await createSavedDraft(actor, input.data)
+    const draft = await createPendingSavedDraft(actor, input.data)
+    if (draft.status === 'preparing' && !draft.generationBlock)
+      await ensureDraftEnqueued(actor, draft.draftId, (id) =>
+        start(preparePassage, [id])
+      )
     return startInitialDraftImage(actor, draft, (id) =>
       start(generatePassageBackground, [id])
     )

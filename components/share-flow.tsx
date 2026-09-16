@@ -1,6 +1,7 @@
 'use client'
 
 import { ArrowRight } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import {
   type FormEvent,
   type ReactNode,
@@ -88,6 +89,7 @@ export function ShareFlow({
   initialDraftId?: string
   initialTemplateId?: string
 }) {
+  const router = useRouter()
   const { data: session } = useAccountSession()
   const registeredUserId =
     session?.user.emailVerified && !session.user.isAnonymous
@@ -179,7 +181,7 @@ export function ShareFlow({
     window.history.replaceState(
       null,
       '',
-      `/?draft=${encodeURIComponent(result.draftId)}`
+      `/create?draft=${encodeURIComponent(result.draftId)}`
     )
   }, [])
 
@@ -188,7 +190,7 @@ export function ShareFlow({
     setDraftAppearance(null)
     setLoadingId('')
     preparationRecovery.clear()
-    window.history.replaceState(null, '', '/')
+    window.history.replaceState(null, '', '/create')
   }
 
   useEffect(() => {
@@ -246,6 +248,11 @@ export function ShareFlow({
         resolvedRequest
       )
       setRetry(null)
+      if (window.location.pathname !== '/create') {
+        preparationRecovery.clear()
+        router.push(`/create?draft=${encodeURIComponent(result.draftId)}`)
+        return
+      }
       if (result.status === 'ready') showDraft(result)
       else {
         setLoadingId(result.draftId)
@@ -253,7 +260,7 @@ export function ShareFlow({
         window.history.replaceState(
           null,
           '',
-          `/?draft=${encodeURIComponent(result.draftId)}`
+          `/create?draft=${encodeURIComponent(result.draftId)}`
         )
       }
     } catch (err) {
@@ -270,7 +277,7 @@ export function ShareFlow({
         window.history.replaceState(
           null,
           '',
-          `/?draft=${encodeURIComponent(err.details.draftId)}`
+          `/create?draft=${encodeURIComponent(err.details.draftId)}`
         )
       }
       if (err instanceof ClientRequestError && err.retryAt && !resetAt) {
@@ -426,7 +433,7 @@ export function ShareFlow({
                   {generationReset && !registeredUserId && (
                     <a
                       className='auth-text-link'
-                      href={authHref('/sign-up', '/')}
+                      href={authHref('/sign-up', '/create')}
                     >
                       Save your work with a free account
                     </a>

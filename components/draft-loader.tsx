@@ -34,6 +34,7 @@ export function DraftLoader({
   const [generationBlock, setGenerationBlock] =
     useState<PendingDraft['generationBlock']>()
   const [attempt, setAttempt] = useState(0)
+  const [preparationActive, setPreparationActive] = useState(false)
   const generationReset =
     generationBlock?.code === 'AI_SPEND_LIMIT'
       ? undefined
@@ -42,6 +43,7 @@ export function DraftLoader({
   useEffect(() => {
     let active = true
     let timer: ReturnType<typeof setTimeout> | undefined
+    let failures = 0
     async function load() {
       try {
         const result = await draftRequest<DraftResult>(
@@ -50,6 +52,7 @@ export function DraftLoader({
           undefined
         )
         if (!active) return
+        failures = 0
         if (result.status === 'ready') {
           let ready = result
           if (
@@ -60,7 +63,7 @@ export function DraftLoader({
           ) {
             // The original request may have saved its summary just before the
             // handler stopped. Resume that same template request explicitly;
-            // the GET above remains a read and the server deduplicates its image.
+            // the server deduplicates its image against the background workflow.
             try {
               const resumed = await draftRequest<DraftResult>(
                 `/api/drafts/${encodeURIComponent(draftId)}/resume`,
@@ -78,6 +81,7 @@ export function DraftLoader({
           if (active) onReady(ready)
         } else {
           setStatus(result.generationBlock ? 'blocked' : result.status)
+          setPreparationActive(result.preparationActive === true)
           setGenerationBlock(result.generationBlock)
           setError(result.errorMessage ?? resumeError.current)
           if (result.status === 'preparing' && !result.generationBlock)
@@ -85,6 +89,15 @@ export function DraftLoader({
         }
       } catch (err) {
         if (!active) return
+        if (
+          failures < 3 &&
+          err instanceof DraftRequestError &&
+          (err.status === undefined || err.status === 429 || err.status >= 500)
+        ) {
+          failures += 1
+          timer = setTimeout(() => void load(), 2 ** failures * 1000)
+          return
+        }
         setStatus(
           err instanceof DraftRequestError && err.status === 401
             ? 'unauthorized'
@@ -110,6 +123,7 @@ export function DraftLoader({
       if (result.status === 'ready') onReady(result)
       else {
         setStatus(result.generationBlock ? 'blocked' : result.status)
+        setPreparationActive(result.preparationActive === true)
         setGenerationBlock(result.generationBlock)
         setError(result.errorMessage ?? '')
         setAttempt((value) => value + 1)
@@ -159,21 +173,25 @@ export function DraftLoader({
         </Alert>
       )}
       <div className='account-actions'>
-        {(status === 'preparing' || status === 'blocked') && (
+        {((status === 'preparing' && !preparationActive) ||
+          status === 'blocked' ||
+          status === 'failed') && (
           <Button type='button' onClick={() => void resume()}>
             Resume preparation
           </Button>
         )}
         {status === 'blocked' && generationBlock?.canSignUp && (
           <Button asChild>
-            <a href={authHref('/sign-up', `/?draft=${draftId}`)}>
+            <a href={authHref('/sign-up', `/create?draft=${draftId}`)}>
               Create a free account
             </a>
           </Button>
         )}
         {status === 'unauthorized' ? (
           <Button asChild>
-            <a href={authHref('/sign-in', `/?draft=${draftId}`)}>Sign in</a>
+            <a href={authHref('/sign-in', `/create?draft=${draftId}`)}>
+              Sign in
+            </a>
           </Button>
         ) : (
           <Button

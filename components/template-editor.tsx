@@ -167,7 +167,7 @@ export function TemplateEditor() {
           <a href='/account'>Your account</a>
         </Button>
         <Button asChild variant='outline'>
-          <a href='/'>Create a passage</a>
+          <a href='/create'>Create a passage</a>
         </Button>
       </div>
       {error && (
@@ -301,7 +301,9 @@ export function TemplateEditor() {
               </Button>
               {selected && data.canCustomize && !dirty && !pending && (
                 <Button asChild variant='outline'>
-                  <a href={`/?template=${selected.id}`}>Try with a passage</a>
+                  <a href={`/create?template=${selected.id}`}>
+                    Try with a passage
+                  </a>
                 </Button>
               )}
               {selected && (

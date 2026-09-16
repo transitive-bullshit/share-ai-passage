@@ -1,4 +1,4 @@
-import { ArrowUpRight, ExternalLink } from 'lucide-react'
+import { ExternalLink } from 'lucide-react'
 
 import { BrandMark } from '@/components/brand-mark'
 import { Button } from '@/components/ui/button'
@@ -51,7 +51,7 @@ export function SiteFooter() {
           </a>
           <p>{brand.description}</p>
           <Button asChild variant='outline' size='sm' className='rounded-full'>
-            <a href='/'>
+            <a href='/create'>
               {brand.cta}
               <ExternalLink data-icon='inline-end' aria-hidden='true' />
             </a>
@@ -75,12 +75,6 @@ export function SiteFooter() {
                         }
                       >
                         {label}
-                        {external ? (
-                          <ArrowUpRight
-                            aria-hidden='true'
-                            className='size-3.5 shrink-0'
-                          />
-                        ) : null}
                       </a>
                     </li>
                   )
