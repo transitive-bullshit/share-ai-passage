@@ -1,13 +1,14 @@
 'use client'
 
 import { Check } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
+import { useAccountSession } from '@/components/account-session'
 import { Button } from '@/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { authHref } from '@/lib/auth-navigation'
 import type { BillingInterval } from '@/lib/billing-config'
-import { imagePack, planCatalog } from '@/lib/plans'
+import { imagePack, planCatalog, type PlanId } from '@/lib/plans'
 
 function money(cents: number) {
   return new Intl.NumberFormat('en-US', {
@@ -29,7 +30,45 @@ export function PricingPlans({
   paidPlansAvailable: boolean
 }) {
   const [interval, setInterval] = useState<BillingInterval>('month')
+  const { data: session, isPending } = useAccountSession()
+  const userId = session && !session.user.isAnonymous ? session.user.id : null
+  const verifiedUserId = session?.user.emailVerified ? userId : null
+  const [membership, setMembership] = useState<{
+    userId: string
+    plan: PlanId | null
+  } | null>(null)
+  const planPending =
+    isPending ||
+    Boolean(verifiedUserId && membership?.userId !== verifiedUserId)
+  const currentPlan = userId
+    ? verifiedUserId
+      ? membership?.userId === userId
+        ? membership.plan
+        : null
+      : 'free'
+    : null
   const billingHref = `/account/billing?interval=${interval}`
+
+  useEffect(() => {
+    if (!verifiedUserId) return
+    let active = true
+    void fetch('/api/billing', { cache: 'no-store' })
+      .then(async (response) => {
+        const data = (await response.json()) as {
+          entitlements?: { plan?: PlanId }
+        }
+        const plan = data.entitlements?.plan
+        if (!response.ok || !plan || !Object.hasOwn(planCatalog, plan))
+          throw new Error('Your plan could not load.')
+        if (active) setMembership({ userId: verifiedUserId, plan })
+      })
+      .catch(() => {
+        if (active) setMembership({ userId: verifiedUserId, plan: null })
+      })
+    return () => {
+      active = false
+    }
+  }, [verifiedUserId])
 
   return (
     <>
@@ -60,6 +99,7 @@ export function PricingPlans({
         {(['free', 'plus', 'pro'] as const).map((id) => {
           const plan = planCatalog[id]
           const paid = id !== 'free'
+          const current = currentPlan === id
           const monthlyCents =
             interval === 'year'
               ? plan.annualPriceCents / 12
@@ -125,20 +165,38 @@ export function PricingPlans({
                 ))}
               </ul>
               <Button
-                asChild
-                variant={paid ? 'default' : 'outline'}
+                asChild={!planPending && !current}
+                disabled={planPending || current}
+                variant={current || !paid ? 'outline' : 'default'}
                 size='lg'
                 className='mt-auto w-full rounded-full lg:mt-0'
               >
-                <a
-                  href={paid ? billingHref : authHref('/sign-up', '/passages')}
-                >
-                  {paid
-                    ? paidPlansAvailable
-                      ? `Choose ${plan.name}`
-                      : `View ${plan.name} plan`
-                    : 'Create a free account'}
-                </a>
+                {planPending ? (
+                  'Loading plan'
+                ) : current ? (
+                  <>
+                    <Check data-icon='inline-start' />
+                    Current plan
+                  </>
+                ) : (
+                  <a
+                    href={
+                      paid || userId
+                        ? billingHref
+                        : authHref('/sign-up', '/passages')
+                    }
+                  >
+                    {paid
+                      ? paidPlansAvailable
+                        ? `Choose ${plan.name}`
+                        : `View ${plan.name} plan`
+                      : userId
+                        ? currentPlan
+                          ? 'Switch to Free'
+                          : 'Manage your plan'
+                        : 'Create a free account'}
+                  </a>
+                )}
               </Button>
             </section>
           )
