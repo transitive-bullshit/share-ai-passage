@@ -25,6 +25,7 @@ export async function GET(
         provider: 'chatgpt'
       },
       example.appearance
-    )
+    ),
+    { cache: 'deployment' }
   )
 }

@@ -45,6 +45,15 @@ it.each([
       { params }
     )
     expect(await response.text()).toBe('example card')
+    expect(response.headers.get('cache-control')).toBe(
+      'public, max-age=0, must-revalidate'
+    )
+    expect(response.headers.get('cdn-cache-control')).toBe(
+      'public, max-age=86400, stale-while-revalidate=604800'
+    )
+    expect(response.headers.get('vercel-cdn-cache-control')).toBe(
+      'public, max-age=31536000, immutable'
+    )
     expect(renderCard).toHaveBeenCalledExactlyOnceWith(
       {
         title: example.title,

@@ -110,7 +110,15 @@ describe('saved social-card appearance routes', () => {
     const publishedResponse = await publicRequest(
       '?template=unknown&appearance=edited'
     )
-    expect(publishedResponse.headers.get('cache-control')).toBeNull()
+    expect(publishedResponse.headers.get('cache-control')).toBe(
+      'public, max-age=0, must-revalidate'
+    )
+    expect(publishedResponse.headers.get('cdn-cache-control')).toBe(
+      'public, max-age=86400, stale-while-revalidate=604800'
+    )
+    expect(publishedResponse.headers.get('vercel-cdn-cache-control')).toBe(
+      'public, max-age=2592000'
+    )
     const published = await bytes(publishedResponse)
     expect(published.equals(preview)).toBe(true)
     for (const call of [1, 2]) {

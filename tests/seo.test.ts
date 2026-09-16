@@ -172,11 +172,11 @@ const transcript = 'SAVED_TRANSCRIPT_ONLY_IN_READER'
 const sourceUrl = 'https://chatgpt.com/share/source-id'
 
 describe('publication route caching policy', () => {
-  it('generates readers and cards on demand with a seven-day ISR lifetime', async () => {
+  it('generates readers and cards on demand with their respective ISR lifetimes', async () => {
     expect(readerDynamic).toBe('force-static')
     expect(publicImageDynamic).toBe('force-static')
     expect(readerRevalidate).toBe(7 * 24 * 60 * 60)
-    expect(publicImageRevalidate).toBe(7 * 24 * 60 * 60)
+    expect(publicImageRevalidate).toBe(30 * 24 * 60 * 60)
     await expect(generateReaderStaticParams()).resolves.toEqual([])
     await expect(generatePublicImageStaticParams()).resolves.toEqual([])
   })
@@ -321,7 +321,15 @@ describe('public response indexing with publication ISR', () => {
           ? 'index, follow, noarchive'
           : 'noindex, nofollow, noarchive'
       )
-      expect(response.headers.get('cache-control')).toBeNull()
+      expect(response.headers.get('cache-control')).toBe(
+        'public, max-age=0, must-revalidate'
+      )
+      expect(response.headers.get('cdn-cache-control')).toBe(
+        'public, max-age=86400, stale-while-revalidate=604800'
+      )
+      expect(response.headers.get('vercel-cdn-cache-control')).toBe(
+        'public, max-age=2592000'
+      )
       expect(response.headers.get('content-type')).toBe('image/webp')
     }
   )
@@ -333,7 +341,12 @@ describe('public response indexing with publication ISR', () => {
       { params }
     )
     expect(response.headers.get('x-robots-tag')).toContain('noindex')
-    expect(response.headers.get('cache-control')).toBeNull()
+    expect(response.headers.get('cache-control')).toBe(
+      'public, max-age=0, must-revalidate'
+    )
+    expect(response.headers.get('vercel-cdn-cache-control')).toBe(
+      'public, max-age=2592000'
+    )
     expect(renderCard).toHaveBeenCalledExactlyOnceWith({ disabled: true })
     service.getPublication.mockResolvedValue(null)
     const missingResponse = await publicImage(

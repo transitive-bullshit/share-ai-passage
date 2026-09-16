@@ -109,7 +109,19 @@ function cachedPublicationResponse(response: Response) {
     cacheControl.includes('s-maxage=604800') &&
       !cacheControl.includes('no-store') &&
       !cacheControl.includes('private'),
-    'The published response must use seven-day shared caching.'
+    'The published reader must use seven-day shared caching.'
+  )
+}
+
+function cachedCardResponse(response: Response) {
+  verify(
+    response.headers.get('cache-control') ===
+      'public, max-age=0, must-revalidate' &&
+      response.headers.get('cdn-cache-control') ===
+        'public, max-age=86400, stale-while-revalidate=604800' &&
+      response.headers.get('vercel-cdn-cache-control') ===
+        'public, max-age=2592000',
+    'The published card must use browser revalidation and tiered CDN caching.'
   )
 }
 
@@ -129,7 +141,7 @@ async function readJson<T extends z.ZodType>(
 
 async function webp(response: Response, cached = false) {
   verify(response.ok, `WebP returned HTTP ${response.status}.`)
-  if (cached) cachedPublicationResponse(response)
+  if (cached) cachedCardResponse(response)
   else privateResponse(response)
   verify(
     response.headers.get('content-type')?.startsWith('image/webp'),

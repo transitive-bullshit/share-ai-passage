@@ -64,16 +64,33 @@ export function unavailableMetadata(
   }
 }
 
-/** The renderer defaults to private draft headers; public routes opt into indexing and caching. */
+type PublicImageCache = 'deployment' | 'publication'
+
+const browserImageCache = 'public, max-age=0, must-revalidate'
+const downstreamImageCache =
+  'public, max-age=86400, stale-while-revalidate=604800'
+const vercelImageCache = {
+  deployment: 'public, max-age=31536000, immutable',
+  publication: 'public, max-age=2592000'
+} satisfies Record<PublicImageCache, string>
+
+/** The renderer defaults to private draft headers; public routes opt into indexing and layered CDN caching. */
 export function publicImageResponse(
   response: Response,
   {
     available = true,
-    cacheable = false
-  }: { available?: boolean; cacheable?: boolean } = {}
+    cache
+  }: { available?: boolean; cache?: PublicImageCache } = {}
 ) {
-  if (cacheable) response.headers.delete('Cache-Control')
-  else response.headers.set('Cache-Control', 'private, no-store')
+  if (cache) {
+    response.headers.set('Cache-Control', browserImageCache)
+    response.headers.set('CDN-Cache-Control', downstreamImageCache)
+    response.headers.set('Vercel-CDN-Cache-Control', vercelImageCache[cache])
+  } else {
+    response.headers.set('Cache-Control', 'private, no-store')
+    response.headers.delete('CDN-Cache-Control')
+    response.headers.delete('Vercel-CDN-Cache-Control')
+  }
   response.headers.set(
     'X-Robots-Tag',
     available && indexingEnabled()

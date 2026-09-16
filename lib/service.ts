@@ -75,8 +75,8 @@ async function disableSource(tx: Transaction, sourceId: string, now: Date) {
       updatedAt: now
     })
     .where(eq(sources.id, sourceId))
-  // Published readers and images use seven-day ISR. Existing cache entries may
-  // continue serving until their lazy revalidation observes this disabled state.
+  // Readers use seven-day ISR and images use 30-day ISR. Existing cache entries
+  // may continue serving until their lazy revalidation observes this state.
 }
 
 function sourceReference(source: Source) {

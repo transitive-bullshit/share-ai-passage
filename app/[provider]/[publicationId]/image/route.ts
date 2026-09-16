@@ -5,7 +5,7 @@ import { publicImageResponse } from '@/lib/seo'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-static'
-export const revalidate = 604800 // Seven days.
+export const revalidate = 2592000 // 30 days.
 
 export async function generateStaticParams() {
   return []
@@ -25,7 +25,7 @@ export async function GET(
   if (record.disabled)
     return publicImageResponse(await renderCard({ disabled: true }), {
       available: false,
-      cacheable: true
+      cache: 'publication'
     })
   return publicImageResponse(
     await renderCard(
@@ -36,6 +36,6 @@ export async function GET(
       },
       record.publication.appearance ?? undefined
     ),
-    { cacheable: true }
+    { cache: 'publication' }
   )
 }
