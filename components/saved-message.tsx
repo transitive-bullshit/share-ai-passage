@@ -1,5 +1,5 @@
 import { toString } from 'mdast-util-to-string'
-import { ImageOff } from 'lucide-react'
+import { Check, ImageOff } from 'lucide-react'
 import ReactMarkdown, {
   type Components,
   type UrlTransform
@@ -126,7 +126,10 @@ export function SavedMessage({
   message: Message
   index: number
 }) {
-  const { markdown, fromTask } = readerMessageContent(message)
+  const { markdown, fromTask, questionReplies } = readerMessageContent(message)
+  const visibleLength = questionReplies
+    ? questionReplies.reduce((length, reply) => length + reply.answer.length, 0)
+    : markdown.length
   const body = (
     <div className='markdown'>
       <ReactMarkdown
@@ -153,8 +156,37 @@ export function SavedMessage({
         <p className='message-system-label'>{roleLabels[message.role]}</p>
       ) : null}
       {message.role === 'user' ? (
-        <UserMessageContent initiallyCollapsed={markdown.length > 1000}>
-          {body}
+        <UserMessageContent initiallyCollapsed={visibleLength > 1000}>
+          {questionReplies ? (
+            <div className='question-replies'>
+              {questionReplies.map((reply, replyIndex) => (
+                <section
+                  className='question-reply'
+                  aria-label={`Answer to: ${reply.question}`}
+                  key={`${reply.question}-${replyIndex}`}
+                >
+                  <p className='question-reply-label'>
+                    <span aria-hidden='true'>
+                      <Check />
+                    </span>
+                    Prompt answered
+                  </p>
+                  <div className='markdown question-reply-answer'>
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      rehypePlugins={[rehypeHighlight]}
+                      urlTransform={safeLink}
+                      components={markdownComponents}
+                    >
+                      {reply.answer}
+                    </ReactMarkdown>
+                  </div>
+                </section>
+              ))}
+            </div>
+          ) : (
+            body
+          )}
         </UserMessageContent>
       ) : (
         body

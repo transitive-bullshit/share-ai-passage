@@ -33,6 +33,64 @@ function renderMessage(markdown: string, options: Partial<Message> = {}) {
 }
 
 describe('safe, faithful conversation reader', () => {
+  it('presents Codex async question replies as selected responses while preserving stored text', () => {
+    const source =
+      '<send_user_message_question_reply> [{"questionItemId":"["request_user_input_async","call_example",0]","question":"Where should this temporary review tool live?","answer":"Keep it **local**; this is temporary."}] </send_user_message_question_reply>'
+    const entry = message('codex-1-0', 'user', source)
+    const html = renderMessage('', entry)
+
+    expect(html).toContain('Prompt answered')
+    expect(html).toContain('Keep it <strong>local</strong>; this is temporary.')
+    expect(html).not.toContain('send_user_message_question_reply')
+    expect(html).not.toContain('questionItemId')
+    expect(entry.content).toEqual([{ type: 'input_text', text: source }])
+    expect(renderMessage(source, { role: 'user' })).toContain(
+      '&lt;send_user_message_question_reply&gt;'
+    )
+  })
+
+  it('presents every selection in a well-formed multi-question reply', () => {
+    const source = `<send_user_message_question_reply>
+${JSON.stringify([
+  {
+    questionItemId: ['request_user_input_async', 'call_example', 0],
+    question: 'Choose a location',
+    answer: 'Keep it local'
+  },
+  {
+    questionItemId: ['request_user_input_async', 'call_example', 1],
+    question: 'Choose a format',
+    answer: 'Use the compact layout'
+  }
+])}
+</send_user_message_question_reply>`
+    const html = renderMessage(source, { id: 'codex-1-0', role: 'user' })
+
+    expect(html.match(/Prompt answered/g)).toHaveLength(2)
+    expect(html).toContain('Keep it local')
+    expect(html).toContain('Use the compact layout')
+    const document = new Window().document
+    document.body.innerHTML = html
+    expect(
+      Array.from(document.querySelectorAll('.question-reply'), (reply) =>
+        reply.textContent?.trim()
+      )
+    ).toEqual([
+      'Prompt answeredKeep it local',
+      'Prompt answeredUse the compact layout'
+    ])
+  })
+
+  it('keeps malformed async reply envelopes literal', () => {
+    const html = renderMessage(
+      '<send_user_message_question_reply> [{"question":"Missing answer"}] </send_user_message_question_reply>',
+      { id: 'codex-1-0', role: 'user' }
+    )
+
+    expect(html).toContain('&lt;send_user_message_question_reply&gt;')
+    expect(html).toContain('Missing answer')
+  })
+
   it('displays a complete Codex delegation as a prompt with provenance while preserving stored text', () => {
     const source =
       '<codex_delegation>\n  <source_thread_id></source_thread_id>\n  <input>Compare **these examples**.\n\nKeep &lt;script&gt; literal.</input>\n</codex_delegation>'

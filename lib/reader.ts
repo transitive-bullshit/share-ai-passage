@@ -1,18 +1,74 @@
 import type { Message } from './domain'
 import { messageMarkdown } from './messages'
 
+export type QuestionReply = { question: string; answer: string }
+
+function questionReplies(value: string): QuestionReply[] | null {
+  const payload = value.trim()
+  if (!payload.startsWith('[') || !payload.endsWith(']')) return null
+
+  try {
+    const parsed: unknown = JSON.parse(payload)
+    if (
+      Array.isArray(parsed) &&
+      parsed.length > 0 &&
+      parsed.every(
+        (entry): entry is QuestionReply =>
+          typeof entry === 'object' &&
+          entry !== null &&
+          typeof (entry as QuestionReply).question === 'string' &&
+          typeof (entry as QuestionReply).answer === 'string'
+      )
+    ) {
+      return parsed.map(({ question, answer }) => ({ question, answer }))
+    }
+  } catch {
+    // Codex currently emits an unescaped array in questionItemId. The visible
+    // question and answer fields remain valid JSON strings, so recover only
+    // those exact adjacent fields and reject anything else as ordinary text.
+  }
+
+  const fieldPattern =
+    /"question"\s*:\s*("(?:\\.|[^"\\])*")\s*,\s*"answer"\s*:\s*("(?:\\.|[^"\\])*")/g
+  const matches = [...payload.matchAll(fieldPattern)]
+  const questionCount = payload.match(/"question"\s*:/g)?.length ?? 0
+  const answerCount = payload.match(/"answer"\s*:/g)?.length ?? 0
+  if (
+    matches.length === 0 ||
+    matches.length !== questionCount ||
+    matches.length !== answerCount
+  ) {
+    return null
+  }
+  try {
+    return matches.map((match) => ({
+      question: JSON.parse(match[1]!) as string,
+      answer: JSON.parse(match[2]!) as string
+    }))
+  } catch {
+    return null
+  }
+}
+
 /** Codex's public share displays the input inside its delegation envelope. */
 export function readerMessageContent(message: Message) {
   const markdown = messageMarkdown(message)
-  const delegated =
+  const codexUser =
     message.role === 'user' && /^codex-\d+-\d+$/.test(message.id)
-      ? /^<codex_delegation>\s*<source_thread_id>[\w-]*<\/source_thread_id>\s*<input>([\s\S]*)<\/input>\s*<\/codex_delegation>$/.exec(
-          markdown.trim()
-        )
-      : null
+  const delegated = codexUser
+    ? /^<codex_delegation>\s*<source_thread_id>[\w-]*<\/source_thread_id>\s*<input>([\s\S]*)<\/input>\s*<\/codex_delegation>$/.exec(
+        markdown.trim()
+      )
+    : null
+  const replyEnvelope = codexUser
+    ? /^<send_user_message_question_reply>\s*([\s\S]*?)\s*<\/send_user_message_question_reply>$/.exec(
+        markdown.trim()
+      )
+    : null
   return {
     markdown: delegated ? delegated[1]!.trim() : markdown,
-    fromTask: Boolean(delegated)
+    fromTask: Boolean(delegated),
+    questionReplies: replyEnvelope ? questionReplies(replyEnvelope[1]!) : null
   }
 }
 

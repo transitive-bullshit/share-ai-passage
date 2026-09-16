@@ -1061,6 +1061,43 @@
   font-size: 12px;
   margin-bottom: 12px;
 }
+.question-replies {
+  display: grid;
+  gap: 14px;
+}
+.question-reply + .question-reply {
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.question-reply-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 9px;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+.question-reply-label > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  color: var(--primary-foreground);
+  background: var(--primary);
+}
+.question-reply-label svg {
+  width: 10px;
+  height: 10px;
+  stroke-width: 2;
+}
+.question-reply-answer {
+  font-size: 15px;
+  line-height: 1.65;
+}
 .conversation-activity {
   margin: 0 0 20px;
   border-bottom: 1px solid var(--border);
