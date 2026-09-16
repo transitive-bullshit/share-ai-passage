@@ -4,7 +4,12 @@ import { getPublication } from '@/lib/service'
 import { publicImageResponse } from '@/lib/seo'
 
 export const runtime = 'nodejs'
-export const dynamic = 'force-dynamic'
+export const dynamic = 'force-static'
+export const revalidate = 604800 // Seven days.
+
+export async function generateStaticParams() {
+  return []
+}
 
 export async function GET(
   _request: Request,
@@ -17,7 +22,11 @@ export async function GET(
       status: 404,
       headers: privateHeaders
     })
-  if (record.disabled) return renderCard({ disabled: true })
+  if (record.disabled)
+    return publicImageResponse(await renderCard({ disabled: true }), {
+      available: false,
+      cacheable: true
+    })
   return publicImageResponse(
     await renderCard(
       {
@@ -26,6 +35,7 @@ export async function GET(
         provider: record.source.provider
       },
       record.publication.appearance ?? undefined
-    )
+    ),
+    { cacheable: true }
   )
 }

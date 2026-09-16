@@ -44,4 +44,4 @@ A conversation-sharing service makes public AI conversations more engaging to sh
 
 **Unavailable source**: A source confirmed to have been removed or made inaccessible to public readers. A temporary network error, challenge, or ambiguous parsing failure is not confirmation.
 
-**Disabled publication**: A publication whose conversation, preview, and social card are no longer served because its source is confirmed unavailable. Copies previously cached by other platforms are outside the service's control.
+**Disabled publication**: A publication marked unavailable because its source is confirmed unavailable. It is excluded from newly generated readers and social cards; previously cached representations can remain available until revalidation, and copies cached by other platforms are outside the service's control.

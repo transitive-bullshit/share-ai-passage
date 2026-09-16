@@ -106,7 +106,9 @@ Keep database and function regions together. Use separate data for preview deplo
 
 Keep Vercel's system environment variables enabled. Redeploy after changing the production domain. Mutation origin validation compares the submitted origin to the actual request host, so alternate deployment URLs can accept their own same-origin requests.
 
-Indexing is enabled only when `NODE_ENV=production`, `VERCEL=1`, and the selected Vercel target is exactly `production`. `VERCEL_TARGET_ENV` overrides `VERCEL_ENV`; preview, custom/staging, missing/unknown, and local environments default to `noindex`. Available public pages and social images may index on production. Draft/API, missing, and disabled content remain `noindex`; images and saved readers retain `no-store` for removal behavior. The global response header blocks indexing on nonproduction builds, while page metadata handles unavailable readers on production. Keep robots.txt crawl access open so crawlers can see these directives.
+Indexing is enabled only when `NODE_ENV=production`, `VERCEL=1`, and the selected Vercel target is exactly `production`. `VERCEL_TARGET_ENV` overrides `VERCEL_ENV`; preview, custom/staging, missing/unknown, and local environments default to `noindex`. Available public pages and social images may index on production. Published readers and cards are generated on demand, cached for seven days with stale-while-revalidate delivery, and regenerated lazily; cache hits avoid the database and renderer. Draft/API, missing, and disabled content remain `noindex`, while draft and mutation responses remain `no-store`. Confirmed removal updates storage immediately but may remain visible in an existing public cache until its next revalidation. The global response header blocks indexing on nonproduction builds, while page metadata handles unavailable readers on production. Keep robots.txt crawl access open so crawlers can see these directives.
+
+See [ADR 0001](./adr/0001-cache-publications-with-seven-day-isr.md) for the decision and accepted consistency tradeoff.
 
 [Client-address trust](../lib/http.ts) depends on the actual proxy:
 

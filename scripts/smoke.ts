@@ -103,6 +103,16 @@ function privateResponse(response: Response) {
   )
 }
 
+function cachedPublicationResponse(response: Response) {
+  const cacheControl = response.headers.get('cache-control') || ''
+  verify(
+    cacheControl.includes('s-maxage=604800') &&
+      !cacheControl.includes('no-store') &&
+      !cacheControl.includes('private'),
+    'The published response must use seven-day shared caching.'
+  )
+}
+
 async function readJson<T extends z.ZodType>(
   response: Response,
   schema: T
@@ -117,9 +127,10 @@ async function readJson<T extends z.ZodType>(
   return result.data
 }
 
-async function webp(response: Response) {
+async function webp(response: Response, cached = false) {
   verify(response.ok, `WebP returned HTTP ${response.status}.`)
-  privateResponse(response)
+  if (cached) cachedPublicationResponse(response)
+  else privateResponse(response)
   verify(
     response.headers.get('content-type')?.startsWith('image/webp'),
     'The card must use image/webp.'
@@ -441,7 +452,10 @@ async function smokeSource(sourceUrl: string, index: number) {
 
   stage = `${prepared.provider}: deterministic WebP images`
   const preview = await webp(await post('/api/card', publishBody))
-  const publicCard = await webp(await request(`${published.shareUrl}/image`))
+  const publicCard = await webp(
+    await request(`${published.shareUrl}/image`),
+    true
+  )
   verify(
     preview.equals(publicCard),
     'The draft image endpoint and published WebP must be byte-identical.'
@@ -473,7 +487,7 @@ async function smokeSource(sourceUrl: string, index: number) {
       headers: { 'User-Agent': userAgent }
     })
     verify(reader.ok, `Reader returned HTTP ${reader.status}.`)
-    privateResponse(reader)
+    cachedPublicationResponse(reader)
     validateReader(
       await reader.text(),
       { ...prepared, preview: editedPreview },

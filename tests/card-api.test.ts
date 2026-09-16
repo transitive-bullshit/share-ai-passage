@@ -74,7 +74,6 @@ function publicRequest(query = '') {
 async function bytes(response: Response) {
   expect(response.status).toBe(200)
   expect(response.headers.get('content-type')).toBe('image/webp')
-  expect(response.headers.get('cache-control')).toContain('no-store')
   const buffer = Buffer.from(await response.arrayBuffer())
   expect(webpDimensions(buffer)).toEqual({ width: 1200, height: 630 })
   return buffer
@@ -103,12 +102,16 @@ describe('saved social-card appearance routes', () => {
     vi.mocked(renderCard).mockImplementation(actual.renderCard)
     const appearance = { templateId: 'friendly-lab' as const }
     service.getPublication.mockResolvedValue(publication(appearance))
-    const preview = await bytes(
-      await previewImage(request({ draftToken: 'signed-preview', appearance }))
+    const previewResponse = await previewImage(
+      request({ draftToken: 'signed-preview', appearance })
     )
-    const published = await bytes(
-      await publicRequest('?template=unknown&appearance=edited')
+    expect(previewResponse.headers.get('cache-control')).toContain('no-store')
+    const preview = await bytes(previewResponse)
+    const publishedResponse = await publicRequest(
+      '?template=unknown&appearance=edited'
     )
+    expect(publishedResponse.headers.get('cache-control')).toBeNull()
+    const published = await bytes(publishedResponse)
     expect(published.equals(preview)).toBe(true)
     for (const call of [1, 2]) {
       expect(renderCard).toHaveBeenNthCalledWith(

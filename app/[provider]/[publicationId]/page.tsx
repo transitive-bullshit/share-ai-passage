@@ -2,7 +2,6 @@ import { ArrowDown, ArrowUpRight } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { after } from 'next/server'
 import { cache } from 'react'
 
 import { CopyLink } from '@/components/copy-link'
@@ -20,11 +19,32 @@ import {
   unavailableMetadata
 } from '@/lib/seo'
 
-export const dynamic = 'force-dynamic'
+export const dynamic = 'force-static'
+export const revalidate = 604800 // Seven days.
 export const maxDuration = 30
 
+export async function generateStaticParams() {
+  return []
+}
+
 type Props = { params: Promise<{ provider: string; publicationId: string }> }
-const readPublication = cache(getPublication)
+const readPublication = cache(
+  async (provider: string, publicationId: string) => {
+    const record = await getPublication(provider, publicationId)
+    if (!record || record.disabled) return record
+    try {
+      const availability = await checkAvailability(
+        record.source.id,
+        'automatic'
+      )
+      if (availability.status === 'unavailable')
+        return getPublication(provider, publicationId)
+    } catch {
+      console.warn('Automatic availability check did not complete.')
+    }
+    return record
+  }
+)
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { provider, publicationId } = await params
@@ -81,13 +101,6 @@ export default async function ReaderPage({ params }: Props) {
       ({ message }) =>
         message.role === 'assistant' && messageText(message).trim()
     )?.index ?? -1
-  after(async () => {
-    try {
-      await checkAvailability(source.id, 'automatic')
-    } catch {
-      console.warn('Automatic availability check did not complete.')
-    }
-  })
   const highlights = preview.highlights.filter((text) => text.trim())
   const shareUrl = `${appUrl()}/${provider}/${publicationId}`
   const captured = new Intl.DateTimeFormat('en', {

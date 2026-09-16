@@ -64,12 +64,19 @@ export function unavailableMetadata(
   }
 }
 
-/** The renderer defaults to private draft headers; only active public routes opt in. */
-export function publicImageResponse(response: Response) {
-  response.headers.set('Cache-Control', 'private, no-store')
+/** The renderer defaults to private draft headers; public routes opt into indexing and caching. */
+export function publicImageResponse(
+  response: Response,
+  {
+    available = true,
+    cacheable = false
+  }: { available?: boolean; cacheable?: boolean } = {}
+) {
+  if (cacheable) response.headers.delete('Cache-Control')
+  else response.headers.set('Cache-Control', 'private, no-store')
   response.headers.set(
     'X-Robots-Tag',
-    indexingEnabled()
+    available && indexingEnabled()
       ? 'index, follow, noarchive'
       : 'noindex, nofollow, noarchive'
   )

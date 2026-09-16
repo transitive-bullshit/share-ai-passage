@@ -21,10 +21,13 @@ const appOrigin = new URL(process.env.PASSAGE_URL || appUrl()).origin
 const sourceId = randomUUID()
 const sourceShareId = randomUUID()
 const snapshotId = randomUUID()
-const publicationIds = [randomUUID(), randomUUID()]
+const cachedPublicationIds = [randomUUID(), randomUUID()]
+const coldPublicationId = randomUUID()
+const publicationIds = [...cachedPublicationIds, coldPublicationId]
 const appearances: CardAppearance[] = [
   { templateId: 'margin-notes' },
-  { templateId: 'midnight-observatory' }
+  { templateId: 'midnight-observatory' },
+  { templateId: 'friendly-lab' }
 ]
 const marker = `REMOVAL_MARKER_${sourceShareId.replaceAll('-', '')}`
 const text = `Synthetic transcript ${marker}. This authored fixture checks removal enforcement only.`
@@ -87,6 +90,16 @@ function privateResponse(response: Response) {
   )
 }
 
+function cachedPublicationResponse(response: Response) {
+  const cacheControl = response.headers.get('cache-control') || ''
+  verify(
+    cacheControl.includes('s-maxage=604800') &&
+      !cacheControl.includes('no-store') &&
+      !cacheControl.includes('private'),
+    'The published response must use seven-day shared caching.'
+  )
+}
+
 async function request(route: string, init: RequestInit = {}) {
   return fetch(new URL(route, appOrigin), {
     ...init,
@@ -108,16 +121,28 @@ function assertNoSavedContent(value: string) {
   )
 }
 
-async function readText(response: Response) {
+async function readText(response: Response, cached = true) {
   verify(response.status === 200, `Reader returned HTTP ${response.status}.`)
-  noStore(response)
+  if (cached) cachedPublicationResponse(response)
   return response.text()
 }
 
-async function webpDigest(response: Response, requireNoindex = true) {
+async function webpDigest(
+  response: Response,
+  {
+    cached = false,
+    requireNoindex = true
+  }: { cached?: boolean; requireNoindex?: boolean } = {}
+) {
   verify(response.status === 200, `Card returned HTTP ${response.status}.`)
-  if (requireNoindex) privateResponse(response)
+  if (cached) cachedPublicationResponse(response)
+  else if (requireNoindex) privateResponse(response)
   else noStore(response)
+  if (requireNoindex)
+    verify(
+      response.headers.get('x-robots-tag')?.includes('noindex'),
+      'The unavailable card must prohibit indexing.'
+    )
   verify(
     response.headers.get('content-type')?.startsWith('image/webp'),
     'The card must be served as image/webp.'
@@ -173,7 +198,7 @@ async function rsc(route: string) {
     response.headers.get('content-type')?.includes('text/x-component'),
     'The RSC check must receive a React Server Component response.'
   )
-  return readText(response)
+  return readText(response, false)
 }
 
 async function rejectedDraft(
@@ -265,7 +290,7 @@ try {
 
   stage = 'active reader, RSC, and cards'
   const activeDigests = []
-  for (const [index, id] of publicationIds.entries()) {
+  for (const [index, id] of cachedPublicationIds.entries()) {
     const html = await readText(await request(sharePath(id)))
     verify(
       html.includes(preview.title) && html.includes(marker),
@@ -282,7 +307,10 @@ try {
       'The active RSC fixture must contain the authored transcript before removal.'
     )
     activeDigests.push(
-      await webpDigest(await request(`${sharePath(id)}/image`), false)
+      await webpDigest(await request(`${sharePath(id)}/image`), {
+        cached: true,
+        requireNoindex: false
+      })
     )
     const draftCardDigest = await webpDigest(
       await request('/api/card', {
@@ -329,34 +357,70 @@ try {
   })
 
   const genericDigest = await webpDigest(await renderCard({ disabled: true }))
-  stage = 'disabled reader, HEAD, crawler, RSC, and cache variants'
-  for (const [index, id] of publicationIds.entries()) {
+  stage = 'cached readers and cards remain available until revalidation'
+  for (const [index, id] of cachedPublicationIds.entries()) {
     const route = sharePath(id)
     for (const suffix of ['', `?arbitrary-cache-key=${randomUUID()}`]) {
-      await unavailableReader(`${route}${suffix}`)
-      await unavailableReader(`${route}${suffix}`, {
-        headers: { 'User-Agent': 'Twitterbot/1.0' }
-      })
+      const html = await readText(await request(`${route}${suffix}`))
+      verify(
+        html.includes(preview.title) && html.includes(marker),
+        'A fresh ISR entry must remain available after storage is disabled.'
+      )
       const head = await request(`${route}${suffix}`, { method: 'HEAD' })
-      verify(head.status === 200, `Disabled HEAD returned HTTP ${head.status}.`)
-      noStore(head)
-      assertNoSavedContent(JSON.stringify([...head.headers]))
+      verify(head.status === 200, `Cached HEAD returned HTTP ${head.status}.`)
+      cachedPublicationResponse(head)
       verify(
         (await head.text()).length === 0,
         'HEAD must not contain a response body.'
       )
-      const digest = await webpDigest(await request(`${route}/image${suffix}`))
+      const digest = await webpDigest(
+        await request(`${route}/image${suffix}`),
+        { cached: true, requireNoindex: false }
+      )
       verify(
-        digest === genericDigest && digest !== activeDigests[index],
-        'A disabled image must serve only the generic unavailable card.'
+        digest === activeDigests[index] && digest !== genericDigest,
+        'A fresh ISR card must remain available after storage is disabled.'
       )
     }
     const componentResponse = await rsc(`${route}?_rsc=${randomUUID()}`)
-    assertNoSavedContent(componentResponse)
     verify(
-      componentResponse.toLowerCase().includes('unavailable'),
-      'The disabled RSC response must render the generic unavailable reader.'
+      componentResponse.includes(marker),
+      'A fresh ISR RSC entry must remain available after storage is disabled.'
     )
+  }
+  report.checks.cachedContentExpiresLazily = 'passed'
+
+  stage = 'cold disabled reader, crawler, RSC, and card'
+  const coldRoute = sharePath(coldPublicationId)
+  await unavailableReader(coldRoute)
+  await unavailableReader(`${coldRoute}?crawler=${randomUUID()}`, {
+    headers: { 'User-Agent': 'Twitterbot/1.0' }
+  })
+  const coldHead = await request(coldRoute, { method: 'HEAD' })
+  verify(
+    coldHead.status === 200,
+    `Disabled HEAD returned HTTP ${coldHead.status}.`
+  )
+  cachedPublicationResponse(coldHead)
+  assertNoSavedContent(JSON.stringify([...coldHead.headers]))
+  verify(
+    (await coldHead.text()).length === 0,
+    'HEAD must not contain a response body.'
+  )
+  const coldDigest = await webpDigest(await request(`${coldRoute}/image`), {
+    cached: true
+  })
+  verify(
+    coldDigest === genericDigest,
+    'A cold disabled image must serve only the generic unavailable card.'
+  )
+  const coldComponent = await rsc(`${coldRoute}?_rsc=${randomUUID()}`)
+  assertNoSavedContent(coldComponent)
+  verify(
+    coldComponent.toLowerCase().includes('unavailable'),
+    'A cold disabled RSC response must render the generic unavailable reader.'
+  )
+  for (const id of publicationIds) {
     for (const suffix of ['', '/image']) {
       const wrongProvider = await request(
         `/claude/${id}${suffix}?cache=${randomUUID()}`
@@ -369,9 +433,9 @@ try {
     }
   }
   Object.assign(report.checks, {
-    disabledReaderHeadAndCrawler: 'passed',
-    disabledRscContainsNoSavedContent: 'passed',
-    genericImagesAndCacheVariants: 'passed',
+    coldDisabledReaderHeadAndCrawler: 'passed',
+    coldDisabledRscContainsNoSavedContent: 'passed',
+    coldGenericImage: 'passed',
     wrongProvider404: 'passed'
   })
 
@@ -391,13 +455,28 @@ try {
       updatedAt: new Date()
     })
     .where(eq(sources.id, sourceId))
-  for (const id of publicationIds) {
-    await unavailableReader(`${sharePath(id)}?recovered=${randomUUID()}`)
+  await unavailableReader(`${coldRoute}?recovered=${randomUUID()}`)
+  verify(
+    (await webpDigest(
+      await request(`${coldRoute}/image?recovered=${randomUUID()}`),
+      { cached: true }
+    )) === genericDigest,
+    'Source recovery must not revive a cached disabled publication card.'
+  )
+  for (const [index, id] of cachedPublicationIds.entries()) {
+    const html = await readText(
+      await request(`${sharePath(id)}?recovered=${randomUUID()}`)
+    )
+    verify(
+      html.includes(marker),
+      'Recovery must not bypass an existing active ISR entry.'
+    )
     verify(
       (await webpDigest(
-        await request(`${sharePath(id)}/image?recovered=${randomUUID()}`)
-      )) === genericDigest,
-      'Source recovery must not revive an old publication card.'
+        await request(`${sharePath(id)}/image?recovered=${randomUUID()}`),
+        { cached: true, requireNoindex: false }
+      )) === activeDigests[index],
+      'Recovery must not bypass an existing active ISR card entry.'
     )
   }
   await rejectedDraft('/api/card', draftToken)

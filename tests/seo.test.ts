@@ -2,9 +2,17 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { GET as publicImage } from '@/app/[provider]/[publicationId]/image/route'
+import {
+  dynamic as publicImageDynamic,
+  generateStaticParams as generatePublicImageStaticParams,
+  GET as publicImage,
+  revalidate as publicImageRevalidate
+} from '@/app/[provider]/[publicationId]/image/route'
 import ReaderPage, {
-  generateMetadata
+  dynamic as readerDynamic,
+  generateMetadata,
+  generateStaticParams as generateReaderStaticParams,
+  revalidate as readerRevalidate
 } from '@/app/[provider]/[publicationId]/page'
 import { JsonLd } from '@/components/json-ld'
 import { brand } from '@/lib/brand'
@@ -16,7 +24,8 @@ import nextConfig from '../next.config'
 
 const service = vi.hoisted(() => ({
   getPublication: vi.fn<() => Promise<ReturnType<typeof publication> | null>>(),
-  checkAvailability: vi.fn<() => Promise<void>>()
+  checkAvailability:
+    vi.fn<() => Promise<{ status: 'cooldown' | 'unavailable' }>>()
 }))
 const missing = vi.hoisted(() => new Error('Passage not found'))
 vi.mock('@/lib/service', () => service)
@@ -27,7 +36,6 @@ vi.mock('next/navigation', () => ({
     throw missing
   }
 }))
-vi.mock('next/server', () => ({ after: vi.fn<() => void>() }))
 
 beforeEach(() => {
   vi.stubEnv('NODE_ENV', 'production')
@@ -39,6 +47,9 @@ beforeEach(() => {
   vi.stubEnv('VERCEL_BRANCH_URL', 'passage-git-feature.vercel.app')
   vi.stubEnv('VERCEL_URL', 'passage-deployment.vercel.app')
   service.getPublication.mockReset()
+  service.checkAvailability
+    .mockReset()
+    .mockResolvedValue({ status: 'cooldown' })
   vi.mocked(renderCard)
     .mockReset()
     .mockImplementation(
@@ -160,6 +171,17 @@ const savedHighlight = 'A reviewed highlight.'
 const transcript = 'SAVED_TRANSCRIPT_ONLY_IN_READER'
 const sourceUrl = 'https://chatgpt.com/share/source-id'
 
+describe('publication route caching policy', () => {
+  it('generates readers and cards on demand with a seven-day ISR lifetime', async () => {
+    expect(readerDynamic).toBe('force-static')
+    expect(publicImageDynamic).toBe('force-static')
+    expect(readerRevalidate).toBe(7 * 24 * 60 * 60)
+    expect(publicImageRevalidate).toBe(7 * 24 * 60 * 60)
+    await expect(generateReaderStaticParams()).resolves.toEqual([])
+    await expect(generatePublicImageStaticParams()).resolves.toEqual([])
+  })
+})
+
 function publication(disabled = false) {
   return {
     disabled,
@@ -239,6 +261,20 @@ describe('public and unavailable reader metadata', () => {
     expect(output).not.toContain('/brand/social-preview.jpg')
   })
 
+  it('renders a removal discovered while regenerating without caching another active copy', async () => {
+    service.getPublication
+      .mockResolvedValueOnce(publication())
+      .mockResolvedValueOnce(publication(true))
+    service.checkAvailability.mockResolvedValueOnce({ status: 'unavailable' })
+    const html = renderToStaticMarkup(await ReaderPage({ params }))
+    expect(html).toContain('This passage is unavailable.')
+    expect(html).not.toContain(transcript)
+    expect(service.checkAvailability).toHaveBeenCalledExactlyOnceWith(
+      'source-id',
+      'automatic'
+    )
+  })
+
   it('does not inherit homepage cards or indexing for a missing publication', async () => {
     service.getPublication.mockResolvedValue(null)
     expect(await generateMetadata({ params })).toMatchObject({
@@ -251,7 +287,7 @@ describe('public and unavailable reader metadata', () => {
   })
 })
 
-describe('public response indexing without changing removal caching', () => {
+describe('public response indexing with publication ISR', () => {
   it.each(['production', 'preview'])(
     'matches %s page and card indexing while keeping API responses private',
     async (environment) => {
@@ -285,7 +321,7 @@ describe('public response indexing without changing removal caching', () => {
           ? 'index, follow, noarchive'
           : 'noindex, nofollow, noarchive'
       )
-      expect(response.headers.get('cache-control')).toContain('no-store')
+      expect(response.headers.get('cache-control')).toBeNull()
       expect(response.headers.get('content-type')).toBe('image/webp')
     }
   )
@@ -297,7 +333,7 @@ describe('public response indexing without changing removal caching', () => {
       { params }
     )
     expect(response.headers.get('x-robots-tag')).toContain('noindex')
-    expect(response.headers.get('cache-control')).toContain('no-store')
+    expect(response.headers.get('cache-control')).toBeNull()
     expect(renderCard).toHaveBeenCalledExactlyOnceWith({ disabled: true })
     service.getPublication.mockResolvedValue(null)
     const missingResponse = await publicImage(

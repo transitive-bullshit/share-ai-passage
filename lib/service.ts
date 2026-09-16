@@ -75,8 +75,8 @@ async function disableSource(tx: Transaction, sourceId: string, now: Date) {
       updatedAt: now
     })
     .where(eq(sources.id, sourceId))
-  // Reader, metadata, and image responses all use no-store; there is no owned
-  // publication cache to purge or stale image URL that can bypass this state.
+  // Published readers and images use seven-day ISR. Existing cache entries may
+  // continue serving until their lazy revalidation observes this disabled state.
 }
 
 function sourceReference(source: Source) {
