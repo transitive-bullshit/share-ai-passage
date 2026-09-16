@@ -192,7 +192,13 @@ async function pendingGenerationBlock(draft: SavedDraft, actor: Actor) {
   const error =
     usage.generationPauseCode === 'AI_SPEND_LIMIT'
       ? aiSpendingPause({ scope: 'subscription', resetAt: usage.resetAt })
-      : usageLimitError(usage.resetAt, new Date(), usage.generationPaused)
+      : usageLimitError(
+          usage.resetAt,
+          new Date(),
+          usage.generationPauseCode === 'SUMMARY_BUDGET_LIMIT'
+            ? 'service'
+            : usage.generationPaused
+        )
   return {
     ...error.details!,
     message: error.message,

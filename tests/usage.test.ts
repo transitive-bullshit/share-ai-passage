@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  getSummaryMonthlyBudgetMicros,
   nanoSummaryCostMicros,
   utcUsagePeriod,
   usageLimitError,
@@ -9,6 +10,30 @@ import {
 } from '@/lib/usage-policy'
 
 describe('summary usage policy', () => {
+  it('accepts explicit positive service budgets and leaves defaults unchanged when unset', () => {
+    expect(getSummaryMonthlyBudgetMicros({})).toBeNull()
+    expect(
+      getSummaryMonthlyBudgetMicros({ SUMMARY_AI_MONTHLY_BUDGET_USD: ' ' })
+    ).toBeNull()
+    expect(
+      getSummaryMonthlyBudgetMicros({ SUMMARY_AI_MONTHLY_BUDGET_USD: '1' })
+    ).toBe(1_000_000)
+    expect(
+      getSummaryMonthlyBudgetMicros({
+        SUMMARY_AI_MONTHLY_BUDGET_USD: '0.000001'
+      })
+    ).toBe(1)
+    for (const value of ['0', '-1', 'NaN', '1e3', '0.0000001', '2147.483648'])
+      expect(() =>
+        getSummaryMonthlyBudgetMicros({ SUMMARY_AI_MONTHLY_BUDGET_USD: value })
+      ).toThrow()
+    expect(
+      usageLimitError(new Date('2028-02-01'), new Date('2028-01-15'), 'service')
+    ).toMatchObject({
+      status: 429,
+      details: { code: 'SUMMARY_BUDGET_LIMIT' }
+    })
+  })
   it('uses the UTC calendar month independently of the caller timezone', () => {
     expect(utcUsagePeriod(new Date('2028-03-01T00:30:00+07:00'))).toEqual({
       startsAt: new Date('2028-02-01T00:00:00Z'),

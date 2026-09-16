@@ -34,7 +34,9 @@ export function clientErrorMessage(error: unknown) {
 export function generationResetAt(error: unknown): number | undefined {
   if (
     !(error instanceof ClientRequestError) ||
-    !['SUMMARY_LIMIT', 'FREE_BUDGET_LIMIT'].includes(error.code ?? '')
+    !['SUMMARY_LIMIT', 'FREE_BUDGET_LIMIT', 'SUMMARY_BUDGET_LIMIT'].includes(
+      error.code ?? ''
+    )
   )
     return undefined
   const timestamp = error.resetAt ? Date.parse(error.resetAt) : error.retryAt

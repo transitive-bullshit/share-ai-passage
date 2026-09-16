@@ -4,6 +4,8 @@ September 14, 2026; status updated September 15. Product decisions accepted thro
 
 ## Sequence and stop conditions
 
+**September 16 owner-directed Preview testing exception:** enable real image work only on Preview with a $5/month image budget and concurrency 1, plus a $1/month shared summary ceiling covering all account plans. Restore Vercel authentication by revoking the stable hostname's public exception; keep Stripe sandbox webhooks functional through a private automation bypass. This supersedes the earlier Preview-disabled flags and public-access requirement for owner testing. Gate B and production launch remain open; production budgets and environment values are unchanged. The shared summary ceiling adds no schema migration and is opt-in, preserving default production behavior. See the [current environment/access policy](PRODUCTION.md#accounts-release-readiness).
+
 | Stage | Deliverable | Exit condition |
 | --- | --- | --- |
 | Phase 1: accounts | Authentication, ownership, guest carryover, saved drafts, My passages, preference sync, Free summary usage | Working accounts experience, required checks, and a reviewable demonstration |

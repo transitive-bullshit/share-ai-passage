@@ -18,6 +18,7 @@ import { AppError } from './errors'
 import { validateGeneratedPreview } from './summary'
 import {
   FREE_AI_MONTHLY_BUDGET_MICROS,
+  getSummaryMonthlyBudgetMicros,
   SUMMARY_RESERVATION_MICROS,
   utcUsagePeriod,
   usageLimitError,
@@ -237,28 +238,36 @@ export async function reserveSummary(input: ReserveSummaryInput) {
     )
     const period = current.period
     let budgetId: string | null = null
-    if (!current.paid) {
-      const freePeriod = utcUsagePeriod(now)
-      await tx
-        .insert(aiBudgetPeriods)
-        .values({
-          ...freePeriod,
-          limitMicros: FREE_AI_MONTHLY_BUDGET_MICROS
+    const configuredBudget = getSummaryMonthlyBudgetMicros()
+    if (!current.paid || configuredBudget !== null) {
+      const budgetPeriod = utcUsagePeriod(now)
+      const insertBudget = tx.insert(aiBudgetPeriods).values({
+        ...budgetPeriod,
+        limitMicros: configuredBudget ?? FREE_AI_MONTHLY_BUDGET_MICROS
+      })
+      if (configuredBudget !== null)
+        await insertBudget.onConflictDoUpdate({
+          target: aiBudgetPeriods.startsAt,
+          set: { limitMicros: configuredBudget }
         })
-        .onConflictDoNothing()
+      else await insertBudget.onConflictDoNothing()
       const [budget] = await tx
         .select()
         .from(aiBudgetPeriods)
-        .where(eq(aiBudgetPeriods.startsAt, freePeriod.startsAt))
+        .where(eq(aiBudgetPeriods.startsAt, budgetPeriod.startsAt))
         .for('update')
       if (!budget) throw new Error('AI budget period was not saved.')
       if (
         budget.spentMicros +
           budget.reservedMicros +
           SUMMARY_RESERVATION_MICROS >
-        budget.limitMicros
+        (configuredBudget ?? budget.limitMicros)
       )
-        throw usageLimitError(freePeriod.endsAt, now, true)
+        throw usageLimitError(
+          budgetPeriod.endsAt,
+          now,
+          configuredBudget !== null ? 'service' : true
+        )
       budgetId = budget.id
     }
     const usage = await ensureUsagePeriod(
@@ -595,24 +604,29 @@ export async function getSummaryUsage(
       period,
       usage
     )
-    const [budget] = current.paid
-      ? []
-      : await tx
-          .select()
-          .from(aiBudgetPeriods)
-          .where(eq(aiBudgetPeriods.startsAt, utcUsagePeriod(now).startsAt))
+    const configuredBudget = getSummaryMonthlyBudgetMicros()
+    const [budget] =
+      current.paid && configuredBudget === null
+        ? []
+        : await tx
+            .select()
+            .from(aiBudgetPeriods)
+            .where(eq(aiBudgetPeriods.startsAt, utcUsagePeriod(now).startsAt))
     const paidSpending =
       current.paid && isPaidPlan(current.plan)
         ? await readSubscriptionAiSpending(tx, subjectKey, current.plan, period)
         : null
-    const generationPaused = paidSpending
-      ? !aiSpendingAvailable(paidSpending, SUMMARY_RESERVATION_MICROS)
-      : budget
-        ? budget.spentMicros +
-            budget.reservedMicros +
-            SUMMARY_RESERVATION_MICROS >
-          budget.limitMicros
-        : false
+    const servicePaused = Boolean(
+      budget &&
+      budget.spentMicros + budget.reservedMicros + SUMMARY_RESERVATION_MICROS >
+        (configuredBudget ?? budget.limitMicros)
+    )
+    const generationPaused =
+      servicePaused ||
+      Boolean(
+        paidSpending &&
+        !aiSpendingAvailable(paidSpending, SUMMARY_RESERVATION_MICROS)
+      )
     return {
       plan: current.plan,
       allowance: current.allowance,
@@ -622,9 +636,11 @@ export async function getSummaryUsage(
       resetAt: period.endsAt,
       generationPaused,
       generationPauseCode: generationPaused
-        ? paidSpending
-          ? ('AI_SPEND_LIMIT' as const)
-          : ('FREE_BUDGET_LIMIT' as const)
+        ? servicePaused
+          ? configuredBudget !== null
+            ? ('SUMMARY_BUDGET_LIMIT' as const)
+            : ('FREE_BUDGET_LIMIT' as const)
+          : ('AI_SPEND_LIMIT' as const)
         : null
     }
   })

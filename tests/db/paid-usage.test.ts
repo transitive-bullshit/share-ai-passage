@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { and, eq, inArray } from 'drizzle-orm'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { mergeGuestAccount } from '@/lib/accounts'
 import { closeDatabase, getDb } from '@/lib/db'
@@ -39,6 +39,7 @@ import {
 } from '@/lib/usage'
 import {
   FREE_AI_MONTHLY_BUDGET_MICROS,
+  SUMMARY_RESERVATION_MICROS,
   utcUsagePeriod
 } from '@/lib/usage-policy'
 
@@ -174,6 +175,67 @@ describe.skipIf(!testUrl)('Paid generation accounting in PostgreSQL', () => {
         .delete(aiBudgetPeriods)
         .where(inArray(aiBudgetPeriods.startsAt, budgetStarts))
     await closeDatabase()
+  })
+
+  it('shares a tightened monthly summary budget across paid and free accounts without debiting rejected work', async () => {
+    const user = await account()
+    const free = await account()
+    await getDb()
+      .delete(billingAccounts)
+      .where(eq(billingAccounts.userId, free.id))
+    const now = user.now
+    const period = utcUsagePeriod(now)
+    budgetStarts.push(period.startsAt)
+    await getDb()
+      .insert(aiBudgetPeriods)
+      .values({
+        ...period,
+        limitMicros: FREE_AI_MONTHLY_BUDGET_MICROS,
+        spentMicros: 1_000_000 - SUMMARY_RESERVATION_MICROS
+      })
+    vi.stubEnv('SUMMARY_AI_MONTHLY_BUDGET_USD', '1')
+    try {
+      const results = await Promise.allSettled([
+        reserveSummary(summary(user, now)),
+        reserveSummary(summary(free, now))
+      ])
+      const accepted = results.filter((r) => r.status === 'fulfilled')
+      expect(accepted).toHaveLength(1)
+      expect(results.find((r) => r.status === 'rejected')).toMatchObject({
+        reason: { status: 429, details: { code: 'SUMMARY_BUDGET_LIMIT' } }
+      })
+      for (const subjectKey of [user.subjectKey, free.subjectKey])
+        expect(await getSummaryUsage(subjectKey, 25, now)).toMatchObject({
+          used: 0,
+          generationPaused: true,
+          generationPauseCode: 'SUMMARY_BUDGET_LIMIT'
+        })
+      const operation = accepted[0]!.value.operation
+      expect(operation.budgetPeriodId).toBeTruthy()
+      await startSummaryOperation(operation.id)
+      await succeedSummaryOperation(operation.id, preview, 1_000)
+      const [budget] = await getDb()
+        .select()
+        .from(aiBudgetPeriods)
+        .where(eq(aiBudgetPeriods.startsAt, period.startsAt))
+      expect(budget).toMatchObject({
+        limitMicros: 1_000_000,
+        spentMicros: 981_000,
+        reservedMicros: 0
+      })
+      expect(await getSummaryUsage(user.subjectKey, 25, now)).toMatchObject({
+        generationPaused: true
+      })
+      vi.stubEnv('SUMMARY_AI_MONTHLY_BUDGET_USD', '1.02')
+      expect(await getSummaryUsage(user.subjectKey, 25, now)).toMatchObject({
+        generationPaused: false
+      })
+      const retry = await reserveSummary(summary(user, now))
+      expect(retry.created).toBe(true)
+      await cancelUndispatchedSummary(retry.operation.id)
+    } finally {
+      vi.unstubAllEnvs()
+    }
   })
 
   it('serializes summary and image spending together without debiting the denied request', async () => {
