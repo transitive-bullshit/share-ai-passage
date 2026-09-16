@@ -24,6 +24,8 @@ The production homepage, public `/pricing` page, example passages, available rea
 
 Public pages supply canonical URLs, crawler-readable initial Open Graph and large-image metadata, and absolute image URLs. The homepage includes `WebSite`/`WebApplication` JSON-LD; saved readers and examples include `WebPage`/`CreativeWork` metadata describing their reviewed introduction and original source where available. JSON-LD escapes untrusted text and never duplicates the transcript or exposes unavailable content. Takumi renders 1200 × 630 WebP cards at quality 90 with bundled artwork and fonts, without provider or model requests. Social metadata declares `image/webp`. The draft card endpoint returns WebP by default and supports explicit HTML requests for agent and HTTP consumers.
 
+Browser preparation saves its original request for recovery while showing normal progress. The “previous preparation” notice is only shown when no request is actively running; retrying an interrupted request reuses its original generation key.
+
 ## Accounts and saved work
 
 Better Auth provides email/password, Google, and GitHub authentication. Passwords accept 4–128 characters across signup, reset, and change-password flows. Email accounts must verify before receiving registered benefits; password reset and connected-method management use the standard auth flows. A guest session starts on creation, not reader or landing-page visits. Signup and existing-account login import that guest’s work and consumption once; account preferences win when already saved.

@@ -345,7 +345,7 @@ export function ShareFlow({
             <span>{brand.headlineLines[1]}</span>
           </h1>
           <p className='hero-description'>{brand.description}</p>
-          {recovery && (
+          {recovery && !pending && (
             <Alert>
               <AlertDescription>
                 A previous preparation may still be finishing.{' '}

@@ -149,6 +149,42 @@ const readyDraft = {
   appearance: { templateId: 'midnight-observatory' }
 }
 
+it.each(['guest', 'account'])(
+  'shows normal preparation progress without an interrupted-request warning for a %s',
+  async (actor) => {
+    if (actor === 'account') {
+      mocks.getSession.mockResolvedValue(signedInSession)
+      requests.mockResolvedValueOnce(
+        Response.json({ saved: true, appearance: readyDraft.appearance })
+      )
+    }
+    let finishPreparation!: (response: Response) => void
+    requests.mockImplementationOnce(
+      () =>
+        new Promise<Response>((resolve) => {
+          finishPreparation = resolve
+        })
+    )
+    await act(async () => root.render(createElement(ShareFlow)))
+    await source(readyDraft.sourceUrl)
+    await submit()
+    expect(requests.mock.calls.map(([path]) => path)).toEqual(
+      actor === 'account'
+        ? ['/api/account/preferences', '/api/drafts']
+        : ['/api/drafts']
+    )
+    expect(preparationRecovery.getSnapshot()).not.toBeNull()
+    expect(container.textContent).toContain('Preparing')
+    expect(container.textContent).not.toContain(
+      'A previous preparation may still be finishing'
+    )
+    expect(container.textContent).not.toContain('Check that preparation')
+    await act(async () => finishPreparation(Response.json(readyDraft)))
+    expect(container.textContent).toContain('Saved draft ready')
+    expect(preparationRecovery.getSnapshot()).toBeNull()
+  }
+)
+
 it('waits for the real account default before new creation when the session hook is still hydrating', async () => {
   mocks.getSession.mockResolvedValue(signedInSession)
   let finishPreferences!: (response: Response) => void
