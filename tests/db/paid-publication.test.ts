@@ -314,7 +314,15 @@ describe.skipIf(!testUrl)('immutable paid publications', () => {
         }
       )
       expect(Buffer.from(await repeated.arrayBuffer())).toEqual(original)
-      expect(repeated.headers.get('cache-control')).toContain('no-store')
+      expect(repeated.headers.get('cache-control')).toBe(
+        'public, max-age=0, must-revalidate'
+      )
+      expect(repeated.headers.get('cdn-cache-control')).toBe(
+        'public, max-age=86400, stale-while-revalidate=604800'
+      )
+      expect(repeated.headers.get('vercel-cdn-cache-control')).toBe(
+        'public, max-age=2592000'
+      )
       expect(renderCard).toHaveBeenCalledTimes(1)
     } finally {
       template.colors.text = previous
