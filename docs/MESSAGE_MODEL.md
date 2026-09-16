@@ -16,6 +16,8 @@ For Codex user messages, the reader presents a complete `codex_delegation` envel
 
 Complete Codex `send_user_message_question_reply` envelopes are also a reader-only presentation case. The selected answer is shown as a compact “Prompt answered” response while the provider envelope remains unchanged in the saved snapshot. Passage accepts both well-formed JSON and the observed Codex variant whose `questionItemId` is not escaped correctly; incomplete or ambiguous envelopes stay escaped and visible.
 
+Complete numeric `:codex-annotation{index="…"}` pragmas in Codex assistant messages are source presentation metadata rather than prose. The reader hides these exact directives while preserving them in the saved snapshot; malformed pragmas and the same text outside Codex assistant messages remain visible.
+
 Older Codex v1/v2 captures flattened reasoning into unphased assistant messages. Their reader-only compatibility rule uses the stable `codex-<turn>-<item>` identities to retain every explicit final and the last unphased assistant contribution per turn (unless followed by an explicit final), folding earlier contributions as activity. This is a reversible presentation heuristic, not a recovered source classification. Ordinary ChatGPT/Claude messages and new Codex captures never use that heuristic. Existing snapshots, saved phases, and summary-generation inputs are unchanged.
 
 [Migration 0004](../drizzle/0004_responses_message_content.sql) wraps older Markdown in text blocks while preserving identity, roles, and order. Historical omission labels already flattened into Markdown stay verbatim; structured omission metadata is available only from new captures.

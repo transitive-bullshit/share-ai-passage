@@ -33,6 +33,36 @@ function renderMessage(markdown: string, options: Partial<Message> = {}) {
 }
 
 describe('safe, faithful conversation reader', () => {
+  it('hides complete Codex annotation pragmas without changing stored text', () => {
+    const source =
+      'We do need an exact transcript, and I should have made the missing artifact clear earlier. :codex-annotation{index="1"}'
+    const entry = message('codex-4-2', 'assistant', source)
+    const html = renderMessage('', entry)
+
+    expect(html).toContain(
+      'We do need an exact transcript, and I should have made the missing artifact clear earlier.'
+    )
+    expect(html).not.toContain('codex-annotation')
+    expect(html).not.toContain('index=&quot;1&quot;')
+    expect(entry.content).toEqual([{ type: 'output_text', text: source }])
+
+    // Ordinary messages and malformed pragmas remain literal.
+    expect(renderMessage(source)).toContain(':codex-annotation')
+    expect(
+      renderMessage('Keep :codex-annotation{index="missing"}', {
+        id: 'codex-4-2'
+      })
+    ).toContain(':codex-annotation')
+
+    const multiple = renderMessage(
+      'First reference. :codex-annotation{index="1"}\n\n:codex-annotation{index="12"}\n\nSecond reference.',
+      { id: 'codex-4-2' }
+    )
+    expect(multiple).toContain('First reference.')
+    expect(multiple).toContain('Second reference.')
+    expect(multiple).not.toContain('codex-annotation')
+  })
+
   it('presents Codex async question replies as selected responses while preserving stored text', () => {
     const source =
       '<send_user_message_question_reply> [{"questionItemId":"["request_user_input_async","call_example",0]","question":"Where should this temporary review tool live?","answer":"Keep it **local**; this is temporary."}] </send_user_message_question_reply>'

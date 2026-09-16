@@ -55,6 +55,8 @@ export function readerMessageContent(message: Message) {
   const markdown = messageMarkdown(message)
   const codexUser =
     message.role === 'user' && /^codex-\d+-\d+$/.test(message.id)
+  const codexAssistant =
+    message.role === 'assistant' && /^codex-\d+-\d+$/.test(message.id)
   const delegated = codexUser
     ? /^<codex_delegation>\s*<source_thread_id>[\w-]*<\/source_thread_id>\s*<input>([\s\S]*)<\/input>\s*<\/codex_delegation>$/.exec(
         markdown.trim()
@@ -65,8 +67,14 @@ export function readerMessageContent(message: Message) {
         markdown.trim()
       )
     : null
+  const visibleMarkdown = codexAssistant
+    ? markdown.replace(
+        /(^|[ \t]+):codex-annotation\{index="\d+"\}(?=$|[ \t\n])/gm,
+        ''
+      )
+    : markdown
   return {
-    markdown: delegated ? delegated[1]!.trim() : markdown,
+    markdown: delegated ? delegated[1]!.trim() : visibleMarkdown,
     fromTask: Boolean(delegated),
     questionReplies: replyEnvelope ? questionReplies(replyEnvelope[1]!) : null
   }
