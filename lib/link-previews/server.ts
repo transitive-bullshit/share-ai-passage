@@ -6,6 +6,7 @@ import { request as httpsRequest } from 'node:https'
 import { isPublicAddress } from '@/lib/providers/safe-fetch'
 import { createPreviewCache } from './cache'
 import { extractLinkPreviewMetadata, previewRefresh } from './metadata'
+import { resolvePlatformPreviewOverrides } from './overrides'
 import type { LinkPreviewResult } from './types'
 import { previewPageUrl, publicPreviewUrl } from './urls'
 
@@ -108,20 +109,25 @@ export async function acquirePreview(
       continue
     }
     const metadata = extractLinkPreviewMetadata(page.html ?? '', url.href)
+    const overrides = resolvePlatformPreviewOverrides(url)
     return {
       ok: true,
       metadata: {
         requestedUrl: input,
         url: url.href,
-        title: metadata.title,
-        description: metadata.description,
-        siteName: metadata.siteName,
-        image: metadata.images.find(
-          (image) => publicPreviewUrl(image.url)?.protocol === 'https:'
-        )?.url,
-        favicon: metadata.favicons.find(
-          (icon) => publicPreviewUrl(icon)?.protocol === 'https:'
-        )
+        title: overrides.title ?? metadata.title,
+        description: overrides.description ?? metadata.description,
+        siteName: overrides.siteName ?? metadata.siteName,
+        image:
+          overrides.image ??
+          metadata.images.find(
+            (image) => publicPreviewUrl(image.url)?.protocol === 'https:'
+          )?.url,
+        favicon:
+          overrides.favicon ??
+          metadata.favicons.find(
+            (icon) => publicPreviewUrl(icon)?.protocol === 'https:'
+          )
       }
     }
   }

@@ -5,6 +5,7 @@ import { Readable } from 'node:stream'
 import { afterEach, expect, it, vi } from 'vitest'
 import { acquirePreview } from '@/lib/link-previews/server'
 import { extractLinkPreviewMetadata } from '@/lib/link-previews/metadata'
+import { resolvePlatformPreviewOverrides } from '@/lib/link-previews/overrides'
 import { previewPageUrl } from '@/lib/link-previews/urls'
 
 const { lookup, request } = vi.hoisted(() => ({
@@ -66,6 +67,48 @@ it('normalizes tracking without conflating content IDs and rejects private/unsup
     'https://example.org/?token=secret'
   ])
     expect(previewPageUrl(url)).toBeUndefined()
+})
+
+it.each([
+  'https://www.youtube.com/watch?v=pXAYNppypVI',
+  'https://m.youtube.com/watch?v=pXAYNppypVI',
+  'https://music.youtube.com/watch?v=pXAYNppypVI',
+  'https://youtu.be/pXAYNppypVI',
+  'https://www.youtube.com/shorts/pXAYNppypVI',
+  'https://www.youtube.com/live/pXAYNppypVI',
+  'https://www.youtube.com/embed/pXAYNppypVI',
+  'https://www.youtube.com/v/pXAYNppypVI',
+  'https://www.youtube-nocookie.com/embed/pXAYNppypVI'
+])('derives a stable poster for YouTube video URL %s', (value) => {
+  expect(resolvePlatformPreviewOverrides(new URL(value))).toEqual({
+    image: 'https://i.ytimg.com/vi/pXAYNppypVI/hqdefault.jpg'
+  })
+})
+
+it.each([
+  'https://example.com/watch?v=pXAYNppypVI',
+  'https://notyoutube.com/watch?v=pXAYNppypVI',
+  'https://www.youtube.com/watch?v=too-short',
+  'https://www.youtube.com/channel/pXAYNppypVI'
+])('does not override non-video or lookalike URL %s', (value) => {
+  expect(resolvePlatformPreviewOverrides(new URL(value))).toEqual({})
+})
+
+it.each([
+  '<head><title>Video</title></head>',
+  '<head><title>Video</title><meta property="og:image" content="https://example.org/generic.jpg"></head>'
+])('uses the YouTube poster instead of page image metadata', async (html) => {
+  serve([{ html }])
+  const result = await acquirePreview(
+    'https://www.youtube.com/watch?v=pXAYNppypVI',
+    new AbortController().signal
+  )
+  expect(result).toMatchObject({
+    ok: true,
+    metadata: {
+      image: 'https://i.ytimg.com/vi/pXAYNppypVI/hqdefault.jpg'
+    }
+  })
 })
 
 it('rejects private DNS results before opening a socket', async () => {

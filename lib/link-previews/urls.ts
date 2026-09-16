@@ -1,3 +1,5 @@
+import { isYoutubeHost } from './overrides'
+
 // eslint-disable-next-line no-control-regex -- Reject URL controls before URL parsing can discard them.
 const controls = /[\u0000-\u001f\u007f-\u009f]/
 const numericContentKeys = new Set(['id', 'p', 'page', 'paged'])
@@ -75,16 +77,6 @@ export function publicPreviewUrl(
   }
 }
 
-function youtubeHost(hostname: string) {
-  const host = hostname.toLowerCase().replace(/\.$/, '')
-  return (
-    host === 'youtube.com' ||
-    host.endsWith('.youtube.com') ||
-    host === 'youtu.be' ||
-    host === 'www.youtu.be'
-  )
-}
-
 function removable(key: string, youtube: boolean) {
   // Case folding must not turn a non-ASCII content key into a known tracker.
   if (!/^[a-z0-9_]+$/i.test(key)) return false
@@ -117,7 +109,7 @@ function retainedValue(key: string, value: string, youtube: boolean) {
 export function previewPageUrl(value: unknown, base?: string): URL | undefined {
   const url = publicPreviewUrl(value, base)
   if (!url) return
-  const youtube = youtubeHost(url.hostname)
+  const youtube = isYoutubeHost(url.hostname)
   const retained = new URLSearchParams()
   let count = 0
   for (const [key, entry] of url.searchParams) {
