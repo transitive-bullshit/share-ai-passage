@@ -20,7 +20,7 @@ Set `OPENAI_API_KEY` in `.env.local` before preparing a new conversation. Previe
 
 `pnpm dev` uses [Portless](https://portless.sh/). Open the exact URL printed in the terminal, normally `https://share-ai-passage.localhost`; proxy settings can change its scheme or port. Worktrees get their own app subdomain. To run directly at [localhost:3000](http://localhost:3000), use `PORTLESS=0 pnpm dev` (`PORT` overrides 3000).
 
-Paste a public `https://chatgpt.com/share/<uuid>`, `https://chatgpt.com/s/cx_<id>`, or `https://claude.ai/share/<uuid>` URL. Choose **Create a passage** to save a draft and open `/create?draft=<id>` while its durable background preparation runs. The page updates automatically. Review or edit the generated title and add or remove optional highlights, choose a card style, then **Publish passage**. Text and style changes update the preview directly in the page without a `/api/card` request. Publishing becomes available when the text is valid and artwork, fonts, and text fitting are ready. The browser remembers your last style choice.
+Paste a public `https://chatgpt.com/share/<uuid>`, `https://chatgpt.com/s/cx_<id>`, or `https://claude.ai/share/<uuid>` URL. Choose **Create a passage** to save a passage and open `/create?passage=<id>` while its durable background preparation runs. The page updates automatically. Review or edit the generated title and add or remove optional highlights, choose a card style, then **Publish passage**. Reopening that passage ID after publication shows its published result. Text and style changes update the preview directly in the page without a `/api/card` request. Publishing becomes available when the text is valid and artwork, fonts, and text fitting are ready. The browser remembers your last style choice.
 
 ### Local database
 
@@ -147,7 +147,7 @@ Customize templates, upload artwork and review text in the webapp, then retrieve
 
 ## Fork an existing passage
 
-Paste a Passage reader URL into the same creation form or pass it to the CLI's `prepare` command. The server reads the existing publication from its database and prepares a fork with the saved title and highlights. Owned revisions and legacy anonymous CLI forks preserve the saved card style; browser forks of someone else’s passage use the new sharer’s defaults. It reuses that publication's exact snapshot, even if a newer source capture exists, and preserves the original provider link. No provider fetch or summary generation runs. A new sharer’s generated default background can still start an image generation under their account allowance.
+Paste a Passage reader URL into the same creation form or pass it to the CLI's `prepare` command. The server reads the existing publication from its database and prepares a fork with the saved title and highlights. Owned revisions and legacy anonymous CLI forks preserve the saved card style; browser forks of someone else’s passage use the new sharer’s defaults. It reuses that publication's exact snapshot, even if a newer source capture exists, and preserves the original provider link. No provider fetch or summary generation runs.
 
 Edit and publish normally. Even an unchanged fork receives a distinct URL from its parent; repeated publication of the same fork is idempotent. Missing or disabled passages cannot be forked, and source removal affects forks too. Production www/apex links and the configured application origin are accepted; the referenced publication must exist in the current deployment's database.
 

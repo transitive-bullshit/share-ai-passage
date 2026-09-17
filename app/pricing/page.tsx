@@ -10,7 +10,7 @@ export function generateMetadata(): Metadata {
   return publicPageMetadata({
     title: 'Pricing',
     description:
-      'Start sharing for free. Compare Passage Free, Plus, and Pro for custom share cards, saved templates, and AI backgrounds. Save 20% with annual billing.',
+      'Start sharing for free. Compare Passage Free, Plus, and Pro for custom share cards, saved templates, and your own artwork. Save 20% with annual billing.',
     url: `${origin}/pricing`,
     image: { url: `${origin}/brand/social-preview.jpg`, type: 'image/jpeg' },
     type: 'website'
@@ -28,7 +28,7 @@ export default function PricingPage() {
         </h1>
         <p className='text-base leading-relaxed text-pretty text-muted-foreground sm:text-lg'>
           Start sharing for free. Make every passage feel like yours with custom
-          share cards, saved templates, and AI backgrounds.
+          share cards, saved templates, and your own artwork.
         </p>
       </div>
       <PricingPlans
