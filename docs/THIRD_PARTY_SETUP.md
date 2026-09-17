@@ -2,6 +2,8 @@
 
 September 14, 2026. Companion to the [implementation handoff](ACCOUNTS_PAID_FEATURES_PLAN.md). The user can prepare accounts, DNS and credentials now, including prerequisites for Phase 2. Application implementation still runs accounts first, pauses for feedback, and only then begins billing/paid integration. This checklist is setup guidance, not a claim that these external resources have been provisioned.
 
+Scope updated September 17: paid customization uses uploaded artwork and templates; image generation and image packs have been removed. Current provisioned resources and remaining launch checks are recorded in [paid review](PAID_REVIEW.md) and [production guidance](PRODUCTION.md).
+
 The current repository records production at `https://www.share-ai-passage.com`, with the apex redirecting there. Use the www origin for production OAuth callbacks. Neon, Vercel and OpenAI are already part of the project; reuse those accounts. Better Auth runs in the application and needs no separate hosted authentication-service account. The email-provider default in the handoff is Resend unless an existing configured sender is reused.
 
 ## Start now: accounts prerequisites
@@ -48,11 +50,11 @@ Production credentials alone do not make local sign-in work. Register exact call
 
 ## Prepare now if convenient: paid-phase prerequisites
 
-### 4. Stripe — subscriptions and image packs
+### 4. Stripe — subscriptions
 
 Create/use the intended business's Stripe account, complete business/payout onboarding, and set recognizable Passage public business/support details. Create/select an isolated development sandbox. Actual merchant country and account fees must inform the later margin check; USD plan prices do not establish the merchant's jurisdiction.
 
-The implementation will create and reconcile the Plus/Pro monthly/annual prices and $10/50 image pack after the accounts feedback gate. Leave products, checkout settings, Portal and webhook registration to that work so their IDs and handlers match the application. A webhook signing secret is generated for its endpoint later; it is separate from API credentials. Runtime credentials should have the permissions the integration needs and remain separate for sandbox/live use.
+Configure Plus/Pro monthly and annual prices, Checkout, Portal and webhooks so their IDs and handlers match the application. The sandbox integration is implemented; live configuration remains rollout work. There are no image-pack purchases. A webhook signing secret is separate from API credentials. Runtime credentials should have the permissions the integration needs and remain separate for sandbox/live use.
 
 [Stripe account setup](https://docs.stripe.com/get-started/account/set-up), [sandbox and API keys](https://docs.stripe.com/keys).
 
