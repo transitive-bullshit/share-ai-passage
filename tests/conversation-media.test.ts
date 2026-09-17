@@ -48,6 +48,7 @@ describe('publication image delivery', () => {
     expect(html).toContain(`src="${path}/${image.sha256}"`)
     expect(html).toContain('width="1254"')
     expect(html).toContain('loading="lazy"')
+    expect(html).toContain('aria-label="Enlarge image: Shared image"')
     expect(html).not.toContain(image.objectKey)
     expect(groupReaderMessages([entry])[0]!.type).toBe('message')
     const forged = message(

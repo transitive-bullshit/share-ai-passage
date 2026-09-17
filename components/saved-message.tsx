@@ -11,6 +11,7 @@ import { type Message } from '@/lib/domain'
 import { readerMessageContent } from '@/lib/reader'
 import { CodeBlock, TableBlock, UserMessageContent } from './reader-blocks'
 import { ReaderLink } from './reader-link'
+import { ImageLightbox } from './image-lightbox'
 
 const roleLabels = {
   user: 'User',
@@ -142,18 +143,49 @@ export function SavedMessage({
     )
   const components: Components = {
     ...markdownComponents,
+    a: ({ href, children, id, node }) => {
+      // Linked images zoom rather than nesting a button inside a source link.
+      const linkedImage = node?.children.some(
+        (child) =>
+          child.type === 'element' &&
+          child.tagName === 'img' &&
+          savedImage(String(child.properties.src))
+      )
+      return linkedImage ? (
+        <span id={id}>{children}</span>
+      ) : (
+        <ReaderLink
+          href={href}
+          id={id}
+          unavailableFile={Boolean(node?.properties.dataUnavailableFile)}
+        >
+          {children}
+        </ReaderLink>
+      )
+    },
     img: ({ src, alt }) => {
       const image = typeof src === 'string' ? savedImage(src) : undefined
-      return image && imageBasePath ? (
-        <img
-          className='conversation-image'
-          src={`${imageBasePath}/${image.sha256}`}
+      const imageUrl =
+        image && imageBasePath ? `${imageBasePath}/${image.sha256}` : undefined
+      return image && imageUrl ? (
+        <ImageLightbox
+          src={imageUrl}
+          original={imageUrl}
           alt={alt || 'Shared image'}
           width={image.width}
           height={image.height}
-          loading='lazy'
-          decoding='async'
-        />
+          unoptimized
+        >
+          <img
+            className='conversation-image'
+            src={imageUrl}
+            alt={alt || 'Shared image'}
+            width={image.width}
+            height={image.height}
+            loading='lazy'
+            decoding='async'
+          />
+        </ImageLightbox>
       ) : (
         <span className='omitted-content image-placeholder'>
           <ImageOff aria-hidden='true' />

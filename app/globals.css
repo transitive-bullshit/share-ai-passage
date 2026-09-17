@@ -8,6 +8,178 @@
   border-radius: 0.5rem;
 }
 
+.image-lightbox-trigger {
+  display: block;
+  width: 100%;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+}
+.image-lightbox-trigger:not(:disabled) {
+  cursor: zoom-in;
+}
+.image-lightbox-trigger:focus-visible {
+  outline-width: 1px;
+}
+.image-lightbox {
+  --background: transparent;
+  --foreground: oklch(0.98 0 0);
+  --muted-foreground: oklch(1 0 0 / 0.7);
+  --muted: oklch(1 0 0 / 0.1);
+  --border: oklch(1 0 0 / 0.2);
+  --ring: oklch(1 0 0 / 0.7);
+  --lightbox-caption-space: 0px;
+  --lightbox-error-space: 0px;
+  width: 100%;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  overflow: visible;
+  animation: none;
+  padding: 64px 24px 24px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--foreground);
+  box-shadow: none;
+}
+.image-lightbox:has(.lightbox-caption) {
+  --lightbox-caption-space: calc(min(80px, 10dvh) + 16px);
+}
+.image-lightbox:has(.lightbox-download-error) {
+  --lightbox-error-space: 56px;
+}
+.image-lightbox-overlay {
+  background: oklch(0 0 0 / 0.88);
+}
+.lightbox-frame {
+  position: relative;
+  width: min(
+    100%,
+    1440px,
+    calc(
+      (100dvh - 168px - var(--lightbox-caption-space) -
+          var(--lightbox-error-space)) *
+        var(--image-ratio)
+    )
+  );
+  aspect-ratio: var(--image-ratio);
+  flex: none;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  margin-inline: auto;
+  transform-origin: top left;
+}
+.lightbox-frame:not(:disabled) {
+  cursor: zoom-out;
+}
+.lightbox-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  user-select: auto;
+}
+.lightbox-full {
+  transition: opacity 160ms ease-out;
+}
+.lightbox-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.lightbox-download {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--muted-foreground);
+  border-radius: 7px;
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    transform 150ms ease-out,
+    background-color 150ms ease-out,
+    color 150ms ease-out;
+}
+.lightbox-download:hover:not(:disabled) {
+  background: var(--muted);
+  color: var(--foreground);
+}
+.lightbox-download:active {
+  transform: scale(0.96);
+}
+.lightbox-download:disabled {
+  cursor: progress;
+}
+.lightbox-download-icon {
+  animation: lightbox-feedback 200ms ease-out;
+}
+.lightbox-download[data-state='loading'] svg {
+  animation: lightbox-spin 1s linear infinite;
+}
+.lightbox-download-error {
+  font-size: 13px;
+  margin: 0;
+  text-align: center;
+}
+@keyframes lightbox-feedback {
+  from {
+    opacity: 0;
+    transform: translateY(3px) scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes lightbox-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.lightbox-caption {
+  text-align: center;
+  white-space: pre-wrap;
+  margin: 0;
+  max-height: min(80px, 10dvh);
+  overflow-y: auto;
+}
+.image-lightbox [data-slot='dialog-close'] {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  top: 12px;
+  right: 12px;
+  background: transparent;
+  color: var(--foreground);
+}
+
+@media (max-width: 600px) {
+  .image-lightbox {
+    padding-inline: 12px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lightbox-download:active {
+    transform: none;
+  }
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
