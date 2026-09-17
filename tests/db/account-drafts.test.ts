@@ -19,6 +19,7 @@ import {
   deleteOwnedPublication,
   deleteSavedDraft,
   applyDraftGeneration,
+  listPassages,
   editSavedDraft,
   publishSavedDraft,
   readSavedDraft,
@@ -521,6 +522,13 @@ describe.skipIf(!testUrl)(
         shareUrl: published.shareUrl,
         preview: draft.preview
       })
+      const library = await listPassages(owner)
+      expect(library.drafts.some((item) => item.id === draft.draftId)).toBe(
+        false
+      )
+      expect(
+        library.passages.some((item) => item.id === published.publicationId)
+      ).toBe(true)
       const before = await getSummaryUsage(
         owner.subjectKey,
         owner.allowance,

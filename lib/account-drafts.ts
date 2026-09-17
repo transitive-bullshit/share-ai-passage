@@ -795,6 +795,7 @@ export async function listPassages(
         and(
           eq(savedDrafts.ownerId, actor.userId),
           isNull(savedDrafts.deletedAt),
+          isNull(savedDrafts.publishedPublicationId),
           dc
             ? or(
                 lt(savedDrafts.updatedAt, dc.date),

@@ -558,10 +558,7 @@ export function SocialCard({
     <TemplateCard
       data={filtered}
       template={template}
-      background={
-        background ??
-        (design?.background.kind === 'pending' ? '' : template.backgroundImage)
-      }
+      background={background ?? template.backgroundImage}
       scale={scale}
       design={design}
       logo={logo}
