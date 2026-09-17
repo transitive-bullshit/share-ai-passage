@@ -14,6 +14,17 @@ const config: NextConfig = {
     '/*': ['./assets/fonts/**/*', './public/social-templates/*/background.jpg']
   },
   poweredByHeader: false,
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'passage.cultural-alignment.com',
+        port: '',
+        pathname: '/**',
+        search: ''
+      }
+    ]
+  },
   // Resolve metadata before the initial HTML for every crawler and browser.
   htmlLimitedBots: /.*/,
   async headers() {

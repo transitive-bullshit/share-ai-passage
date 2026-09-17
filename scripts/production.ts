@@ -131,6 +131,25 @@ export function productionPlan(
   ]) {
     if (inherited[name] !== undefined) env[name] = inherited[name]
   }
+  // Missing production storage values stay empty so Next cannot load development
+  // credentials or a competing alias from an automatically discovered .env file.
+  for (const name of [
+    'S3_ACCESS_KEY_ID',
+    'S3_SECRET_ACCESS_KEY',
+    'S3_API_ENDPOINT',
+    'S3_BUCKET_NAME',
+    'S3_PRIVATE_BUCKET_NAME',
+    'S3_PUBLIC_URL',
+    'R2_ACCOUNT_ID',
+    'R2_ACCESS_KEY_ID',
+    'R2_SECRET_ACCESS_KEY',
+    'R2_ENDPOINT',
+    'R2_PUBLIC_BUCKET',
+    'R2_PRIVATE_BUCKET',
+    'R2_PUBLIC_URL'
+  ]) {
+    env[name] = values[name]?.trim() || ''
+  }
   Object.assign(env, {
     DATABASE_URL: databaseUrl,
     DIRECT_DATABASE_URL: directUrl,

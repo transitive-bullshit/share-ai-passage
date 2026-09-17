@@ -88,7 +88,7 @@ Stop the server before starting another on port 3001. For another port, pass `--
 
 The wrapper prints a production-data notice and database host. Creating, publishing, or checking a conversation through this local server changes production data. URLs use localhost here and the hosted origin when the same records are served from Vercel; publications store IDs and content, not a permanent hostname.
 
-The wrapper clears hosted-origin inputs, disables forwarded-header trust, and separates `.next-prod` from ordinary build output. Explicit production values take precedence even if Next lists `.env.local` in its startup banner. `.env.prod.local` is not automatically loaded by Next.
+The wrapper clears hosted-origin inputs, disables forwarded-header trust, and separates `.next-prod` from ordinary build output. Explicit production values take precedence even if Next lists `.env.local` in its startup banner. Storage variables in either naming scheme come only from `.env.prod.local`; missing values stay empty to prevent automatic development credential or alias fallback. `.env.prod.local` is not automatically loaded by Next.
 
 On another machine, copy [.env.prod.example](../.env.prod.example) to `.env.prod.local`, use matching pooled/direct URLs, and preserve the production `APP_SECRET`. Values are literal; shell-style variable references are not expanded. Keep the file private and out of Git. Production URLs never belong in `TEST_DATABASE_URL`; the production wrapper refuses CI/test environments.
 
@@ -98,7 +98,28 @@ On another machine, copy [.env.prod.example](../.env.prod.example) to `.env.prod
 
 Imported conversation images use the R2 module shared with the account-assets implementation. Configure `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_API_ENDPOINT`, `S3_BUCKET_NAME`, `S3_PRIVATE_BUCKET_NAME` and `S3_PUBLIC_URL` per environment. The equivalent `R2_*` variables take precedence; the account ID is inferred from the R2 endpoint unless explicitly supplied. Use separate public/private buckets and credentials scoped to both. Keep public access disabled on the private bucket. Imported images live under `assets/conversations/` in that bucket and are served through publication-bound media routes; account ownership/paid access is not required for conversation capture.
 
-Text-only imports work without R2. A readable image that cannot be stored causes preparation to fail for retry. Ensure storage is configured before deploying image capture. Development storage is provisioned locally; this feature's implementation did not configure production storage or deploy it. Captured images remain part of the immutable snapshot and are not subject to account upload cleanup.
+Text-only imports work without R2. A readable image that cannot be stored causes preparation to fail for retry. Ensure storage is configured before deploying image capture. Captured images remain part of the immutable snapshot and are not subject to account upload cleanup.
+
+On September 17, 2026, the public `passage` bucket's custom delivery origin was verified as `https://passage.cultural-alignment.com`. Next.js allows this exact HTTPS host for remote images, with no custom port or query string. The existing `passage-private` bucket holds imported conversation images. This bucket pair is shared with Development/Preview; no new buckets were created.
+
+The following settings are saved as Production-only sensitive variables in [Vercel's saasify/share-ai-passage project](https://vercel.com/saasify/share-ai-passage/settings/environment-variables) and the ignored, owner-only `.env.prod.local`. The owner explicitly approved copying the existing R2 credential pair into both destinations. Existing Preview entries and other settings were preserved.
+
+| Variable | Production value |
+| --- | --- |
+| `S3_ACCESS_KEY_ID` | Existing approved R2 access key, stored privately |
+| `S3_SECRET_ACCESS_KEY` | Existing approved R2 secret, stored privately |
+| `S3_API_ENDPOINT` | Existing Cloudflare account's US-jurisdiction R2 endpoint |
+| `S3_BUCKET_NAME` | `passage` |
+| `S3_PRIVATE_BUCKET_NAME` | `passage-private` |
+| `S3_PUBLIC_URL` | `https://passage.cultural-alignment.com` |
+
+Real R2 checks passed signed writes/readback in both buckets, byte-for-byte custom-domain delivery, public GET CORS, and private upload preflight from `https://www.share-ai-passage.com`. Anonymous S3 API access was rejected with HTTP 400 `InvalidArgument`. Both buckets have only the default incomplete-multipart abort lifecycle rule; imported images have no expiration rule. All temporary fixture objects were deleted.
+
+A separate application check used the production command wrapper's environment and the configured production credentials. The R2 module passed immutable public/private writes and bounded readback, and its generated public URL served identical bytes through the custom domain. The exact reported Codex source captured its one 1,254 × 1,254 generated image; its 2,247,776 normalized WebP bytes were read back and verified by SHA-256. No production database records were read or changed. Local reader rendering and publication-bound media serving were verified separately against a disposable database during implementation.
+
+Configuration is ready for the next deployment. No deployment was triggered; [Vercel environment changes apply to subsequent deployments](https://vercel.com/docs/environment-variables). After deployment, verify a fresh hosted image import and reimport older text-only snapshots when images are wanted; existing publications retain their immutable saved snapshots.
+
+### Application runtime
 
 Use Node 24, a frozen-lockfile pnpm installation, `pnpm build`, and the [example environment](../.env.example). New preview generation requires `OPENAI_API_KEY`; `AI_PROVIDER` currently supports `openai`, with `AI_MODEL` selecting the model. `APP_SECRET` must be stable and at least 32 characters; rotating it expires prepared drafts, while published links remain valid.
 

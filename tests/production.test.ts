@@ -112,6 +112,60 @@ afterEach(() => {
 })
 
 describe('explicit production configuration', () => {
+  it.each(['S3', 'R2'] as const)(
+    'forwards explicit %s storage configuration and clears the other naming scheme',
+    (scheme) => {
+      const storage: Record<string, string> =
+        scheme === 'S3'
+          ? {
+              S3_ACCESS_KEY_ID: 'production-storage-key',
+              S3_SECRET_ACCESS_KEY: 'production-storage-secret',
+              S3_API_ENDPOINT: `https://${'0'.repeat(32)}.us.r2.cloudflarestorage.com`,
+              S3_BUCKET_NAME: 'production-public',
+              S3_PRIVATE_BUCKET_NAME: 'production-private',
+              S3_PUBLIC_URL: 'https://passage.cultural-alignment.com'
+            }
+          : {
+              R2_ACCESS_KEY_ID: 'production-storage-key',
+              R2_SECRET_ACCESS_KEY: 'production-storage-secret',
+              R2_ENDPOINT: `https://${'0'.repeat(32)}.us.r2.cloudflarestorage.com`,
+              R2_PUBLIC_BUCKET: 'production-public',
+              R2_PRIVATE_BUCKET: 'production-private',
+              R2_PUBLIC_URL: 'https://passage.cultural-alignment.com'
+            }
+      const plan = productionPlan(['build'], configuration(storage), {
+        S3_ACCESS_KEY_ID: 'development-key',
+        R2_SECRET_ACCESS_KEY: 'development-secret',
+        R2_ACCOUNT_ID: 'development-account'
+      })
+      expect(plan.env).toMatchObject(storage)
+      expect(plan.env.R2_ACCOUNT_ID).toBe('')
+      expect(
+        plan.env[scheme === 'S3' ? 'R2_SECRET_ACCESS_KEY' : 'S3_ACCESS_KEY_ID']
+      ).toBe('')
+    }
+  )
+
+  it('keeps missing production storage credentials empty to block automatic development env fallback', () => {
+    const plan = productionPlan(
+      ['dev'],
+      configuration({
+        S3_PUBLIC_URL: 'https://passage.cultural-alignment.com'
+      }),
+      {
+        S3_ACCESS_KEY_ID: 'development-key',
+        S3_SECRET_ACCESS_KEY: 'development-secret'
+      }
+    )
+    expect(plan.env).toMatchObject({
+      S3_PUBLIC_URL: 'https://passage.cultural-alignment.com',
+      S3_ACCESS_KEY_ID: '',
+      S3_SECRET_ACCESS_KEY: '',
+      R2_ACCESS_KEY_ID: '',
+      R2_SECRET_ACCESS_KEY: ''
+    })
+  })
+
   it('uses only file credentials and local app settings despite inherited deployment/test values', () => {
     const inherited = {
       PATH: '/tools',
