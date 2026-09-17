@@ -2,7 +2,6 @@ import { and, eq, isNull, sql } from 'drizzle-orm'
 
 import { queueAccountAssetCleanup } from './assets'
 import { cancelAccountSubscriptions } from './billing-reconciliation'
-import { cancelUndispatchedImages } from './image-usage'
 import { DEFAULT_CARD_APPEARANCE, type CardAppearance } from './card-appearance'
 import { cardAppearanceSchema } from './card-appearance-schema'
 import { getDb } from './db'
@@ -127,7 +126,6 @@ export async function deleteAccountData(userId: string) {
         }
       })
     await cancelUndispatchedSummaries(tx, accountSubject(userId))
-    await cancelUndispatchedImages(tx, userId)
     await tx
       .update(publications)
       .set({

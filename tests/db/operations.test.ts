@@ -184,7 +184,6 @@ describe.skipIf(!testUrl)('operations aggregation in PostgreSQL', () => {
       staleUnknownCost: 1,
       currentMonthCostOverruns: 1
     })
-    expect(result.image).toEqual(result.summary)
     expect(result.billing).toEqual({
       failedEvents: 1,
       overdueEvents: 1,
@@ -192,10 +191,6 @@ describe.skipIf(!testUrl)('operations aggregation in PostgreSQL', () => {
     })
     expect(result.budgets.free).toMatchObject({
       liabilityMicros: 24_980_001,
-      exhausted: true
-    })
-    expect(result.budgets.image).toMatchObject({
-      liabilityMicros: 4_000_001,
       exhausted: true
     })
     expect(result.status).toBe('action_required')
@@ -214,12 +209,8 @@ describe.skipIf(!testUrl)('operations aggregation in PostgreSQL', () => {
     vi.stubEnv('IMAGE_AI_MONTHLY_BUDGET_USD', '5.000001')
     const exactHeadroom = await readOperationsReport(now)
     expect(exactHeadroom.budgets.free.exhausted).toBe(false)
-    expect(exactHeadroom.budgets.image.exhausted).toBe(false)
     vi.stubEnv('IMAGE_AI_MONTHLY_BUDGET_USD', '5')
     vi.stubEnv('IMAGE_GENERATION_ENABLED', '0')
-    expect((await readOperationsReport(now)).budgets.image.exhausted).toBe(
-      false
-    )
     // Definitive reconciliation removes stale signals; known old overruns age out naturally.
     await getDb()
       .update(generationOperations)

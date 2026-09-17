@@ -548,6 +548,7 @@ export async function publishPreview(
       edited.error.issues[0]?.message ?? 'Enter a valid preview summary.'
     )
   const {
+    source,
     draft,
     saved,
     snapshot,
@@ -569,6 +570,18 @@ export async function publishPreview(
       'Save your reviewed changes before publishing this draft.',
       409
     )
+  }
+  if (saved?.publishedPublicationId) {
+    const published = await getPublication(
+      source.provider,
+      saved.publishedPublicationId
+    )
+    if (!published || published.disabled)
+      throw new AppError('This passage is unavailable.', 410)
+    return {
+      publicationId: published.publication.id,
+      shareUrl: `${appUrl()}/${source.provider}/${published.publication.id}`
+    }
   }
   if (saved?.design) {
     if (!actor) throw new AppError('Sign in to publish this saved design.', 401)
@@ -614,6 +627,14 @@ export async function publishPreview(
         throw new AppError('Draft not found.', 404)
       if (current.revision !== saved.revision)
         throw new AppError('This draft changed. Reload before publishing.', 409)
+      if (current.publishedPublicationId) {
+        const [published] = await tx
+          .select()
+          .from(publications)
+          .where(eq(publications.id, current.publishedPublicationId))
+        if (!published || published.deletedAt || published.disabledAt)
+          throw new AppError('This passage is unavailable.', 410)
+      }
     }
     const source = await lockSource(tx, snapshot.sourceId)
     if (
@@ -705,6 +726,14 @@ async function publishPaidPreview(
       .for('update')
     if (!current || current.deletedAt || current.ownerId !== actor.userId)
       throw new AppError('Draft not found.', 404)
+    if (current.publishedPublicationId) {
+      const [published] = await tx
+        .select()
+        .from(publications)
+        .where(eq(publications.id, current.publishedPublicationId))
+      if (!published || published.deletedAt || published.disabledAt)
+        throw new AppError('This passage is unavailable.', 410)
+    }
     if (
       current.revision !== saved.revision ||
       current.snapshotId !== snapshot.id ||

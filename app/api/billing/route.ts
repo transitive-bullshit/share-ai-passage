@@ -5,24 +5,21 @@ import { readEntitlements } from '@/lib/billing'
 import { billingConfiguration } from '@/lib/billing-config'
 import { getDb } from '@/lib/db'
 import { billingAccounts } from '@/lib/db/schema'
-import { getImageUsage } from '@/lib/image-usage'
-import { imagePack, planCatalog } from '@/lib/plans'
+import { planCatalog } from '@/lib/plans'
 
 export function GET(request: Request) {
   return billingRequest(request, async (userId) => {
-    const [entitlements, accounts, imageBalance] = await Promise.all([
+    const [entitlements, accounts] = await Promise.all([
       readEntitlements(userId),
       getDb()
         .select()
         .from(billingAccounts)
-        .where(eq(billingAccounts.userId, userId)),
-      getImageUsage(userId)
+        .where(eq(billingAccounts.userId, userId))
     ])
     const account = accounts[0]
     return {
       configuration: billingConfiguration(),
       plans: planCatalog,
-      imagePack,
       entitlements,
       subscription: account
         ? {
@@ -36,8 +33,7 @@ export function GET(request: Request) {
             pendingEffectiveAt: account.pendingEffectiveAt,
             hasCustomer: Boolean(account.stripeCustomerId)
           }
-        : null,
-      imageBalance
+        : null
     }
   })
 }

@@ -655,6 +655,7 @@ export const billingEvents = pgTable(
   ]
 )
 
+// Historical image billing audit only; no runtime purchases or generation.
 export const imageCreditGrants = pgTable(
   'image_credit_grants',
   {
@@ -801,6 +802,7 @@ export const assets = pgTable(
   ]
 )
 
+// Retained for historical cost/privacy audit. Image execution is removed.
 export const imageOperations = pgTable(
   'image_operations',
   {

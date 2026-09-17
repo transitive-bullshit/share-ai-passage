@@ -9,11 +9,9 @@ export class AppError extends Error {
         | 'FREE_BUDGET_LIMIT'
         | 'SUMMARY_BUDGET_LIMIT'
         | 'AI_SPEND_LIMIT'
-        | 'IMAGE_LIMIT'
         | 'PAID_ACCOUNT_REQUIRED'
         | 'BILLING_UNAVAILABLE'
         | 'ASSET_LIMIT'
-        | 'IMAGE_UNAVAILABLE'
         | 'GENERATION_UNCERTAIN'
         | 'REVISION_CONFLICT'
       resetAt?: string

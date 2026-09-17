@@ -174,8 +174,7 @@ export async function snapshotTemplate(
   return draftDesignSchema.parse({
     version: 1,
     recipe: template.recipe,
-    fromTemplate: { id: template.id, revision: template.revision },
-    generatedImage: null
+    fromTemplate: { id: template.id, revision: template.revision }
   })
 }
 /** Uses the accepted account default only for future work, never an owned revise. */

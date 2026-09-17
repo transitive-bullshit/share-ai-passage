@@ -1,16 +1,9 @@
-import { and, eq } from 'drizzle-orm'
-import type Stripe from 'stripe'
+import { eq } from 'drizzle-orm'
 
 import { accountSubject } from './accounts'
-import { requirePaidAccount } from './billing'
-import {
-  getStripe,
-  imagePackPriceId,
-  requireBillingCheckout
-} from './billing-config'
-import { appUrl } from './config'
+import { getStripe } from './billing-config'
 import { getDb } from './db'
-import { authUsers, billingAccounts, imageCreditGrants } from './db/schema'
+import { authUsers, billingAccounts } from './db/schema'
 import { AppError } from './errors'
 import { lockUsageSubjects } from './usage'
 import type { BillingInterval } from './billing-config'
@@ -139,113 +132,3 @@ export async function subscriptionCheckoutParameters(
 }
 
 /** A zero-credit grant records purchase identity before a provider request. Only payment reconciliation fills it. */
-export async function createImagePackCheckout(
-  userId: string,
-  requestKey: string
-) {
-  requireBillingCheckout(true)
-  const { grant, customerId } = await getDb().transaction(async (tx) => {
-    await lockUsageSubjects(tx, accountSubject(userId))
-    await requirePaidAccount(userId, tx)
-    const [billing] = await tx
-      .select()
-      .from(billingAccounts)
-      .where(eq(billingAccounts.userId, userId))
-    if (!billing?.stripeCustomerId)
-      throw new AppError('Billing is not ready. Please try again.', 409)
-    const grantKey = `pack:${userId}:${requestKey}`
-    await tx
-      .insert(imageCreditGrants)
-      .values({
-        userId,
-        grantKey,
-        kind: 'pack',
-        startsAt: new Date(),
-        allowance: 0
-      })
-      .onConflictDoNothing()
-    const [saved] = await tx
-      .select()
-      .from(imageCreditGrants)
-      .where(eq(imageCreditGrants.grantKey, grantKey))
-    return { grant: saved!, customerId: billing.stripeCustomerId }
-  })
-  const stripe = getStripe()
-  if (grant.stripeCheckoutSessionId) {
-    const session = await stripe.checkout.sessions.retrieve(
-      grant.stripeCheckoutSessionId
-    )
-    if (session.status === 'complete') return { alreadyPurchased: true }
-    if (session.status === 'open' && session.url) return { url: session.url }
-    if (session.status === 'expired') return { expired: true }
-    throw new AppError(
-      'This checkout expired. Start a new image-pack purchase.',
-      409
-    )
-  }
-  // Find a previously accepted request before reusing Stripe's bounded idempotency cache.
-  let existingSession: Stripe.Checkout.Session | null = null
-  for await (const session of stripe.checkout.sessions.list({
-    customer: customerId,
-    limit: 100
-  })) {
-    if (session.metadata?.passagePackGrantId === grant.id) {
-      existingSession = session
-      break
-    }
-  }
-  if (
-    !existingSession &&
-    Date.now() - grant.createdAt.getTime() > 23 * 60 * 60 * 1000
-  )
-    throw new AppError(
-      'This purchase needs billing review before it can be retried.',
-      409
-    )
-  const session =
-    existingSession ??
-    (await stripe.checkout.sessions.create(
-      {
-        mode: 'payment',
-        customer: customerId,
-        client_reference_id: userId,
-        line_items: [{ price: imagePackPriceId(), quantity: 1 }],
-        allow_promotion_codes: false,
-        success_url: `${appUrl()}/account/billing?pack=complete`,
-        cancel_url: `${appUrl()}/account/billing`,
-        metadata: {
-          kind: 'image-pack',
-          passageUserId: userId,
-          passagePackGrantId: grant.id
-        }
-      },
-      { idempotencyKey: `passage-pack:${grant.id}` }
-    ))
-  const closing = await getDb().transaction(async (tx) => {
-    await lockUsageSubjects(tx, accountSubject(userId))
-    await tx
-      .update(imageCreditGrants)
-      .set({ stripeCheckoutSessionId: session.id, updatedAt: new Date() })
-      .where(
-        and(
-          eq(imageCreditGrants.id, grant.id),
-          eq(imageCreditGrants.userId, userId)
-        )
-      )
-    const [billing] = await tx
-      .select()
-      .from(billingAccounts)
-      .where(eq(billingAccounts.userId, userId))
-    return Boolean(billing?.closingAt)
-  })
-  if (closing) {
-    if (session.status === 'open')
-      await stripe.checkout.sessions.expire(session.id)
-    throw new AppError('This account is closing.', 403)
-  }
-  if (session.status === 'complete') return { alreadyPurchased: true }
-  if (session.status === 'expired') return { expired: true }
-  if (!session.url)
-    throw new AppError('Checkout is unavailable. Please try again.', 503)
-  return { url: session.url }
-}

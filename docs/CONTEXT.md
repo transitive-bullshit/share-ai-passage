@@ -26,7 +26,9 @@ A conversation-sharing service makes public AI conversations more engaging to sh
 
 **Publication**: An independently addressable share of one snapshot with a fixed reviewed title, highlights, and card style; customer-facing copy must call it a “passage.” Repeated publication of an identical presentation reuses its share URL while that publication remains available. _Avoid_: Source, proxied chat, redirect, editable link.
 
-**Passage**: The customer-facing name for a publication: a shareable presentation of a saved AI conversation with its title and highlights. Use lowercase for the artifact (“Create a passage” and “Read the passage”); several artifacts are “passages.” _Avoid_: Publication in customer-facing copy.
+**Passage**: Customer-facing saved work, which can be preparing, a draft or published. Its `/create?passage=<id>` identity follows its current state. The public reader URL identifies the immutable publication.
+
+**Published passage**: The customer-facing name for a publication: a shareable presentation of a saved AI conversation with its title and highlights. Use lowercase for the artifact (“Create a passage” and “Read the passage”); several artifacts are “passages.” _Avoid_: Publication in customer-facing copy.
 
 **Share URL**: The public address of a publication on this service. It opens the reader and supplies the publication's social metadata.
 

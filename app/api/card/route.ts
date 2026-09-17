@@ -53,7 +53,6 @@ export async function POST(request: Request) {
     const resolved =
       draft.design && draft.saved
         ? await resolveOwnedCardDesign(draft.saved.ownerId, draft.design, {
-            allowPending: true,
             frozen: draft.saved.resolvedDesign
           })
         : null

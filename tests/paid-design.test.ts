@@ -4,7 +4,6 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import {
   defaultTemplateRecipe,
-  draftDesignSchema,
   resolveCardDesign,
   templateRecipeSchema
 } from '@/lib/paid-design'
@@ -17,6 +16,29 @@ const data = {
   provider: 'chatgpt' as const
 }
 describe('paid card recipes', () => {
+  it('accepts uploaded backgrounds and rejects removed image-generation fields', () => {
+    const recipe = defaultTemplateRecipe()
+    const assetId = randomUUID()
+    const uploaded = { ...recipe, background: { mode: 'uploaded', assetId } }
+    expect(templateRecipeSchema.parse(uploaded)).toEqual(uploaded)
+    for (const legacy of [
+      { ...recipe, background: { mode: 'generated' } },
+      { ...recipe, artDirection: 'Generate artwork' },
+      { ...recipe, referenceAssetId: assetId }
+    ]) {
+      expect(templateRecipeSchema.safeParse(legacy).success).toBe(false)
+    }
+    expect(
+      resolveCardDesign(
+        { templateId: recipe.baseStyle },
+        {
+          version: 1,
+          recipe: templateRecipeSchema.parse(uploaded),
+          fromTemplate: null
+        }
+      )?.background
+    ).toEqual({ kind: 'asset', assetId })
+  })
   it.each(socialTemplates)(
     'preserves the unmodified $id descriptor without mutating it',
     (template) => {
@@ -24,8 +46,7 @@ describe('paid card recipes', () => {
       const design = {
         version: 1 as const,
         recipe: defaultTemplateRecipe(template.id),
-        fromTemplate: null,
-        generatedImage: null
+        fromTemplate: null
       }
       const resolved = resolveCardDesign({ templateId: template.id }, design)!
       expect(resolved.template).toEqual(original)
@@ -59,27 +80,7 @@ describe('paid card recipes', () => {
         .success
     ).toBe(false)
   })
-  it('omits private style inputs from the public render projection', () => {
-    const recipe = {
-      ...defaultTemplateRecipe(),
-      artDirection: 'private art direction',
-      referenceAssetId: randomUUID(),
-      background: { mode: 'generated' as const }
-    }
-    const design = draftDesignSchema.parse({
-      version: 1,
-      recipe,
-      fromTemplate: null,
-      generatedImage: null
-    })
-    const resolved = resolveCardDesign(
-      { templateId: recipe.baseStyle },
-      design
-    )!
-    expect(resolved.background).toEqual({ kind: 'pending' })
-    expect(JSON.stringify(resolved)).not.toContain(recipe.referenceAssetId)
-    expect(JSON.stringify(resolved)).not.toContain(recipe.artDirection)
-  })
+
   it.each(['none', 'custom'] as const)(
     'removes residual Passage wording with %s branding while preserving attribution',
     (mode) => {
@@ -92,7 +93,7 @@ describe('paid card recipes', () => {
       }
       const resolved = resolveCardDesign(
         { templateId: recipe.baseStyle },
-        { version: 1, recipe, fromTemplate: null, generatedImage: null }
+        { version: 1, recipe, fromTemplate: null }
       )!
       const html = renderToStaticMarkup(
         createElement(SocialCard, {

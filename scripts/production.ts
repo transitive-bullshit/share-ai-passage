@@ -221,7 +221,6 @@ export function productionPlan(
     'STRIPE_PLUS_ANNUAL_PRICE_ID',
     'STRIPE_PRO_MONTHLY_PRICE_ID',
     'STRIPE_PRO_ANNUAL_PRICE_ID',
-    'STRIPE_IMAGE_PACK_PRICE_ID',
     'STRIPE_LIVE_CHECKOUT_ENABLED',
     'R2_ACCOUNT_ID',
     'R2_ACCESS_KEY_ID',
@@ -235,11 +234,7 @@ export function productionPlan(
     'S3_API_ENDPOINT',
     'S3_BUCKET_NAME',
     'S3_PRIVATE_BUCKET_NAME',
-    'S3_PUBLIC_URL',
-    'IMAGE_AI_MODEL',
-    'IMAGE_GENERATION_ENABLED',
-    'IMAGE_AI_MONTHLY_BUDGET_USD',
-    'IMAGE_GENERATION_CONCURRENCY'
+    'S3_PUBLIC_URL'
   ]) {
     env[name] = values[name]?.trim() || ''
   }

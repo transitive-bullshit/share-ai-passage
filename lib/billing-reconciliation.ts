@@ -1,22 +1,12 @@
-import { and, eq, sql } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import type Stripe from 'stripe'
 
 import { accountSubject } from './accounts'
-import {
-  billingConfiguration,
-  getStripe,
-  imagePackPriceId,
-  planForPrice
-} from './billing-config'
+import { billingConfiguration, getStripe, planForPrice } from './billing-config'
 import { getDb, type Transaction } from './db'
-import {
-  authUsers,
-  billingAccounts,
-  billingEvents,
-  imageCreditGrants
-} from './db/schema'
+import { authUsers, billingAccounts, billingEvents } from './db/schema'
 import { AppError } from './errors'
-import { imagePack, type PaidPlanId } from './plans'
+import { type PaidPlanId } from './plans'
 import { lockUsageSubjects } from './usage'
 
 function objectId(value: string | { id: string } | null | undefined) {
@@ -216,80 +206,6 @@ async function reconcileCustomer(
   return needsCancellation
 }
 
-async function reconcilePack(
-  tx: Transaction,
-  userId: string,
-  sessionId: string,
-  client: Stripe
-) {
-  const session = await client.checkout.sessions.retrieve(sessionId, {
-    expand: ['line_items', 'payment_intent.latest_charge']
-  })
-  if (session.mode !== 'payment' || session.metadata?.kind !== 'image-pack')
-    return
-  const grantId = session.metadata.passagePackGrantId
-  const [grant] = grantId
-    ? await tx
-        .select()
-        .from(imageCreditGrants)
-        .where(
-          and(
-            eq(imageCreditGrants.id, grantId),
-            eq(imageCreditGrants.userId, userId)
-          )
-        )
-    : []
-  if (
-    !grant ||
-    grant.kind !== 'pack' ||
-    session.metadata.passageUserId !== userId
-  )
-    throw new AppError('This image purchase needs billing review.', 409)
-  const line = session.line_items?.data[0]
-  if (
-    session.line_items?.has_more ||
-    session.line_items?.data.length !== 1 ||
-    line?.price?.id !== imagePackPriceId() ||
-    line.quantity !== 1 ||
-    session.currency !== 'usd' ||
-    session.amount_subtotal !== imagePack.priceCents
-  )
-    throw new AppError(
-      'This image purchase does not match the configured pack.',
-      409
-    )
-  if (session.payment_status !== 'paid') return
-  const intent = session.payment_intent
-  if (!intent || typeof intent === 'string' || intent.status !== 'succeeded')
-    return
-  const charge = intent.latest_charge
-  if (!charge || typeof charge === 'string')
-    throw new AppError('Payment confirmation is pending.', 409)
-  const disputed = await chargeHasBlockingDispute(client, charge)
-  const revoked = disputed
-    ? imagePack.generations
-    : Math.min(
-        imagePack.generations,
-        Math.ceil(
-          (imagePack.generations * charge.amount_refunded) / charge.amount
-        )
-      )
-  await tx
-    .update(imageCreditGrants)
-    .set({
-      allowance: imagePack.generations,
-      stripeCheckoutSessionId: session.id,
-      stripePaymentIntentId: intent.id,
-      paidCents: session.amount_total,
-      currency: session.currency,
-      refundedCents: charge.amount_refunded,
-      disputed,
-      revoked,
-      updatedAt: new Date()
-    })
-    .where(eq(imageCreditGrants.id, grant.id))
-}
-
 async function eventCustomer(event: Stripe.Event, client: Stripe) {
   const object = event.data.object as {
     customer?: string | { id: string } | null
@@ -374,30 +290,6 @@ export async function reconcileStripeEvent(event: Stripe.Event) {
         .where(eq(billingEvents.id, event.id))
         .for('update')
       if (record?.processedAt) return false
-      if (event.type.startsWith('checkout.session.'))
-        await reconcilePack(tx, userId, eventObjectId, client)
-      else if (
-        event.type.startsWith('charge.') ||
-        event.type.startsWith('refund.')
-      ) {
-        const packs = await tx
-          .select()
-          .from(imageCreditGrants)
-          .where(
-            and(
-              eq(imageCreditGrants.userId, userId),
-              eq(imageCreditGrants.kind, 'pack')
-            )
-          )
-        for (const pack of packs)
-          if (pack.stripeCheckoutSessionId)
-            await reconcilePack(
-              tx,
-              userId,
-              pack.stripeCheckoutSessionId,
-              client
-            )
-      }
       const closing = await reconcileCustomer(tx, userId, customerId, client)
       await tx
         .update(billingEvents)

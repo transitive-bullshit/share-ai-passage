@@ -20,10 +20,6 @@ export function billingPriceId(plan: PaidPlanId, interval: BillingInterval) {
   return process.env[priceVariables[plan][interval]]?.trim() || ''
 }
 
-export function imagePackPriceId() {
-  return process.env.STRIPE_IMAGE_PACK_PRICE_ID?.trim() || ''
-}
-
 export function billingConfiguration() {
   const secret = process.env.STRIPE_SECRET_KEY?.trim() || ''
   const mode = secret.startsWith('sk_test_')
@@ -44,14 +40,13 @@ export function billingConfiguration() {
   return {
     configured,
     mode,
-    checkoutEnabled,
-    packsEnabled: checkoutEnabled && Boolean(imagePackPriceId())
+    checkoutEnabled
   }
 }
 
-export function requireBillingCheckout(pack = false) {
+export function requireBillingCheckout() {
   const config = billingConfiguration()
-  if (!config.checkoutEnabled || (pack && !config.packsEnabled))
+  if (!config.checkoutEnabled)
     throw new AppError(
       'Paid plans are not available yet. Your saved work remains available.',
       503,

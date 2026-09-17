@@ -5,7 +5,6 @@ export async function preparePassage(draftId: string) {
   'use workflow'
   try {
     await prepareDraftStep(draftId)
-    await startInitialImageStep(draftId)
   } catch {
     await failPreparationStep(draftId)
   }
@@ -35,22 +34,6 @@ async function prepareDraftStep(draftId: string) {
   }
 }
 prepareDraftStep.maxRetries = 5
-
-async function startInitialImageStep(draftId: string) {
-  'use step'
-  const { loadDraftPreparation, readSavedDraft } =
-    await import('@/lib/account-drafts')
-  const { startInitialDraftImage } = await import('@/lib/initial-image')
-  const { start } = await import('workflow/api')
-  const { generatePassageBackground } =
-    await import('@/workflows/generate-background')
-  const { actor } = await loadDraftPreparation(draftId)
-  const draft = await readSavedDraft(actor, draftId)
-  await startInitialDraftImage(actor, draft, (id) =>
-    start(generatePassageBackground, [id])
-  )
-}
-startInitialImageStep.maxRetries = 3
 
 async function failPreparationStep(draftId: string) {
   'use step'

@@ -45,6 +45,89 @@ let imageDecodes: { source: string | null; resolve: () => void }[]
 let loadFont: ReturnType<typeof vi.fn<FontFaceSet['load']>>
 let originalFonts: PropertyDescriptor | undefined
 
+it('reopens a published passage in the published result without editing controls', async () => {
+  await act(async () =>
+    root.render(
+      createElement(PreviewReview, {
+        draft: {
+          ...draft,
+          draftId: 'published-passage',
+          revision: 1,
+          status: 'published',
+          shareUrl: 'https://passage.example/claude/published'
+        },
+        appearance: { templateId: 'margin-notes' },
+        onAppearanceChange: vi.fn<(appearance: CardAppearance) => void>(),
+        preferencesReady: true,
+        preferencesAvailable: true,
+        onBack: vi.fn<() => void>()
+      })
+    )
+  )
+  expect(container.textContent).toContain('Your passage is published.')
+  expect(container.textContent).not.toContain('Review your passage')
+  expect(container.querySelector('#summary-title')).toBeNull()
+  expect(
+    container.querySelector(
+      'a[href="https://passage.example/claude/published"]'
+    )
+  ).not.toBeNull()
+  expect(requests).not.toHaveBeenCalled()
+})
+
+it('replaces a restored editor with persisted published state without saving stale edits', async () => {
+  const shareUrl = 'https://passage.example/claude/published'
+  requests.mockImplementation(async (path) =>
+    Response.json(
+      (typeof path === 'string'
+        ? path
+        : path instanceof URL
+          ? path.href
+          : path.url
+      ).endsWith('/operations')
+        ? { operations: [] }
+        : { ...draft, status: 'ready' }
+    )
+  )
+  await act(async () =>
+    root.render(
+      createElement(PreviewReview, {
+        draft: {
+          ...draft,
+          draftId: 'restored-passage',
+          revision: 1,
+          status: 'ready'
+        },
+        appearance: { templateId: 'margin-notes' },
+        onAppearanceChange: vi.fn<(appearance: CardAppearance) => void>(),
+        preferencesReady: true,
+        preferencesAvailable: true,
+        onBack: vi.fn<() => void>()
+      })
+    )
+  )
+  expect(container.textContent).toContain('Review your passage')
+  requests.mockResolvedValueOnce(
+    Response.json({
+      ...draft,
+      draftId: 'restored-passage',
+      status: 'published',
+      shareUrl,
+      appearance: { templateId: 'margin-notes' }
+    })
+  )
+  await act(async () => {
+    window.dispatchEvent(new Event('pageshow'))
+  })
+  expect(container.textContent).toContain('Your passage is published.')
+  expect(container.querySelector('#summary-title')).toBeNull()
+  expect(
+    requests.mock.calls.every(
+      ([, options]) => !options?.method || options.method === 'GET'
+    )
+  ).toBe(true)
+})
+
 beforeEach(() => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
   requests = vi.fn<typeof fetch>(() => new Promise(() => {}))
@@ -385,8 +468,7 @@ it('resets readiness and text fitting when paid font or artwork inputs change wi
   const firstDesign = resolveCardDesign(appearance, {
     version: 1,
     recipe,
-    fromTemplate: null,
-    generatedImage: null
+    fromTemplate: null
   })!
   const props = {
     preview: draft.preview,
@@ -416,8 +498,7 @@ it('resets readiness and text fitting when paid font or artwork inputs change wi
         assetId: '00000000-0000-4000-8000-000000000001'
       }
     },
-    fromTemplate: null,
-    generatedImage: null
+    fromTemplate: null
   })!
   await act(async () =>
     root.render(

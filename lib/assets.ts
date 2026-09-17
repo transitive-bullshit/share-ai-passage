@@ -8,7 +8,7 @@ import type { CardArtwork } from './card'
 import { requirePaidAccount } from './billing'
 import { getDb, type Transaction } from './db'
 import { consumeRateLimit } from './db/rate-limit'
-import { assets, authUsers, imageOperations, savedDrafts } from './db/schema'
+import { assets, authUsers, imageOperations } from './db/schema'
 import { AppError } from './errors'
 import {
   resolveCardDesign,
@@ -32,11 +32,10 @@ import { lockUsageSubjects } from './usage'
 
 export const MAX_UPLOAD_BYTES = 10_000_000
 export const MAX_LIBRARY_BYTES = 1_000_000_000
-export const REFERENCE_NORMALIZATION_VERSION = 'reference-webp-1024-v1'
-export const uploadPurposes = ['background', 'logo', 'reference'] as const
+export const uploadPurposes = ['background', 'logo'] as const
 export type UploadPurpose = (typeof uploadPurposes)[number]
 type Asset = typeof assets.$inferSelect
-const readyPurposes = [...uploadPurposes, 'generated', 'card'] as const
+const readyPurposes = [...uploadPurposes, 'card'] as const
 export const uploadRequestSchema = z.strictObject({
   requestKey: z.uuid(),
   purpose: z.enum(uploadPurposes),
@@ -291,7 +290,7 @@ function imageSignature(bytes: Uint8Array) {
 }
 export async function normalizeUploadedImage(
   bytes: Uint8Array,
-  purpose: UploadPurpose | 'generated',
+  purpose: UploadPurpose,
   expectedType?: string
 ) {
   if (!bytes.byteLength || bytes.byteLength > MAX_UPLOAD_BYTES)
@@ -315,7 +314,7 @@ export async function normalizeUploadedImage(
       throw new AppError(
         'Choose a valid, still image. Animated images are not supported.'
       )
-    const edge = purpose === 'reference' ? 1024 : 4096
+    const edge = 4096
     const result = await image
       .rotate()
       .resize({
@@ -325,14 +324,11 @@ export async function normalizeUploadedImage(
         withoutEnlargement: true
       })
       .webp({
-        quality: purpose === 'reference' ? 85 : 90,
+        quality: 90,
         lossless: purpose === 'logo'
       })
       .toBuffer({ resolveWithObject: true })
-    if (
-      result.data.byteLength >
-      (purpose === 'reference' ? 1_000_000 : MAX_UPLOAD_BYTES)
-    )
+    if (result.data.byteLength > MAX_UPLOAD_BYTES)
       throw new AppError(
         'The normalized image is too large. Try a smaller image.',
         413
@@ -587,7 +583,6 @@ export async function validateRecipeAssets(
   active = true
 ) {
   const entries: [string | null, readonly string[]][] = [
-    [recipe.referenceAssetId, ['reference']],
     [
       recipe.branding.mode === 'custom' ? recipe.branding.assetId : null,
       ['logo']
@@ -604,7 +599,6 @@ export async function resolveOwnedCardDesign(
   userId: string,
   design: DraftDesign,
   options: {
-    allowPending?: boolean
     tx?: Transaction
     frozen?: ResolvedCardDesign | null
   } = {}
@@ -631,19 +625,9 @@ export async function resolveOwnedCardDesign(
     resolved.template = frozen.template
     resolved.rendererVersion = frozen.rendererVersion
   }
-  if (resolved.background.kind === 'pending' && !options.allowPending)
-    throw new AppError(
-      'Generate a background or explicitly choose a curated or uploaded image before publishing.',
-      409
-    )
   const ids: [string, readonly string[]][] = []
   if (resolved.background.kind === 'asset')
-    ids.push([
-      resolved.background.assetId,
-      design.recipe.background.mode === 'generated'
-        ? ['generated']
-        : ['background']
-    ])
+    ids.push([resolved.background.assetId, ['background']])
   if (resolved.branding.mode === 'custom')
     ids.push([resolved.branding.assetId, ['logo']])
   for (const [id, purpose] of ids) {
@@ -794,162 +778,11 @@ async function cleanupPrivateAssetBatch(limit: number) {
   return { examined: rows.length, cleaned, skipped, failed }
 }
 
-async function requireImageOperation(
-  userId: string,
-  operationId: string,
-  tx: Transaction
-) {
-  const [operation] = await tx
-    .select()
-    .from(imageOperations)
-    .where(
-      and(
-        eq(imageOperations.id, operationId),
-        eq(imageOperations.ownerId, userId)
-      )
-    )
-  if (
-    !operation ||
-    !operation.draftId ||
-    !['running', 'uncertain', 'succeeded'].includes(operation.status)
-  )
-    throw new AppError('This image operation is no longer active.', 410)
-  const [draft] = await tx
-    .select({ id: savedDrafts.id })
-    .from(savedDrafts)
-    .where(
-      and(
-        eq(savedDrafts.id, operation.draftId),
-        eq(savedDrafts.ownerId, userId),
-        isNull(savedDrafts.deletedAt)
-      )
-    )
-  if (!draft) throw new AppError('This draft is no longer available.', 410)
-}
 /** Durable image writer. Its immutable identity also recovers a lost persistence response. */
-type GeneratedAssetInput = {
-  userId: string
-  operationId: string
-  bytes: Uint8Array
-}
-export async function storeGeneratedAsset(input: GeneratedAssetInput) {
-  const { userId, operationId } = input
-  if (!z.uuid().safeParse(operationId).success)
-    throw new Error('Invalid image operation identity')
-  await getDb().transaction(async (tx) => {
-    await lockUsageSubjects(tx, accountSubject(userId))
-    await requireAssetAccount(userId, tx)
-    await requireImageOperation(userId, operationId, tx)
-    await tx
-      .insert(assets)
-      .values({
-        id: operationId,
-        ownerId: userId,
-        purpose: 'generated',
-        visibility: 'private',
-        status: 'pending',
-        objectKey: `generated/${operationId}.webp`
-      })
-      .onConflictDoNothing()
-    const [current] = await tx
-      .select()
-      .from(assets)
-      .where(eq(assets.id, operationId))
-    if (
-      !current ||
-      current.ownerId !== userId ||
-      current.purpose !== 'generated' ||
-      current.cleanupPending
-    )
-      throw new AppError('This image is no longer active.', 409)
-  })
-  return storePreauthorizedGeneratedAsset(input)
-}
+
 /** Internal worker only: its slot and generation were authorized before provider dispatch.
  * Write bytes before any database dependency so an outage cannot erase a paid result. */
-export async function storePreauthorizedGeneratedAsset(
-  input: GeneratedAssetInput
-) {
-  const { userId, operationId } = input
-  if (!z.uuid().safeParse(operationId).success)
-    throw new Error('Invalid image operation identity')
-  const normalized = await normalizeUploadedImage(input.bytes, 'generated')
-  if (normalized.width !== 1200 || normalized.height !== 640)
-    throw new AppError('The generated image has unsupported dimensions.', 502)
-  const key = `generated/${operationId}.webp`
-  await putImmutableAsset({
-    visibility: 'private',
-    key,
-    bytes: normalized.bytes,
-    contentType: normalized.contentType
-  })
-  return commitGeneratedAsset(userId, operationId, {
-    ...normalized,
-    byteSize: normalized.bytes.byteLength
-  })
-}
-async function commitGeneratedAsset(
-  userId: string,
-  operationId: string,
-  normalized: {
-    byteSize: number
-    width: number
-    height: number
-    contentType: string
-    sha256: string
-  }
-) {
-  try {
-    return await getDb().transaction(async (tx) => {
-      await lockUsageSubjects(tx, accountSubject(userId))
-      await requireAssetAccount(userId, tx)
-      await requireImageOperation(userId, operationId, tx)
-      const [current] = await tx
-        .select()
-        .from(assets)
-        .where(and(eq(assets.id, operationId), eq(assets.ownerId, userId)))
-        .for('update')
-      if (!current || current.cleanupPending)
-        throw new AppError('This image is no longer active.', 410)
-      if (
-        current.purpose !== 'generated' ||
-        current.visibility !== 'private' ||
-        current.objectKey !== `generated/${operationId}.webp`
-      )
-        throw new AppError('This image reservation is invalid.', 409)
-      if (current.status === 'ready') {
-        if (current.sha256 !== normalized.sha256)
-          throw new AppError(
-            'This operation already has a different image.',
-            409
-          )
-        return current
-      }
-      const [saved] = await tx
-        .update(assets)
-        .set({
-          status: 'ready',
-          byteSize: normalized.byteSize,
-          contentType: normalized.contentType,
-          width: normalized.width,
-          height: normalized.height,
-          sha256: normalized.sha256,
-          updatedAt: new Date()
-        })
-        .where(eq(assets.id, operationId))
-        .returning()
-      return saved!
-    })
-  } catch (err) {
-    if (err instanceof AppError && [403, 410].includes(err.status)) {
-      await getDb()
-        .update(assets)
-        .set({ ownerId: null, cleanupPending: true, status: 'failed' })
-        .where(and(eq(assets.id, operationId), eq(assets.ownerId, userId)))
-    }
-    throw err
-  }
-}
+
 /** Persist composed card bytes before the caller's publication lifecycle transaction. */
 export async function persistFrozenCard(input: {
   userId: string
@@ -1045,11 +878,7 @@ export async function loadCardArtwork(
   const media: CardArtwork = {}
   const requested: ['background' | 'logo', string, readonly string[]][] = []
   if (design.background.kind === 'asset')
-    requested.push([
-      'background',
-      design.background.assetId,
-      ['background', 'generated']
-    ])
+    requested.push(['background', design.background.assetId, ['background']])
   if (design.branding.mode === 'custom')
     requested.push(['logo', design.branding.assetId, ['logo']])
   await Promise.all(
@@ -1067,7 +896,7 @@ export async function loadCardArtwork(
   return media
 }
 
-/** Accepts only owned image selections and proves generated-result provenance. */
+/** Accepts only owned background and logo uploads. */
 export async function validateDraftDesign(
   userId: string,
   value: unknown,
@@ -1083,11 +912,6 @@ export async function validateDraftDesign(
   const design = parsed.data
   const recipe = design.recipe
   const selections: [string | null, string | null, readonly string[]][] = [
-    [
-      recipe.referenceAssetId,
-      previous?.recipe.referenceAssetId ?? null,
-      ['reference']
-    ],
     [
       recipe.branding.mode === 'custom' ? recipe.branding.assetId : null,
       previous?.recipe.branding.mode === 'custom'
@@ -1106,26 +930,6 @@ export async function validateDraftDesign(
   for (const [id, oldId, purpose] of selections)
     if (id)
       await getOwnedAsset(userId, id, { purpose, active: id !== oldId, tx })
-  if (design.generatedImage) {
-    const result = design.generatedImage
-    const [operation] = await (tx ?? getDb())
-      .select()
-      .from(imageOperations)
-      .where(
-        and(
-          eq(imageOperations.id, result.operationId),
-          eq(imageOperations.ownerId, userId),
-          eq(imageOperations.status, 'succeeded')
-        )
-      )
-    if (
-      !operation ||
-      operation.resultAssetId !== result.assetId ||
-      operation.recipeHash !== result.recipeHash
-    )
-      throw new AppError('Choose a completed image from your account.', 403)
-    await getOwnedAsset(userId, result.assetId, { purpose: ['generated'], tx })
-  }
   return design
 }
 
@@ -1261,57 +1065,5 @@ export async function freezeCardPresentation(input: {
       )
       .catch(() => {})
     throw err
-  }
-}
-
-/** Recover the stored normalized object unchanged; never re-encode or dispatch a provider. */
-export async function recoverGeneratedAsset(input: {
-  userId: string
-  operationId: string
-}) {
-  const verified = await verifyStoredGeneratedAsset(input.operationId)
-  if (!verified) return null
-  return commitGeneratedAsset(input.userId, input.operationId, verified)
-}
-/** Internal worker recovery only. Verifies a fixed operation object even after its owner is deleted. */
-export async function verifyStoredGeneratedAsset(operationId: string) {
-  if (!z.uuid().safeParse(operationId).success)
-    throw new Error('Invalid image operation identity')
-  const key = `generated/${operationId}.webp`
-  const head = await headAsset('private', key)
-  if (!head) return null
-  if (
-    head.contentType !== 'image/webp' ||
-    !head.sha256 ||
-    head.byteSize < 1 ||
-    head.byteSize > MAX_UPLOAD_BYTES ||
-    !head.etag
-  )
-    throw new AppError('The stored image could not be verified.', 502)
-  const bytes = await readAssetBytes(
-    'private',
-    key,
-    MAX_UPLOAD_BYTES,
-    head.etag
-  )
-  if (bytes.length !== head.byteSize || assetSha256(bytes) !== head.sha256)
-    throw new AppError('The stored image could not be verified.', 502)
-  const metadata = await sharp(bytes, {
-    limitInputPixels: 40_000_000,
-    animated: true
-  }).metadata()
-  if (
-    metadata.format !== 'webp' ||
-    metadata.width !== 1200 ||
-    metadata.height !== 640 ||
-    (metadata.pages ?? 1) !== 1
-  )
-    throw new AppError('The stored image has unsupported dimensions.', 502)
-  return {
-    byteSize: bytes.length,
-    width: metadata.width,
-    height: metadata.height,
-    contentType: 'image/webp',
-    sha256: head.sha256
   }
 }

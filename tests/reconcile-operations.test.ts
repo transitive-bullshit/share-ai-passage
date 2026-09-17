@@ -45,24 +45,12 @@ function report(actionable = true): OperationsReport {
       staleUnknownCost: 0,
       currentMonthCostOverruns: 0
     },
-    image: {
-      staleUnresolved: 0,
-      staleUnknownCost: 0,
-      currentMonthCostOverruns: 0
-    },
     billing: { failedEvents: 0, overdueEvents: 0, overdueCancellations: 0 },
     budgets: {
       free: {
         limitMicros: 25_000_000,
         liabilityMicros: 20_000,
         nextReservationMicros: 20_000,
-        exhausted: false
-      },
-      image: {
-        enabled: false,
-        limitMicros: null,
-        liabilityMicros: 0,
-        nextReservationMicros: 1_000_000,
         exhausted: false
       }
     },

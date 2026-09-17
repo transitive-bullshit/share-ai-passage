@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { authHref } from '@/lib/auth-navigation'
 import type { BillingInterval } from '@/lib/billing-config'
-import { imagePack, planCatalog, type PlanId } from '@/lib/plans'
+import { planCatalog, type PlanId } from '@/lib/plans'
 
 function money(cents: number) {
   return new Intl.NumberFormat('en-US', {
@@ -106,15 +106,13 @@ export function PricingPlans({
               : plan.monthlyPriceCents
           const features = [
             `${plan.summaryGenerations} summary generations / month`,
-            paid
-              ? `${plan.imageGenerations} AI background generations / month`
-              : 'Five curated share card styles',
+            'Five curated share card styles',
             'Saved drafts and synced preferences',
             ...(paid
               ? [
                   'Remove or replace the share card watermark',
                   'Upload your own backgrounds and artwork',
-                  'Save templates to guide future AI backgrounds',
+                  'Save reusable share card templates',
                   'Use your default template from the CLI or an agent'
                 ]
               : ['Passage branding on your share cards'])
@@ -239,9 +237,9 @@ export function PricingPlans({
           <div className='flex flex-col gap-2'>
             <dt className='font-medium'>What counts as a generation?</dt>
             <dd className='text-sm leading-relaxed text-muted-foreground'>
-              Each new AI summary or background counts, including regenerations
-              and unpublished work. Reusing a saved result, editing, uploading,
-              and publishing don’t. Technical failures without a usable result
+              Each new AI summary counts, including regenerations and
+              unpublished work. Reusing a saved result, editing, uploading, and
+              publishing don’t. Technical failures without a usable result
               restore your allowance.
             </dd>
           </div>
@@ -254,21 +252,12 @@ export function PricingPlans({
             </dd>
           </div>
           <div className='flex flex-col gap-2'>
-            <dt className='font-medium'>Need more AI backgrounds?</dt>
-            <dd className='text-sm leading-relaxed text-muted-foreground'>
-              Add {imagePack.generations} image generations for{' '}
-              {money(imagePack.priceCents)} with a one-time pack on Plus or Pro.
-              Included generations are used first. Purchased generations never
-              expire; you need an active paid plan to use them.
-            </dd>
-          </div>
-          <div className='flex flex-col gap-2'>
             <dt className='font-medium'>What can I customize?</dt>
             <dd className='text-sm leading-relaxed text-muted-foreground'>
               Your share card’s branding, backgrounds, and reusable templates.
-              Guide AI artwork with your own style. The reader keeps Passage’s
-              interface and the original source attribution. Your upload library
-              holds up to 1 GB, with a 10 MB limit per file.
+              Upload artwork you create in your favorite image app. The reader
+              keeps Passage’s interface and the original source attribution.
+              Your upload library holds up to 1 GB, with a 10 MB limit per file.
             </dd>
           </div>
           <div className='flex flex-col gap-2'>

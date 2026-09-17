@@ -16,17 +16,14 @@ type BillingView = {
     configured: boolean
     mode: 'test' | 'live' | null
     checkoutEnabled: boolean
-    packsEnabled: boolean
   }
   plans: typeof planCatalog
-  imagePack: { priceCents: number; generations: number }
   entitlements: {
     plan: PlanId
     paidActions: boolean
     paidThrough: string | null
     allowanceWindow: { startsAt: string; endsAt: string }
     summaryLimit: number
-    imageLimit: number
   }
   subscription: {
     status: string
@@ -39,13 +36,11 @@ type BillingView = {
     pendingEffectiveAt: string | null
     hasCustomer: boolean
   } | null
-  imageBalance: { included: number; purchased: number }
 }
 
 type Action =
   | { action: 'change'; plan: PaidPlanId; interval: BillingInterval }
   | { action: 'cancel' | 'restore' | 'portal' }
-  | { action: 'pack'; requestKey: string }
 
 function money(cents: number) {
   return new Intl.NumberFormat('en-US', {
@@ -102,11 +97,6 @@ function BillingDetails({
 
   useEffect(() => {
     if (!userId) return
-    // Returning from Checkout ends this purchase attempt; only the webhook grants credits.
-    if (new URL(window.location.href).searchParams.get('pack') === 'complete') {
-      localStorage.removeItem(`passage:pack:${userId}`)
-      window.history.replaceState(null, '', '/account/billing')
-    }
     let active = true
     void fetch('/api/billing', { cache: 'no-store' })
       .then(async (response) => {
@@ -156,14 +146,8 @@ function BillingDetails({
         window.location.assign(result.url)
         return
       }
-      if (action.action === 'pack' && userId)
-        localStorage.removeItem(`passage:pack:${userId}`)
       setNotice(
-        result.expired
-          ? 'That checkout expired. Choose Buy generations again to start a new purchase.'
-          : result.alreadyPurchased
-            ? 'This image pack has already been purchased. Its payment is being confirmed.'
-            : 'Your request is saved. Billing will update after confirmation.'
+        'Your request is saved. Billing will update after confirmation.'
       )
       setAttempt((value) => value + 1)
     } catch (err) {
@@ -175,14 +159,6 @@ function BillingDetails({
     } finally {
       setPending(false)
     }
-  }
-
-  function buyPack() {
-    if (!userId) return
-    const key = `passage:pack:${userId}`
-    const requestKey = localStorage.getItem(key) || crypto.randomUUID()
-    localStorage.setItem(key, requestKey)
-    void perform({ action: 'pack', requestKey })
   }
 
   if (isPending)
@@ -199,7 +175,7 @@ function BillingDetails({
       <main id='main' className='account-page'>
         <div className='account-heading'>
           <h1>Plans and billing</h1>
-          <p>Sign in to manage your plan and image generations.</p>
+          <p>Sign in to manage your plan.</p>
         </div>
         <div className='flex flex-wrap gap-3'>
           <Button asChild>
@@ -286,8 +262,8 @@ function BillingDetails({
             </div>
             <div className='account-section-content space-y-3'>
               <p>
-                {billing.entitlements.summaryLimit} summary generations and{' '}
-                {billing.entitlements.imageLimit} image generations per month.
+                {billing.entitlements.summaryLimit} summary generations per
+                month.
               </p>
               <p className='text-sm text-muted-foreground'>
                 Your next allowance starts{' '}
@@ -391,7 +367,6 @@ function BillingDetails({
                   </p>
                   <ul className='mb-6 space-y-2 text-sm'>
                     <li>{plan.summaryGenerations} summary generations/month</li>
-                    <li>{plan.imageGenerations} image generations/month</li>
                     {id !== 'free' ? (
                       <>
                         <li>Custom branding and templates</li>
@@ -444,38 +419,6 @@ function BillingDetails({
             generations do not roll over. Cached reuse, edits, and publishing do
             not use generations.
           </p>
-          <section className='account-section'>
-            <div className='account-section-heading'>
-              <h2>Image generations</h2>
-              <p>Extra room when you need it.</p>
-            </div>
-            <div className='account-section-content space-y-3'>
-              <p>
-                {billing.imageBalance.included} included and{' '}
-                {billing.imageBalance.purchased} purchased generations
-                available.
-              </p>
-              <p className='text-sm text-muted-foreground'>
-                Included generations are used first. Purchased generations never
-                expire and require an active paid plan to use.
-              </p>
-              <Button
-                variant='outline'
-                disabled={
-                  pending ||
-                  !billing.entitlements.paidActions ||
-                  !billing.configuration.packsEnabled
-                }
-                onClick={buyPack}
-              >
-                Buy {billing.imagePack.generations} generations ·{' '}
-                {money(billing.imagePack.priceCents)}
-              </Button>
-              <p className='text-sm text-muted-foreground'>
-                One purchase. No automatic top-ups.
-              </p>
-            </div>
-          </section>
         </>
       )}
     </main>

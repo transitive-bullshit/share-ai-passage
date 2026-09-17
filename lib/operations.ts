@@ -1,16 +1,14 @@
 import { createHash } from 'node:crypto'
 
-import { and, eq, gte, isNotNull, isNull, lt, lte, sql } from 'drizzle-orm'
+import { and, eq, isNotNull, isNull, lt, lte, sql } from 'drizzle-orm'
 
 import { getDb, type Transaction } from './db'
 import {
   aiBudgetPeriods,
   billingAccounts,
   billingEvents,
-  generationOperations,
-  imageOperations
+  generationOperations
 } from './db/schema'
-import { getImageGenerationConfig } from './image-model'
 import {
   FREE_AI_MONTHLY_BUDGET_MICROS,
   SUMMARY_RESERVATION_MICROS,
@@ -23,7 +21,7 @@ const countWhere = (condition: ReturnType<typeof sql>) =>
 
 async function operationCounts(
   tx: Transaction,
-  table: typeof generationOperations | typeof imageOperations,
+  table: typeof generationOperations,
   cutoff: Date,
   month: ReturnType<typeof utcUsagePeriod>
 ) {
@@ -48,7 +46,6 @@ async function operationCounts(
 /** One read-only snapshot; no provider calls, locks, repairs or budget creation. */
 export async function readOperationsReport(now = new Date()) {
   const month = utcUsagePeriod(now)
-  const imageConfig = getImageGenerationConfig()
   const cutoff = new Date(now.getTime() - staleMinutes * 60_000)
   return getDb().transaction(
     async (tx) => {
@@ -58,7 +55,6 @@ export async function readOperationsReport(now = new Date()) {
         cutoff,
         month
       )
-      const image = await operationCounts(tx, imageOperations, cutoff, month)
       const [events] = await tx
         .select({
           failedEvents: countWhere(sql`${billingEvents.lastError} is not null`),
@@ -93,20 +89,6 @@ export async function readOperationsReport(now = new Date()) {
         })
         .from(aiBudgetPeriods)
         .where(eq(aiBudgetPeriods.startsAt, month.startsAt))
-      const [images] = await tx
-        .select({
-          liabilityMicros:
-            sql<number>`coalesce(sum(coalesce(${imageOperations.actualCostMicros}, ${imageOperations.reservedCostMicros})), 0)`.mapWith(
-              Number
-            )
-        })
-        .from(imageOperations)
-        .where(
-          and(
-            gte(imageOperations.createdAt, month.startsAt),
-            lt(imageOperations.createdAt, month.endsAt)
-          )
-        )
       const freeBudget = free ?? {
         limitMicros: FREE_AI_MONTHLY_BUDGET_MICROS,
         liabilityMicros: 0
@@ -118,32 +100,18 @@ export async function readOperationsReport(now = new Date()) {
           exhausted:
             freeBudget.liabilityMicros + SUMMARY_RESERVATION_MICROS >
             freeBudget.limitMicros
-        },
-        image: {
-          enabled: imageConfig.enabled,
-          limitMicros: imageConfig.monthlyBudgetMicros,
-          liabilityMicros: images!.liabilityMicros,
-          nextReservationMicros: imageConfig.reservationCostMicros,
-          exhausted:
-            imageConfig.enabled &&
-            imageConfig.monthlyBudgetMicros !== null &&
-            images!.liabilityMicros + imageConfig.reservationCostMicros >
-              imageConfig.monthlyBudgetMicros
         }
       }
       const issues = [
         ...(summary.staleUnresolved ? ['stale_summary_operations'] : []),
         ...(summary.staleUnknownCost ? ['unknown_summary_costs'] : []),
-        ...(image.staleUnresolved ? ['stale_image_operations'] : []),
-        ...(image.staleUnknownCost ? ['unknown_image_costs'] : []),
         ...(billing.failedEvents ? ['failed_billing_events'] : []),
         ...(billing.overdueEvents ? ['overdue_billing_events'] : []),
         ...(billing.overdueCancellations
           ? ['overdue_closing_cancellations']
           : []),
         ...(budgets.free.exhausted ? ['free_service_budget_exhausted'] : []),
-        ...(budgets.image.exhausted ? ['image_service_budget_exhausted'] : []),
-        ...(summary.currentMonthCostOverruns || image.currentMonthCostOverruns
+        ...(summary.currentMonthCostOverruns
           ? ['current_month_reservation_cost_overruns']
           : [])
       ]
@@ -158,7 +126,6 @@ export async function readOperationsReport(now = new Date()) {
           endsAt: month.endsAt.toISOString()
         },
         summary,
-        image,
         billing,
         budgets,
         issues
@@ -181,7 +148,7 @@ export function operationsDigest(
     .update(databaseScope)
     .digest('hex')
     .slice(0, 12)
-  const text = `Passage operations need attention\nUTC day: ${day}\nTarget fingerprint: ${scope}\n\n${JSON.stringify(counts, null, 2)}\n\nInspect with reconcile:summary list-stale, reconcile:image list-stale and reconcile:billing failed-events. Closing cancellations require reconcile:billing cancel-closing with an account ID and --apply. Check the generation reconciliation guide before resolving costs; do not retry provider work or clear reservations without evidence.`
+  const text = `Passage operations (${scope}) — ${day}\n${JSON.stringify(counts, null, 2)}\nReview unresolved operations with reconcile:summary and billing events with reconcile:billing.`
   return {
     text,
     idempotencyKey: createHash('sha256').update(text).digest('hex')

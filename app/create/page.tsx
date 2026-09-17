@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { redirect } from 'next/navigation'
 
 import { ShareFlow } from '@/components/share-flow'
 import { noindex } from '@/lib/seo'
@@ -14,7 +15,9 @@ export default async function CreatePage({
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const query = await searchParams
-  const draftId = typeof query.draft === 'string' ? query.draft : undefined
+  if (typeof query.draft === 'string')
+    redirect(`/create?passage=${encodeURIComponent(query.draft)}`)
+  const draftId = typeof query.passage === 'string' ? query.passage : undefined
   const templateId =
     typeof query.template === 'string' ? query.template : undefined
   return (

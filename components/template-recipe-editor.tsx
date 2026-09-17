@@ -20,7 +20,6 @@ import { Button } from './ui/button'
 import { Field, FieldDescription, FieldGroup, FieldLabel } from './ui/field'
 import { Input } from './ui/input'
 import { Spinner } from './ui/spinner'
-import { Textarea } from './ui/textarea'
 import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group'
 
 type Library = {
@@ -37,16 +36,9 @@ const sample = {
     'Keep the reasoning close.'
   ]
 }
-export function useDesignArtwork(
-  recipe: TemplateRecipe,
-  generatedAssetId?: string
-) {
+export function useDesignArtwork(recipe: TemplateRecipe) {
   const backgroundId =
-    recipe.background.mode === 'uploaded'
-      ? recipe.background.assetId
-      : recipe.background.mode === 'generated'
-        ? (generatedAssetId ?? null)
-        : null
+    recipe.background.mode === 'uploaded' ? recipe.background.assetId : null
   const logoId =
     recipe.branding.mode === 'custom' ? recipe.branding.assetId : null
   const [result, setResult] = useState<{
@@ -134,8 +126,7 @@ export function TemplateRecipeEditor({
             {
               version: 1,
               recipe: parsed.data,
-              fromTemplate: null,
-              generatedImage: null
+              fromTemplate: null
             }
           )
         : null,
@@ -164,8 +155,6 @@ export function TemplateRecipeEditor({
     if (!mounted.current) return
     if (purpose === 'background')
       onChange({ ...recipe, background: { mode: 'uploaded', assetId: id } })
-    else if (purpose === 'reference')
-      onChange({ ...recipe, referenceAssetId: id })
     else
       onChange({
         ...recipe,
@@ -274,11 +263,7 @@ export function TemplateRecipeEditor({
         </select>
         <FieldLabel htmlFor={`upload-${purpose}`}>
           <Upload aria-hidden='true' /> Upload{' '}
-          {purpose === 'reference'
-            ? 'a style reference'
-            : purpose === 'logo'
-              ? 'a logo or avatar'
-              : 'a background'}
+          {purpose === 'logo' ? 'a logo or avatar' : 'a background'}
         </FieldLabel>
         <Input
           id={`upload-${purpose}`}
@@ -435,7 +420,7 @@ export function TemplateRecipeEditor({
               value={recipe.background.mode}
               disabled={disabled}
               onValueChange={(value) => {
-                if (value === 'curated' || value === 'generated')
+                if (value === 'curated')
                   onChange({ ...recipe, background: { mode: value } })
                 else if (value === 'uploaded')
                   onChange({
@@ -446,7 +431,6 @@ export function TemplateRecipeEditor({
             >
               <ToggleGroupItem value='curated'>Curated</ToggleGroupItem>
               <ToggleGroupItem value='uploaded'>Uploaded</ToggleGroupItem>
-              <ToggleGroupItem value='generated'>Generated</ToggleGroupItem>
             </ToggleGroup>
           </Field>
           {recipe.background.mode === 'uploaded' &&
@@ -457,12 +441,14 @@ export function TemplateRecipeEditor({
             )}
           {recipe.background.mode !== 'curated' && (
             <Field>
-              <FieldLabel>Crop position</FieldLabel>
+              <FieldLabel>Background position</FieldLabel>
               <div className='grid grid-cols-2 gap-3'>
                 {(['x', 'y'] as const).map((axis) => (
                   <Field key={axis}>
                     <FieldLabel htmlFor={`crop-${axis}`}>
-                      {axis === 'x' ? 'Horizontal' : 'Vertical'}
+                      {axis === 'x'
+                        ? 'Horizontal position'
+                        : 'Vertical position'}
                     </FieldLabel>
                     <Input
                       id={`crop-${axis}`}
@@ -486,50 +472,7 @@ export function TemplateRecipeEditor({
               </div>
             </Field>
           )}
-          {recipe.background.mode === 'generated' && (
-            <>
-              <Field>
-                <FieldLabel htmlFor='art-direction'>Art direction</FieldLabel>
-                <Textarea
-                  id='art-direction'
-                  rows={3}
-                  maxLength={500}
-                  disabled={disabled}
-                  value={recipe.artDirection}
-                  onChange={(event) =>
-                    onChange({ ...recipe, artDirection: event.target.value })
-                  }
-                  placeholder='Soft paper textures, quiet landscapes, warm natural light…'
-                />
-                <FieldDescription>
-                  Describe a consistent visual style. Each generated background
-                  will also reflect its passage.
-                </FieldDescription>
-              </Field>
-              {fileField(
-                'reference',
-                'Private style reference',
-                recipe.referenceAssetId
-              )}
-              {recipe.referenceAssetId && (
-                <Button
-                  type='button'
-                  variant='outline'
-                  disabled={disabled}
-                  onClick={() =>
-                    onChange({ ...recipe, referenceAssetId: null })
-                  }
-                >
-                  Remove reference from template
-                </Button>
-              )}
-              <FieldDescription>
-                Saving a template does not generate an image. Generate or test
-                the background from a passage draft; each new image uses one
-                image credit.
-              </FieldDescription>
-            </>
-          )}
+
           <div>
             <Button
               type='button'
@@ -600,11 +543,9 @@ export function TemplateRecipeEditor({
                     key={asset.id}
                   >
                     <span className='text-sm text-muted-foreground'>
-                      {asset.purpose === 'reference'
-                        ? 'Style reference'
-                        : asset.purpose === 'logo'
-                          ? 'Logo or avatar'
-                          : 'Background'}{' '}
+                      {asset.purpose === 'logo'
+                        ? 'Logo or avatar'
+                        : 'Background'}{' '}
                       · {asset.width} × {asset.height}
                     </span>
                     <Button
@@ -690,12 +631,7 @@ export function TemplateRecipeEditor({
                     'Choose valid colors and images to preview your template.'}
               </p>
             )}
-            {recipe.background.mode === 'generated' && (
-              <p className='text-sm text-muted-foreground'>
-                Your background will appear after generation. The text and logo
-                stay crisp and consistent.
-              </p>
-            )}
+
             {media.error && (
               <Button type='button' variant='outline' onClick={media.retry}>
                 Reload preview images

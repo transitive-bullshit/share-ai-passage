@@ -284,7 +284,7 @@ function LibraryEntries() {
         `/api/passages/${encodeURIComponent(passage.id)}/revise`,
         { requestKey }
       )
-      router.push(`/create?draft=${encodeURIComponent(result.draftId)}`)
+      router.push(`/create?passage=${encodeURIComponent(result.draftId)}`)
     } catch (err) {
       if (err instanceof ClientRequestError && err.status === 401) {
         setData(null)
@@ -421,91 +421,6 @@ function LibraryEntries() {
       <p className='library-notice' role='status' aria-live='polite'>
         {notice}
       </p>
-      <section className='library-section' aria-labelledby='library-drafts'>
-        <div className='library-section-heading'>
-          <h2 id='library-drafts'>Drafts</h2>
-          <p>Private until you publish.</p>
-        </div>
-        {data.drafts.length ? (
-          <ul className='library-list'>
-            {data.drafts.map((draft) => (
-              <li className='library-row' key={draft.id}>
-                <div className='library-entry'>
-                  <Link
-                    className='library-title'
-                    href={`/create?draft=${encodeURIComponent(draft.id)}`}
-                  >
-                    {draft.title || 'Untitled draft'}
-                  </Link>
-                  <p>
-                    <span>
-                      {draft.status === 'ready'
-                        ? 'Ready to review'
-                        : draft.status === 'preparing'
-                          ? 'Preparing'
-                          : 'Needs attention'}
-                    </span>{' '}
-                    · Updated {dateLabel(draft.updatedAt)}
-                  </p>
-                  {draft.errorMessage ? <p>{draft.errorMessage}</p> : null}
-                </div>
-                <div className='library-row-actions'>
-                  <Button asChild variant='outline'>
-                    <Link
-                      href={`/create?draft=${encodeURIComponent(draft.id)}`}
-                    >
-                      Resume
-                      <ArrowRight data-icon='inline-end' aria-hidden='true' />
-                    </Link>
-                  </Button>
-                  <Button
-                    variant='ghost'
-                    size='icon'
-                    aria-label={`Delete draft: ${draft.title || 'Untitled draft'}`}
-                    disabled={busy}
-                    onClick={() =>
-                      setRemoval({
-                        kind: 'drafts',
-                        id: draft.id,
-                        title: draft.title
-                      })
-                    }
-                  >
-                    <Trash2 aria-hidden='true' />
-                  </Button>
-                </div>
-                {removal?.kind === 'drafts' && removal.id === draft.id
-                  ? confirmation
-                  : null}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <Empty>
-            <EmptyHeader>
-              <EmptyMedia variant='icon'>
-                <FileText aria-hidden='true' />
-              </EmptyMedia>
-              <EmptyTitle>No drafts yet</EmptyTitle>
-              <EmptyDescription>
-                Your work is saved here as you create a passage.
-              </EmptyDescription>
-            </EmptyHeader>
-          </Empty>
-        )}
-        {data.nextDraftCursor ? (
-          <Button
-            variant='outline'
-            disabled={busy}
-            onClick={() => void loadMore('drafts')}
-          >
-            {loadingMore === 'drafts' ? (
-              <Spinner data-icon='inline-start' />
-            ) : null}
-            Load more drafts
-          </Button>
-        ) : null}
-      </section>
       <section className='library-section' aria-labelledby='library-published'>
         <div className='library-section-heading'>
           <h2 id='library-published'>Published</h2>
@@ -599,6 +514,91 @@ function LibraryEntries() {
               <Spinner data-icon='inline-start' />
             ) : null}
             Load more passages
+          </Button>
+        ) : null}
+      </section>
+      <section className='library-section' aria-labelledby='library-drafts'>
+        <div className='library-section-heading'>
+          <h2 id='library-drafts'>Drafts</h2>
+          <p>Private until you publish.</p>
+        </div>
+        {data.drafts.length ? (
+          <ul className='library-list'>
+            {data.drafts.map((draft) => (
+              <li className='library-row' key={draft.id}>
+                <div className='library-entry'>
+                  <Link
+                    className='library-title'
+                    href={`/create?passage=${encodeURIComponent(draft.id)}`}
+                  >
+                    {draft.title || 'Untitled draft'}
+                  </Link>
+                  <p>
+                    <span>
+                      {draft.status === 'ready'
+                        ? 'Ready to review'
+                        : draft.status === 'preparing'
+                          ? 'Preparing'
+                          : 'Needs attention'}
+                    </span>{' '}
+                    · Updated {dateLabel(draft.updatedAt)}
+                  </p>
+                  {draft.errorMessage ? <p>{draft.errorMessage}</p> : null}
+                </div>
+                <div className='library-row-actions'>
+                  <Button asChild variant='outline'>
+                    <Link
+                      href={`/create?passage=${encodeURIComponent(draft.id)}`}
+                    >
+                      Resume
+                      <ArrowRight data-icon='inline-end' aria-hidden='true' />
+                    </Link>
+                  </Button>
+                  <Button
+                    variant='ghost'
+                    size='icon'
+                    aria-label={`Delete draft: ${draft.title || 'Untitled draft'}`}
+                    disabled={busy}
+                    onClick={() =>
+                      setRemoval({
+                        kind: 'drafts',
+                        id: draft.id,
+                        title: draft.title
+                      })
+                    }
+                  >
+                    <Trash2 aria-hidden='true' />
+                  </Button>
+                </div>
+                {removal?.kind === 'drafts' && removal.id === draft.id
+                  ? confirmation
+                  : null}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <Empty>
+            <EmptyHeader>
+              <EmptyMedia variant='icon'>
+                <FileText aria-hidden='true' />
+              </EmptyMedia>
+              <EmptyTitle>No drafts yet</EmptyTitle>
+              <EmptyDescription>
+                Your work is saved here as you create a passage.
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        )}
+        {data.nextDraftCursor ? (
+          <Button
+            variant='outline'
+            disabled={busy}
+            onClick={() => void loadMore('drafts')}
+          >
+            {loadingMore === 'drafts' ? (
+              <Spinner data-icon='inline-start' />
+            ) : null}
+            Load more drafts
           </Button>
         ) : null}
       </section>

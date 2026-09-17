@@ -95,8 +95,7 @@ export function DraftDesignControls({
                     fromTemplate: {
                       id: template.id,
                       revision: template.revision
-                    },
-                    generatedImage: null
+                    }
                   })
                 }
               >
@@ -156,8 +155,7 @@ export function DraftDesignControls({
               onChange({
                 version: 1,
                 recipe: defaultTemplateRecipe(appearance.templateId),
-                fromTemplate: null,
-                generatedImage: null
+                fromTemplate: null
               })
             }
           >

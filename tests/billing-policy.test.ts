@@ -39,7 +39,6 @@ describe('monthly paid allowances and payment coverage', () => {
     ).toMatchObject({
       plan: 'plus',
       summaryLimit: 100,
-      imageLimit: 10,
       allowanceWindow: {
         startsAt: new Date('2027-04-30T14:05:06Z'),
         endsAt: new Date('2027-05-31T14:05:06Z')
@@ -48,8 +47,7 @@ describe('monthly paid allowances and payment coverage', () => {
     expect(entitlementsFromBilling(state, state.paidThrough)).toMatchObject({
       plan: 'free',
       paidActions: false,
-      summaryLimit: 25,
-      imageLimit: 0
+      summaryLimit: 25
     })
   })
 
@@ -93,13 +91,11 @@ describe('monthly paid allowances and payment coverage', () => {
     vi.stubEnv('STRIPE_LIVE_CHECKOUT_ENABLED', '')
     expect(billingConfiguration()).toMatchObject({
       configured: true,
-      checkoutEnabled: false,
-      packsEnabled: false
+      checkoutEnabled: false
     })
     vi.stubEnv('STRIPE_SECRET_KEY', 'sk_test_fixture_not_a_credential')
     expect(billingConfiguration()).toMatchObject({
-      checkoutEnabled: true,
-      packsEnabled: true
+      checkoutEnabled: true
     })
   })
 })

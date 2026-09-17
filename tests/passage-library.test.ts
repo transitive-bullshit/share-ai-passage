@@ -77,6 +77,16 @@ const fixture = {
   nextPublicationCursor: null as string | null
 }
 
+it('places published passages before drafts', async () => {
+  fetchMock.mockResolvedValueOnce(response(fixture))
+  await render()
+  expect(
+    [...container.querySelectorAll('.library-section h2')].map(
+      (node) => node.textContent
+    )
+  ).toEqual(['Published', 'Drafts'])
+})
+
 function response(value: unknown, status = 200) {
   return new Response(JSON.stringify(value), {
     status,
@@ -152,7 +162,7 @@ it('loads each opaque cursor independently without replacing the other section',
   await render()
   expect(container.textContent).toContain('22 of 25')
   expect(
-    container.querySelector('a[href="/create?draft=draft-one"]')
+    container.querySelector('a[href="/create?passage=draft-one"]')
   ).not.toBeNull()
   await click('Load more drafts')
   const requested = new URL(
@@ -211,7 +221,7 @@ it('reuses a revision request key after a lost response and resumes the returned
   }
   expect(firstBody.requestKey).toBeTruthy()
   expect(secondBody).toEqual(firstBody)
-  expect(push).toHaveBeenCalledWith('/create?draft=revised-draft')
+  expect(push).toHaveBeenCalledWith('/create?passage=revised-draft')
 })
 
 it('drops private library content when the account changes or signs out', async () => {

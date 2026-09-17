@@ -6,7 +6,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
 import { BillingSettings } from '@/components/billing-settings'
 import { ApiKeySettings } from '@/components/api-key-settings'
-import { planCatalog, imagePack } from '@/lib/plans'
+import { planCatalog } from '@/lib/plans'
 
 const state = vi.hoisted(() => ({ userId: 'fixture-reader' as string | null }))
 vi.mock('@/components/account-session', () => ({
@@ -43,16 +43,13 @@ const billing = {
   configuration: {
     configured: true,
     mode: 'test',
-    checkoutEnabled: true,
-    packsEnabled: true
+    checkoutEnabled: true
   },
   plans: planCatalog,
-  imagePack,
   entitlements: {
     plan: 'plus',
     paidActions: true,
     summaryLimit: 100,
-    imageLimit: 10,
     allowanceWindow: {
       startsAt: '2026-09-01T00:00:00Z',
       endsAt: '2026-10-01T00:00:00Z'
@@ -62,18 +59,15 @@ const billing = {
     status: 'active',
     billingInterval: 'month',
     hasCustomer: true
-  },
-  imageBalance: { included: 8, purchased: 43 }
+  }
 }
 
 it('shows confirmed billing data without treating a hosted return query as payment', async () => {
-  window.history.replaceState(null, '', '/account/billing?pack=complete')
-  window.localStorage.setItem('passage:pack:fixture-reader', 'old-request-key')
+  window.history.replaceState(null, '', '/account/billing?checkout=complete')
   requests.mockResolvedValue(Response.json(billing))
   await act(async () => root.render(createElement(BillingSettings)))
-  expect(container.textContent).toContain('8 included and 43 purchased')
+  expect(container.textContent).toContain('100 summary generations per month.')
   expect(container.textContent).toContain('Annual · Save 20%')
-  expect(window.localStorage.getItem('passage:pack:fixture-reader')).toBeNull()
   expect(requests).toHaveBeenCalledTimes(1)
   expect(requests.mock.calls[0]![0]).toBe('/api/billing')
 })
@@ -177,8 +171,7 @@ it('keeps live Checkout disabled when the server launch gate is closed', async (
       configuration: {
         configured: true,
         mode: 'live',
-        checkoutEnabled: false,
-        packsEnabled: false
+        checkoutEnabled: false
       }
     })
   )
@@ -191,9 +184,9 @@ it('keeps live Checkout disabled when the server launch gate is closed', async (
     buttons.find((button) => button.textContent?.includes('Choose Pro'))!
       .disabled
   ).toBe(true)
-  expect(
-    buttons.find((button) => button.textContent?.includes('Buy 50'))!.disabled
-  ).toBe(true)
+  expect(buttons.some((button) => button.textContent?.includes('Buy 50'))).toBe(
+    false
+  )
 })
 
 it('ignores a late request failure from StrictMode cleanup', async () => {
@@ -205,10 +198,10 @@ it('ignores a late request failure from StrictMode cleanup', async () => {
     root.render(createElement(StrictMode, null, createElement(BillingSettings)))
   )
   expect(requests).toHaveBeenCalledTimes(2)
-  expect(container.textContent).toContain('8 included and 43 purchased')
+  expect(container.textContent).toContain('100 summary generations per month.')
   await act(async () => stale.reject(new Error('Stale billing failure')))
   expect(container.textContent).not.toContain('Stale billing failure')
-  expect(container.textContent).toContain('8 included and 43 purchased')
+  expect(container.textContent).toContain('100 summary generations per month.')
 })
 
 it('ignores a late response body after switching accounts', async () => {
@@ -218,16 +211,18 @@ it('ignores a late response body after switching accounts', async () => {
   requests.mockResolvedValueOnce(staleResponse).mockResolvedValueOnce(
     Response.json({
       ...billing,
-      imageBalance: { included: 2, purchased: 3 }
+      entitlements: { ...billing.entitlements, summaryLimit: 300 }
     })
   )
   await act(async () => root.render(createElement(BillingSettings)))
   state.userId = 'different-reader'
   await act(async () => root.render(createElement(BillingSettings)))
-  expect(container.textContent).toContain('2 included and 3 purchased')
+  expect(container.textContent).toContain('300 summary generations per month.')
   await act(async () => staleBody.resolve(billing))
-  expect(container.textContent).not.toContain('8 included and 43 purchased')
-  expect(container.textContent).toContain('2 included and 3 purchased')
+  expect(container.textContent).not.toContain(
+    '100 summary generations per month.'
+  )
+  expect(container.textContent).toContain('300 summary generations per month.')
 })
 
 it('shows current request errors and clears them after a successful refresh', async () => {
@@ -249,7 +244,7 @@ it('shows current request errors and clears them after a successful refresh', as
   expect(container.textContent).not.toContain(
     'Billing is temporarily unavailable.'
   )
-  expect(container.textContent).toContain('8 included and 43 purchased')
+  expect(container.textContent).toContain('100 summary generations per month.')
 })
 
 it('shows a newly created key only in the current account view and clears it on identity change', async () => {

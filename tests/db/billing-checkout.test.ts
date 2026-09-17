@@ -13,8 +13,7 @@ import {
 
 import {
   prepareSubscriptionCheckout,
-  subscriptionCheckoutParameters,
-  createImagePackCheckout
+  subscriptionCheckoutParameters
 } from '@/lib/billing-checkout'
 import { getDb, closeDatabase } from '@/lib/db'
 import { authUsers, billingAccounts, imageCreditGrants } from '@/lib/db/schema'
@@ -198,38 +197,5 @@ describe.skipIf(!testUrl)('PostgreSQL Checkout retry identity', () => {
       (await subscriptionCheckoutParameters(id, 'pro', 'year')).options
         .idempotencyKey
     ).not.toBe(plus.options.idempotencyKey)
-  })
-
-  it('retries a pack with the same zero-credit grant and stable Stripe request identity', async () => {
-    const id = await owner()
-    await prepareSubscriptionCheckout(id, 'plus', 'month')
-    await getDb()
-      .update(billingAccounts)
-      .set({
-        paidPlan: 'plus',
-        paidThrough: new Date(Date.now() + 86400_000),
-        allowanceAnchorAt: new Date(),
-        status: 'active'
-      })
-      .where(eq(billingAccounts.userId, id))
-    const key = randomUUID()
-    fixture.checkoutCreate.mockRejectedValueOnce(
-      new Error('Fixture transport interruption')
-    )
-    await expect(createImagePackCheckout(id, key)).rejects.toThrow(
-      'transport interruption'
-    )
-    expect(await createImagePackCheckout(id, key)).toEqual({
-      url: 'https://checkout.stripe.com/fixture'
-    })
-    expect(fixture.checkoutCreate.mock.calls[0]![1]).toEqual(
-      fixture.checkoutCreate.mock.calls[1]![1]
-    )
-    const grants = await getDb()
-      .select()
-      .from(imageCreditGrants)
-      .where(eq(imageCreditGrants.userId, id))
-    expect(grants).toHaveLength(1)
-    expect(grants[0]).toMatchObject({ allowance: 0, used: 0, reserved: 0 })
   })
 })

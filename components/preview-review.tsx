@@ -11,7 +11,6 @@ import {
   useSyncExternalStore
 } from 'react'
 
-import { ImageGenerationControls } from '@/components/image-generation-controls'
 import { useDesignArtwork } from '@/components/template-recipe-editor'
 import {
   defaultTemplateRecipe,
@@ -65,7 +64,8 @@ const getLegacySaveSnapshot = () => legacySaveSnapshot
 export type PreparedDraft = {
   draftId?: string
   revision?: number
-  status?: 'ready'
+  status?: 'ready' | 'published'
+  shareUrl?: string
   /** Capability to publish this reviewed snapshot and preview. */
   draftToken: string
   /** Service hosting the original conversation. */
@@ -80,8 +80,6 @@ export type PreparedDraft = {
   resolvedDesign?: ResolvedCardDesign | null
   artwork?: { background?: string; logo?: string }
   canCustomize?: boolean
-  imageJobId?: string
-  imageGenerationError?: string
 }
 
 export function PreviewReview({
@@ -133,9 +131,43 @@ export function PreviewReview({
   const cardPreview = validation.success ? validation.data : preview
   const [card, setCard] = useState<CardPreviewStatus | null>(null)
   const [cardAttempt, setCardAttempt] = useState(0)
-  const [shareUrl, setShareUrl] = useState('')
+  const [shareUrl, setShareUrl] = useState(draft.shareUrl ?? '')
   const [lockedAppearance, setLockedAppearance] =
-    useState<CardAppearance | null>(null)
+    useState<CardAppearance | null>(draft.shareUrl ? appearance : null)
+  useEffect(() => {
+    if (!draft.draftId || draft.status === 'published') return
+    let active = true
+    async function refreshPublishedState() {
+      if (document.visibilityState === 'hidden') return
+      try {
+        const saved = await draftRequest<SavedDraft>(
+          `/api/drafts/${draft.draftId}`
+        )
+        // Preserve local draft edits. Only the irreversible publish transition
+        // replaces the editor when restoring this page from browser history.
+        if (!active || saved.status !== 'published' || !saved.shareUrl) return
+        setPreview(saved.preview)
+        setDesign(saved.design ?? null)
+        setFrozenDesign(saved.resolvedDesign ?? null)
+        setLockedAppearance(saved.appearance)
+        setShareUrl(saved.shareUrl)
+        setError('')
+      } catch {
+        // A foreground read can recover on the next visit. Mutation endpoints
+        // independently reject changes to a published passage.
+      }
+    }
+    void refreshPublishedState()
+    window.addEventListener('pageshow', refreshPublishedState)
+    window.addEventListener('focus', refreshPublishedState)
+    document.addEventListener('visibilitychange', refreshPublishedState)
+    return () => {
+      active = false
+      window.removeEventListener('pageshow', refreshPublishedState)
+      window.removeEventListener('focus', refreshPublishedState)
+      document.removeEventListener('visibilitychange', refreshPublishedState)
+    }
+  }, [draft.draftId, draft.status])
   const headingRef = useRef<HTMLHeadingElement>(null)
   // Keep the approved style fixed through publishing, including preference
   // changes arriving from another tab.
@@ -150,11 +182,8 @@ export function PreviewReview({
       : null
   }, [design, frozenDesign, activeAppearance])
   const media = useDesignArtwork(
-    design?.recipe ?? defaultTemplateRecipe(templateId),
-    design?.generatedImage?.assetId
+    design?.recipe ?? defaultTemplateRecipe(templateId)
   )
-  const backgroundPending =
-    design?.recipe.background.mode === 'generated' && !design.generatedImage
   const currentCard =
     card?.appearance === activeAppearance && card.attempt === cardAttempt
       ? card
@@ -171,7 +200,6 @@ export function PreviewReview({
     cardReady &&
     validation.success &&
     (!validDesign || validDesign.success) &&
-    !backgroundPending &&
     (!design || draft.canCustomize === true)
 
   useEffect(() => {
@@ -381,27 +409,6 @@ export function PreviewReview({
               registered={registered}
             />
           )}
-          {draft.draftId &&
-            autosave &&
-            design?.recipe.background.mode === 'generated' && (
-              <ImageGenerationControls
-                draftId={draft.draftId}
-                initialJobId={draft.imageJobId}
-                initialError={draft.imageGenerationError}
-                hasImage={Boolean(design.generatedImage)}
-                disabled={pending || generating || save.status === 'conflict'}
-                canGenerate={draft.canCustomize === true}
-                flush={autosave.flush}
-                getSave={autosave.getSnapshot}
-                onAccept={acceptDraft}
-              />
-            )}
-          {backgroundPending && (
-            <p className='draft-status' role='status'>
-              Your text is ready. Generate a background or choose a curated or
-              uploaded image before publishing.
-            </p>
-          )}
           {design && !draft.canCustomize && (
             <Alert>
               <AlertDescription>
@@ -431,7 +438,7 @@ export function PreviewReview({
                   <div className='account-actions'>
                     {save.status === 'conflict' ? (
                       <Button asChild size='sm' variant='outline'>
-                        <a href={`/create?draft=${draft.draftId}`}>
+                        <a href={`/create?passage=${draft.draftId}`}>
                           Reload saved draft
                         </a>
                       </Button>
@@ -454,7 +461,7 @@ export function PreviewReview({
               Your draft is saved for this browser.{' '}
               <a
                 className='auth-text-link'
-                href={authHref('/sign-up', `/create?draft=${draft.draftId}`)}
+                href={authHref('/sign-up', `/create?passage=${draft.draftId}`)}
               >
                 Create an account
               </a>{' '}
@@ -541,7 +548,7 @@ export function PreviewReview({
               <a className='auth-text-link' href='/account/billing'>
                 Customize your brand
               </a>{' '}
-              with uploaded artwork, saved templates and image generation.
+              with uploaded artwork and saved templates.
             </p>
           )}
           {media.error && (

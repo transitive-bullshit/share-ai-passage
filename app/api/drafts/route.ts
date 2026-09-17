@@ -1,7 +1,5 @@
 import { z } from 'zod'
 import { start } from 'workflow/api'
-import { startInitialDraftImage } from '@/lib/initial-image'
-import { generatePassageBackground } from '@/workflows/generate-background'
 import { preparePassage } from '@/workflows/prepare-passage'
 import { accountRequest } from '@/lib/account-http'
 import { createPendingSavedDraft } from '@/lib/account-drafts'
@@ -34,8 +32,6 @@ export function POST(request: Request) {
       await ensureDraftEnqueued(actor, draft.draftId, (id) =>
         start(preparePassage, [id])
       )
-    return startInitialDraftImage(actor, draft, (id) =>
-      start(generatePassageBackground, [id])
-    )
+    return draft
   })
 }

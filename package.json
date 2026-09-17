@@ -39,7 +39,6 @@
     "start:prod": "node --import tsx scripts/production.ts start",
     "db:migrate:prod": "node --import tsx scripts/production.ts migrate",
     "db:check:prod": "node --import tsx scripts/production.ts check",
-    "reconcile:image": "tsx scripts/reconcile-image.ts",
     "reconcile:billing": "tsx scripts/reconcile-billing.ts",
     "reconcile:operations": "tsx scripts/reconcile-operations.ts",
     "cleanup:assets": "tsx scripts/cleanup-assets.ts"

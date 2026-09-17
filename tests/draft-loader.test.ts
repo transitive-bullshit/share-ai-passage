@@ -6,7 +6,6 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
 import { DraftLoader } from '@/components/draft-loader'
 import type { SavedDraft } from '@/lib/draft-client'
-import { defaultTemplateRecipe } from '@/lib/paid-design'
 
 let container: HTMLDivElement
 let root: Root
@@ -124,7 +123,7 @@ it('restores quota guidance from a saved draft, stops polling, and keeps cached 
   )
   expect(
     container.querySelector(
-      'a[href="/sign-up?returnTo=%2Fcreate%3Fdraft%3Downed-draft"]'
+      'a[href="/sign-up?returnTo=%2Fcreate%3Fpassage%3Downed-draft"]'
     )
   ).not.toBeNull()
   expect(container.textContent).not.toContain('Its progress is saved.')
@@ -200,57 +199,6 @@ it('retains a resume explanation if the status response has no saved error', asy
   expect(container.textContent).toContain(message)
 })
 
-const readyImageDraft: SavedDraft = {
-  draftId: 'owned-draft',
-  status: 'ready',
-  revision: 0,
-  draftToken: 'saved-token',
-  provider: 'chatgpt',
-  sourceUrl: 'https://chatgpt.com/share/fixture',
-  preview: { title: 'The saved summary', highlights: [] },
-  appearance: { templateId: 'margin-notes' },
-  canCustomize: true,
-  design: {
-    version: 1,
-    recipe: { ...defaultTemplateRecipe(), background: { mode: 'generated' } },
-    fromTemplate: null,
-    generatedImage: null
-  }
-}
-
-it('resumes a missing initial background after the original response was lost', async () => {
-  const started = { ...readyImageDraft, imageJobId: 'saved-initial-image' }
-  fetchMock.mockResolvedValueOnce(response(readyImageDraft))
-  fetchMock.mockResolvedValueOnce(response(started))
-  await render()
-  expect(fetchMock).toHaveBeenCalledTimes(2)
-  expect(fetchMock).toHaveBeenLastCalledWith(
-    '/api/drafts/owned-draft/resume',
-    expect.objectContaining({ method: 'POST' })
-  )
-  expect(onReady).toHaveBeenCalledWith(started)
-})
-
-it('does not automatically generate a background selected by a later edit', async () => {
-  const edited = { ...readyImageDraft, revision: 2 }
-  fetchMock.mockResolvedValueOnce(response(edited))
-  await render()
-  expect(fetchMock).toHaveBeenCalledTimes(1)
-  expect(onReady).toHaveBeenCalledWith(edited)
-})
-
-it('keeps the saved summary usable if initial-background resumption is interrupted', async () => {
-  fetchMock.mockResolvedValueOnce(response(readyImageDraft))
-  fetchMock.mockRejectedValueOnce(new Error('Lost response'))
-  await render()
-  expect(onReady).toHaveBeenCalledWith(
-    expect.objectContaining({
-      ...readyImageDraft,
-      imageGenerationError: expect.any(String)
-    })
-  )
-})
-
 it('keeps spend-pause guidance and retry controls without promising a monthly restart', async () => {
   const message =
     'New summaries are paused while outstanding work is reconciled.'
@@ -269,4 +217,17 @@ it('keeps spend-pause guidance and retry controls without promising a monthly re
     'New summaries are available after'
   )
   expect(container.querySelector('a[href^="/sign-up"]')).toBeNull()
+})
+
+it('loads the persisted published state instead of reopening an editable draft', async () => {
+  const published = {
+    draftId: 'owned-draft',
+    status: 'published',
+    shareUrl: 'https://passage.example/claude/published'
+  }
+  fetchMock.mockResolvedValueOnce(response(published))
+  await render()
+  expect(onReady).toHaveBeenCalledWith(published)
+  await act(async () => vi.advanceTimersByTimeAsync(12_000))
+  expect(fetchMock).toHaveBeenCalledTimes(1)
 })

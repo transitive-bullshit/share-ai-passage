@@ -6,7 +6,8 @@ import type { GeneratedPreview, Provider } from '@/lib/domain'
 export type SavedDraft = {
   draftId: string
   revision: number
-  status: 'ready'
+  status: 'ready' | 'published'
+  shareUrl?: string
   draftToken: string
   provider: Provider
   sourceUrl: string
@@ -16,8 +17,6 @@ export type SavedDraft = {
   resolvedDesign?: ResolvedCardDesign | null
   artwork?: { background?: string; logo?: string }
   canCustomize?: boolean
-  imageJobId?: string
-  imageGenerationError?: string
 }
 export type PendingDraft = {
   draftId: string
@@ -35,6 +34,9 @@ export type PendingDraft = {
   }
 }
 export type DraftResult = SavedDraft | PendingDraft
+export function isSavedDraft(result: DraftResult): result is SavedDraft {
+  return result.status === 'ready' || result.status === 'published'
+}
 export type DraftOperation = {
   id: string
   status:

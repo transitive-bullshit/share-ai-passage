@@ -286,7 +286,7 @@ it('redirects landing-page creation to the allocated draft without waiting for i
   await act(async () => root.render(createElement(ShareFlow)))
   await source(readyDraft.sourceUrl)
   await submit()
-  expect(mocks.push).toHaveBeenCalledWith('/create?draft=allocated-draft')
+  expect(mocks.push).toHaveBeenCalledWith('/create?passage=allocated-draft')
   expect(requests).toHaveBeenCalledTimes(1)
   expect(preparationRecovery.getSnapshot()).toBeNull()
   expect(container.textContent).not.toContain('Saved draft ready')

@@ -181,7 +181,7 @@ export function ShareFlow({
     window.history.replaceState(
       null,
       '',
-      `/create?draft=${encodeURIComponent(result.draftId)}`
+      `/create?passage=${encodeURIComponent(result.draftId)}`
     )
   }, [])
 
@@ -250,17 +250,17 @@ export function ShareFlow({
       setRetry(null)
       if (window.location.pathname !== '/create') {
         preparationRecovery.clear()
-        router.push(`/create?draft=${encodeURIComponent(result.draftId)}`)
+        router.push(`/create?passage=${encodeURIComponent(result.draftId)}`)
         return
       }
-      if (result.status === 'ready') showDraft(result)
+      if ('preview' in result) showDraft(result)
       else {
         setLoadingId(result.draftId)
         preparationRecovery.clear()
         window.history.replaceState(
           null,
           '',
-          `/create?draft=${encodeURIComponent(result.draftId)}`
+          `/create?passage=${encodeURIComponent(result.draftId)}`
         )
       }
     } catch (err) {
@@ -277,7 +277,7 @@ export function ShareFlow({
         window.history.replaceState(
           null,
           '',
-          `/create?draft=${encodeURIComponent(err.details.draftId)}`
+          `/create?passage=${encodeURIComponent(err.details.draftId)}`
         )
       }
       if (err instanceof ClientRequestError && err.retryAt && !resetAt) {

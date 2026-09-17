@@ -30,30 +30,7 @@ it('preserves transparent logos while removing metadata', async () => {
     .toBuffer({ resolveWithObject: true })
   expect(data[3]).toBeLessThan(100)
 })
-it('pins a bounded metadata-free style reference without enlargement', async () => {
-  const original = await sharp({
-    create: { width: 1800, height: 1400, channels: 3, background: '#345678' }
-  })
-    .jpeg()
-    .toBuffer()
-  const normalized = await normalizeUploadedImage(
-    original,
-    'reference',
-    'image/jpeg'
-  )
-  expect(normalized.width).toBe(1024)
-  expect(normalized.height).toBeLessThan(1024)
-  expect(normalized.bytes.length).toBeLessThanOrEqual(1_000_000)
-  const tiny = await sharp({
-    create: { width: 20, height: 10, channels: 3, background: '#fff' }
-  })
-    .png()
-    .toBuffer()
-  expect(await normalizeUploadedImage(tiny, 'reference')).toMatchObject({
-    width: 20,
-    height: 10
-  })
-})
+
 it('rejects invalid signatures, mismatched declared type and excessive bytes', async () => {
   await expect(
     normalizeUploadedImage(Buffer.from('<svg onload="alert(1)"></svg>'), 'logo')

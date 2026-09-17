@@ -67,8 +67,7 @@ export function entitlementsFromBilling(
       paidActions && state?.allowanceAnchorAt
         ? anchoredAllowanceWindow(state.allowanceAnchorAt, now)
         : utcUsagePeriod(now),
-    summaryLimit: planCatalog[plan].summaryGenerations,
-    imageLimit: planCatalog[plan].imageGenerations
+    summaryLimit: planCatalog[plan].summaryGenerations
   }
 }
 

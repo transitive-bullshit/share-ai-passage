@@ -85,7 +85,6 @@ const accountSettings = [
   'STRIPE_PLUS_ANNUAL_PRICE_ID',
   'STRIPE_PRO_MONTHLY_PRICE_ID',
   'STRIPE_PRO_ANNUAL_PRICE_ID',
-  'STRIPE_IMAGE_PACK_PRICE_ID',
   'STRIPE_LIVE_CHECKOUT_ENABLED',
   'R2_ACCOUNT_ID',
   'R2_ACCESS_KEY_ID',
@@ -99,11 +98,7 @@ const accountSettings = [
   'S3_API_ENDPOINT',
   'S3_BUCKET_NAME',
   'S3_PRIVATE_BUCKET_NAME',
-  'S3_PUBLIC_URL',
-  'IMAGE_AI_MODEL',
-  'IMAGE_GENERATION_ENABLED',
-  'IMAGE_AI_MONTHLY_BUDGET_USD',
-  'IMAGE_GENERATION_CONCURRENCY'
+  'S3_PUBLIC_URL'
 ]
 
 function productionAppUrl(env: NodeJS.ProcessEnv) {
@@ -226,9 +221,7 @@ describe('explicit production configuration', () => {
         STRIPE_SECRET_KEY: 'sk_test_explicit_fixture',
         STRIPE_UPGRADE_PORTAL_CONFIGURATION_ID: 'bpc_explicit_fixture',
         STRIPE_LIVE_CHECKOUT_ENABLED: 'false',
-        R2_SECRET_ACCESS_KEY: 'explicit-storage-fixture',
-        IMAGE_GENERATION_ENABLED: '0',
-        IMAGE_AI_MONTHLY_BUDGET_USD: '20'
+        R2_SECRET_ACCESS_KEY: 'explicit-storage-fixture'
       }
     },
     {

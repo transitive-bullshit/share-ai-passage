@@ -14,8 +14,6 @@ Usage:
   passage.mjs share <url> [--out draft.json] [--yes] [--json] [--base-url URL]
   passage.mjs resume <draft.json> [--json]
   passage.mjs status <draft.json> [--json]
-  passage.mjs image <draft.json> [--json]
-  passage.mjs apply-image <draft.json> [--json]
   passage.mjs <url> [options]       Alias for share
 
 prepare prints a generated title and highlights without publishing.
@@ -35,8 +33,7 @@ Draft files contain a private publication token. Their preview is read-only.
 Requests time out after 60 seconds and do not follow redirects.
 Set PASSAGE_API_KEY to use your account defaults and allowances. The key is bound
 to PASSAGE_URL (or the default server). Authenticated prepare/share require --out.
-resume continues a saved operation; status only retrieves saved state. image is
-an explicit paid image generation; apply-image applies its completed result.
+resume continues a saved preparation; status only retrieves saved passage state.
 Exit codes: 0 success or unpublished preview, 1 API/network/file error, 2 invalid input.
 `
 let apiKey = ''
@@ -91,8 +88,6 @@ function parseOptions(args) {
       'share',
       'resume',
       'status',
-      'image',
-      'apply-image'
     ].includes(command) ||
     positional.length !== 1
   )
@@ -343,14 +338,12 @@ async function loadDraft(file) {
       !uuid.test(value.requestKey || '') ||
       typeof value.sourceUrl !== 'string' ||
       typeof value.baseUrl !== 'string' ||
-      (value.draftId && !uuid.test(value.draftId)) ||
-      (value.imageJobId && !uuid.test(value.imageJobId)) ||
-      (value.imageRequestKey && !uuid.test(value.imageRequestKey))
+      (value.draftId && !uuid.test(value.draftId))
     )
       throw new CliError('The saved account draft is invalid.', 2)
     baseOrigin(value.baseUrl)
     parseUrl(value.sourceUrl, 'The draft source URL')
-    if (value.status === 'prepared') {
+    if (value.status === 'prepared' || value.status === 'published') {
       validatePrepared(value, 2)
       if (
         !value.draftId ||
@@ -384,13 +377,10 @@ async function publishDraft(draft) {
     throw new CliError('Set PASSAGE_API_KEY to publish this account draft.', 2)
   if (
     draft.version === 2 &&
-    (draft.status !== 'prepared' ||
-      draft.imageJobId ||
-      draft.needsImage ||
-      draft.imageGenerationError)
+    !['prepared', 'published'].includes(draft.status)
   )
     throw new CliError(
-      'Resume and review the saved draft before publishing. Its required image is not ready.'
+      'Resume and review the saved passage before publishing.'
     )
   const result =
     draft.version === 2
@@ -437,21 +427,15 @@ function accountResult(saved, result) {
   if (typeof result.draftId !== 'string')
     throw new CliError('The server did not return a saved draft ID.')
   const next = { ...saved, draftId: result.draftId, status: 'pending' }
-  if (result.status === 'ready') {
+  if (result.status === 'ready' || result.status === 'published') {
     Object.assign(next, validatePrepared(result), {
-      status: 'prepared',
+      status: result.status === 'published' ? 'published' : 'prepared',
+      shareUrl: result.shareUrl,
       revision: result.revision
     })
     if (!Number.isInteger(next.revision) || next.revision < 0)
       throw new CliError('The server returned an invalid draft revision.')
-    next.needsImage =
-      result.design?.recipe?.background?.mode === 'generated' &&
-      !result.design.generatedImage
-    if (!next.needsImage) delete next.imageGenerationError
   }
-  if (result.imageJobId) next.imageJobId = result.imageJobId
-  if (result.imageGenerationError)
-    next.imageGenerationError = result.imageGenerationError
   if (result.generationBlock) next.generationBlock = result.generationBlock
   else delete next.generationBlock
   if (result.errorMessage) next.errorMessage = result.errorMessage
@@ -494,11 +478,6 @@ async function continueAccountDraft(saved, file, command) {
     )
   if (!draft.draftId) {
     if (command === 'status') return draft
-    if (command !== 'resume')
-      throw new CliError(
-        'Resume this saved preparation before generating or applying an image.',
-        2
-      )
     draft = accountResult(
       draft,
       await post(draft.baseUrl, '/api/drafts', {
@@ -511,99 +490,11 @@ async function continueAccountDraft(saved, file, command) {
     const path = `/api/drafts/${draft.draftId}`
     const response =
       command === 'resume' &&
-      (draft.status !== 'prepared' ||
-        (!draft.imageJobId && !draft.imageRequestKey))
+      !['prepared', 'published'].includes(draft.status)
         ? await post(draft.baseUrl, `${path}/resume`, {})
         : await post(draft.baseUrl, path, undefined, 'GET')
     draft = accountResult(draft, response)
   }
-  if (command === 'image') {
-    if (draft.status !== 'prepared')
-      throw new CliError(
-        'Wait for the saved summary before generating an image.'
-      )
-    if (
-      draft.imageJobId &&
-      !['failed', 'cancelled', 'succeeded'].includes(draft.imageStatus)
-    )
-      throw new CliError(
-        'An image is already pending. Use resume or status to retrieve that operation.'
-      )
-    if (
-      !draft.imageRequestKey ||
-      draft.imageJobId ||
-      draft.imageStatus === 'succeeded'
-    ) {
-      draft.imageRequestKey = randomUUID()
-      draft.imageRevision = draft.revision
-      delete draft.imageJobId
-      delete draft.imageStatus
-    }
-    delete draft.imageGenerationError
-    await updateAccountFile(file, draft)
-    const job = await post(
-      draft.baseUrl,
-      `/api/drafts/${draft.draftId}/image`,
-      { revision: draft.imageRevision, requestKey: draft.imageRequestKey }
-    )
-    draft.imageJobId = job.id
-    draft.imageStatus = job.status
-    await updateAccountFile(file, draft)
-  } else if (
-    command === 'resume' &&
-    draft.imageRequestKey &&
-    !draft.imageJobId &&
-    draft.imageStatus !== 'succeeded'
-  ) {
-    const job = await post(
-      draft.baseUrl,
-      `/api/drafts/${draft.draftId}/image`,
-      { revision: draft.imageRevision, requestKey: draft.imageRequestKey }
-    )
-    draft.imageJobId = job.id
-  }
-  if (!draft.imageJobId && draft.needsImage) {
-    const operations = await post(
-      draft.baseUrl,
-      `/api/drafts/${draft.draftId}/operations`,
-      undefined,
-      'GET'
-    )
-    if (operations.images?.[0]?.id) draft.imageJobId = operations.images[0].id
-  }
-  if (draft.imageJobId) {
-    const job = await post(
-      draft.baseUrl,
-      `/api/image-jobs/${draft.imageJobId}`,
-      undefined,
-      'GET'
-    )
-    draft.imageStatus = job.status
-    if (job.error) draft.imageGenerationError = job.error
-    if (command === 'apply-image') {
-      if (job.status !== 'succeeded' || (!job.applied && !job.canApply))
-        throw new CliError('This image is not available to apply.')
-      const applied = await post(
-        draft.baseUrl,
-        `/api/image-jobs/${draft.imageJobId}/apply`,
-        { revision: saved.revision }
-      )
-      draft = accountResult(draft, applied.draft)
-      delete draft.imageJobId
-    } else if (job.applied) {
-      draft = accountResult(
-        draft,
-        await post(
-          draft.baseUrl,
-          `/api/drafts/${draft.draftId}`,
-          undefined,
-          'GET'
-        )
-      )
-      delete draft.imageJobId
-    }
-  } else if (command === 'apply-image')
-    throw new CliError('There is no saved image operation to apply.', 2)
   return updateAccountFile(file, draft)
 }
 
@@ -618,7 +509,7 @@ async function main() {
   if (apiKey && /\s/u.test(apiKey))
     throw new CliError('PASSAGE_API_KEY must contain one API key.', 2)
 
-  if (['resume', 'status', 'image', 'apply-image'].includes(options.command)) {
+  if (['resume', 'status'].includes(options.command)) {
     if (!apiKey)
       throw new CliError('Set PASSAGE_API_KEY to access account drafts.', 2)
     const draft = await loadDraft(options.target)
@@ -633,7 +524,7 @@ async function main() {
     else if (result.preview) {
       displayPreview(result)
       process.stdout.write(
-        `${result.imageJobId ? 'Image generation is pending.' : 'Draft retrieved. Nothing has been published.'}\n`
+        `${result.status === 'published' ? `Published: ${safeText(result.shareUrl)}` : 'Passage retrieved. Nothing has been published.'}\n`
       )
     } else
       process.stdout.write(
@@ -697,12 +588,11 @@ async function main() {
   }
 
   if (publish) {
-    if (draft.version === 2 && draft.imageJobId) {
+    if (draft.version === 2 && draft.status === 'pending') {
       const deadline = Date.now() + 5 * 60_000
-      while (draft.imageJobId && Date.now() < deadline) {
+      while (draft.status === 'pending' && !draft.errorMessage && !draft.generationBlock && Date.now() < deadline) {
         await new Promise((resolve) => setTimeout(resolve, 3000))
         draft = await continueAccountDraft(draft, options.out, 'status')
-        if (['failed', 'cancelled'].includes(draft.imageStatus)) break
       }
     }
     const result = await publishDraft(draft)

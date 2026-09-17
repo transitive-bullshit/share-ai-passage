@@ -10,6 +10,7 @@ import { clientErrorMessage } from '@/lib/client-request'
 import {
   draftRequest,
   DraftRequestError,
+  isSavedDraft,
   type DraftResult,
   type PendingDraft,
   type SavedDraft
@@ -53,32 +54,8 @@ export function DraftLoader({
         )
         if (!active) return
         failures = 0
-        if (result.status === 'ready') {
-          let ready = result
-          if (
-            result.revision === 0 &&
-            result.design?.recipe.background.mode === 'generated' &&
-            !result.design.generatedImage &&
-            !result.imageJobId
-          ) {
-            // The original request may have saved its summary just before the
-            // handler stopped. Resume that same template request explicitly;
-            // the server deduplicates its image against the background workflow.
-            try {
-              const resumed = await draftRequest<DraftResult>(
-                `/api/drafts/${encodeURIComponent(draftId)}/resume`,
-                'POST',
-                {}
-              )
-              if (resumed.status === 'ready') ready = resumed
-            } catch (err) {
-              ready = {
-                ...result,
-                imageGenerationError: clientErrorMessage(err)
-              }
-            }
-          }
-          if (active) onReady(ready)
+        if (isSavedDraft(result)) {
+          onReady(result)
         } else {
           setStatus(result.generationBlock ? 'blocked' : result.status)
           setPreparationActive(result.preparationActive === true)
@@ -120,7 +97,7 @@ export function DraftLoader({
         'POST',
         {}
       )
-      if (result.status === 'ready') onReady(result)
+      if (isSavedDraft(result)) onReady(result)
       else {
         setStatus(result.generationBlock ? 'blocked' : result.status)
         setPreparationActive(result.preparationActive === true)
@@ -144,7 +121,7 @@ export function DraftLoader({
           : status === 'preparing'
             ? 'Your passage is being prepared.'
             : status === 'loading'
-              ? 'Opening your draft…'
+              ? 'Opening your passage…'
               : status === 'unauthorized'
                 ? 'Sign in to open this draft.'
                 : 'Your draft needs attention.'}
@@ -182,14 +159,14 @@ export function DraftLoader({
         )}
         {status === 'blocked' && generationBlock?.canSignUp && (
           <Button asChild>
-            <a href={authHref('/sign-up', `/create?draft=${draftId}`)}>
+            <a href={authHref('/sign-up', `/create?passage=${draftId}`)}>
               Create a free account
             </a>
           </Button>
         )}
         {status === 'unauthorized' ? (
           <Button asChild>
-            <a href={authHref('/sign-in', `/create?draft=${draftId}`)}>
+            <a href={authHref('/sign-in', `/create?passage=${draftId}`)}>
               Sign in
             </a>
           </Button>

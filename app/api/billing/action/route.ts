@@ -2,7 +2,6 @@ import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { billingRequest } from '@/lib/billing-http'
-import { createImagePackCheckout } from '@/lib/billing-checkout'
 import {
   billingConfiguration,
   requireBillingCheckout
@@ -31,8 +30,7 @@ const actionSchema = z.discriminatedUnion('action', [
     plan: z.enum(['plus', 'pro']),
     interval: z.enum(['month', 'year'])
   }),
-  z.strictObject({ action: z.enum(['cancel', 'restore', 'portal']) }),
-  z.strictObject({ action: z.literal('pack'), requestKey: z.uuid() })
+  z.strictObject({ action: z.enum(['cancel', 'restore', 'portal']) })
 ])
 
 export function POST(request: Request) {
@@ -40,8 +38,6 @@ export function POST(request: Request) {
     const parsed = actionSchema.safeParse(await readJson(request))
     if (!parsed.success) throw new AppError('Choose a billing action.')
     const input = parsed.data
-    if (input.action === 'pack')
-      return createImagePackCheckout(userId, input.requestKey)
     if (!billingConfiguration().configured)
       throw new AppError('Billing is not configured.', 503, undefined, {
         code: 'BILLING_UNAVAILABLE'

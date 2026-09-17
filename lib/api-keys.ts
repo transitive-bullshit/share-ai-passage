@@ -2,7 +2,7 @@ import { apiKey } from '@better-auth/api-key'
 
 export const cliKeyConfig = 'passage-cli'
 export const cliPermissions = {
-  passage: ['create', 'drafts', 'jobs', 'usage', 'defaults']
+  passage: ['create', 'drafts', 'usage', 'defaults']
 }
 
 export function createApiKeyPlugin() {
@@ -58,14 +58,5 @@ export function apiKeyPermission(request: Request): string | null {
     )
   )
     return 'drafts'
-  if (method === 'POST' && new RegExp(`^/api/drafts/${id}/image$`).test(path))
-    return 'jobs'
-  if (method === 'GET' && new RegExp(`^/api/image-jobs/${id}$`).test(path))
-    return 'jobs'
-  if (
-    method === 'POST' &&
-    new RegExp(`^/api/image-jobs/${id}/apply$`).test(path)
-  )
-    return 'jobs'
   return null
 }

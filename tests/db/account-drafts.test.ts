@@ -18,6 +18,7 @@ import {
   prepareDraftInBackground,
   deleteOwnedPublication,
   deleteSavedDraft,
+  applyDraftGeneration,
   editSavedDraft,
   publishSavedDraft,
   readSavedDraft,
@@ -505,6 +506,57 @@ describe.skipIf(!testUrl)(
       expect(upstream.suggestPreview).toHaveBeenCalledTimes(1)
     })
 
+    it('reads published state, rejects stale editing without spending, and revises into a separate draft', async () => {
+      const owner = await actor()
+      const draft = await readyDraft(owner)
+      const published = await publishSavedDraft(
+        owner,
+        draft.draftId,
+        draft.revision
+      )
+      const current = await readSavedDraft(owner, draft.draftId)
+      expect(current).toMatchObject({
+        status: 'published',
+        draftId: draft.draftId,
+        shareUrl: published.shareUrl,
+        preview: draft.preview
+      })
+      const before = await getSummaryUsage(
+        owner.subjectKey,
+        owner.allowance,
+        now
+      )
+      await expect(
+        editSavedDraft(owner, draft.draftId, {
+          revision: draft.revision,
+          preview: rerolled,
+          appearance: DEFAULT_CARD_APPEARANCE
+        })
+      ).rejects.toMatchObject({ status: 409 })
+      await expect(
+        regenerateSavedDraft(owner, draft.draftId, draft.revision, randomUUID())
+      ).rejects.toMatchObject({ status: 409 })
+      await expect(
+        applyDraftGeneration(owner, draft.draftId, draft.revision, randomUUID())
+      ).rejects.toMatchObject({ status: 409 })
+      expect(
+        await getSummaryUsage(owner.subjectKey, owner.allowance, now)
+      ).toEqual(before)
+      expect(
+        await publishSavedDraft(owner, draft.draftId, draft.revision)
+      ).toEqual(published)
+      const revision = await reviseOwnedPublication(
+        owner,
+        published.publicationId,
+        randomUUID()
+      )
+      expect(revision.status).toBe('ready')
+      expect(revision.draftId).not.toBe(draft.draftId)
+      expect((await readSavedDraft(owner, draft.draftId)).status).toBe(
+        'published'
+      )
+    })
+
     it('imports matching guest and account publications without collapsing either namespace', async () => {
       const guest = await actor(true)
       const account = await actor()
@@ -578,12 +630,9 @@ describe.skipIf(!testUrl)(
         (await getPublication('chatgpt', accountPublished.publicationId))
           ?.disabled
       ).toBe(false)
-      const republished = await publishSavedDraft(
-        account,
-        guestDraft.draftId,
-        guestDraft.revision
-      )
-      expect(republished.publicationId).not.toBe(guestPublished.publicationId)
+      await expect(
+        publishSavedDraft(account, guestDraft.draftId, guestDraft.revision)
+      ).rejects.toMatchObject({ status: 410 })
       expect(
         (await getPublication('chatgpt', guestPublished.publicationId))
           ?.disabled
@@ -890,10 +939,14 @@ describe.skipIf(!testUrl)(
         .where(eq(publications.id, owned.publicationId))
       expect(retried?.disabledAt).toEqual(deleted?.disabledAt)
       expect(retried?.deletedAt).toEqual(deleted?.deletedAt)
+      await expect(
+        publishSavedDraft(owner, draft.draftId, draft.revision)
+      ).rejects.toMatchObject({ status: 410 })
+      const newDraft = await readyDraft(owner, url)
       const republished = await publishSavedDraft(
         owner,
-        draft.draftId,
-        draft.revision
+        newDraft.draftId,
+        newDraft.revision
       )
       expect(republished.publicationId).not.toBe(owned.publicationId)
       await deleteAccountData(owner.userId)

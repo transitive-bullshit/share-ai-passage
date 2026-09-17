@@ -92,17 +92,11 @@ Register the HTTPS origin above as the development Google client's authorized Ja
 
 ## Paid-feature development
 
-Gate A is approved; Phase 2 is implemented and still awaiting Gate B. No accounts/paid production migration or deployment has run. Development Stripe/R2 setup, the approved 25-call image qualification batch and representative service and browser checks are complete; see the [review](docs/PAID_REVIEW.md) for the verified scope and remaining hosted and production gates. The [handoff](docs/ACCOUNTS_PAID_FEATURES_PLAN.md) and [measured economics](docs/research/PHASE2_MEASURED_ECONOMICS.md) record the plan and cost evidence. Ordinary tests make no paid provider requests.
+Gate A is approved. Phase 2 provides Stripe subscriptions, uploaded backgrounds/logos, reusable templates and branded share cards; Gate B still precedes production launch. See the [review](docs/PAID_REVIEW.md), [handoff](docs/ACCOUNTS_PAID_FEATURES_PLAN.md) and [production guide](docs/PRODUCTION.md#paid-services-and-launch-gate).
 
-Use a migrated development database and the environment-specific values in [.env.example](.env.example):
+Configure the standard Stripe sandbox subscription prices and private/public R2 buckets from `.env.example`. Image generation and image packs were removed on September 17; create artwork in an external app and upload it in the template editor. Ordinary tests never make paid provider requests.
 
-- Stripe sandbox checkout requires `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` and all four subscription price IDs; packs also require `STRIPE_IMAGE_PACK_PRICE_ID`. Keep `STRIPE_LIVE_CHECKOUT_ENABLED=false` until Gate B.
-- R2 accepts `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_API_ENDPOINT`, `S3_BUCKET_NAME` (public cards), a required different `S3_PRIVATE_BUCKET_NAME`, and `S3_PUBLIC_URL`. For US jurisdiction use `https://<account-id>.us.r2.cloudflarestorage.com`; both buckets must use that jurisdiction. Existing `R2_*` names remain supported and take precedence per setting. `R2_ACCOUNT_ID` is optional when the endpoint identifies the account. Uploads, references and draft artwork remain private. The public bucket can use its `r2.dev` URL during development while its custom domain is pending; production delivery needs the custom domain. See the [R2 setup and alias mapping](docs/PRODUCTION.md#r2).
-- Enabling new image work requires `IMAGE_GENERATION_ENABLED=1` and an explicit positive `IMAGE_AI_MONTHLY_BUDGET_USD`. `IMAGE_AI_MODEL` pins the model snapshot; `IMAGE_GENERATION_CONCURRENCY` defaults to 4. Images use `OPENAI_API_KEY`. The owner authorized real API spending only on protected Preview: $5/month for images with concurrency 1 and `SUMMARY_AI_MONTHLY_BUDGET_USD=1` for summaries across Free and paid accounts. Production launch remains gated. Monetary reservations are operational estimates, not provider-enforced caps; accepted jobs retain their saved configuration.
-
-An optional positive `SUMMARY_AI_MONTHLY_BUDGET_USD` applies one shared UTC-month summary ceiling to every plan, including Stripe sandbox subscribers. It uses the existing reservation/cost ledger, counts uncertain reservations and billed failures, and tightening it applies to the current month. Unset leaves the default $25 Free service budget and paid per-account spending protection unchanged. Preview requires Vercel authentication; Stripe's sandbox webhook uses a privately stored automation bypass and still requires its normal signature. Sign into Vercel first when testing Passage as a guest or another account.
-
-The normal Next.js server includes `withWorkflow()` and its generated routes. A local queue/step roundtrip passed without a provider call; managed Vercel Workflow, R2 persistence and cloud charges still require hosted checks. See [production guidance](docs/PRODUCTION.md#paid-services-and-launch-gate) for deployment configuration and [generation reconciliation](docs/GENERATION_RECONCILIATION.md) for safe status, recovery and explicit outcome/cost repairs. Paid submission never retries automatically.
+Vercel Workflow durably prepares source conversation text and its AI summary. Neon stores the passage identity before kickoff; `/create?passage=<id>` follows its current preparing, failed, editable or published state. Preview retains Vercel authentication and a $1/month operational summary budget (`SUMMARY_AI_MONTHLY_BUDGET_USD=1`); live Checkout stays disabled. Keep the summary reconciliation and per-account spending protections.
 
 ## CLI and agent skill
 
@@ -139,7 +133,7 @@ API clients can send an optional `preview: { title, highlights }` with the exist
 
 Create/revoke a named key at `/account/keys`. Keep `PASSAGE_API_KEY` in your local environment; keys are shown once and never saved in draft files. Set `PASSAGE_URL` to that key’s service origin. The CLI rejects a different `--base-url` or saved-draft origin before sending the key and refuses redirects. Billing and account-security administration remain in the browser.
 
-Authenticated `prepare`/`share` require `--out`: the private recovery file is written before dispatch and retains request/job identity. New creation uses account defaults and allowances; a generated default background can start a paid image job after the summary. Use `resume` to continue saved work and `status` to retrieve it without starting fresh work. Resuming an untouched draft can start its original template image if preparation stopped before scheduling it. It reuses an existing request, including failed or uncertain work; only `image` explicitly requests another generation. Use `status` for repeated polling. Each invocation retrieves current state and returns.
+Authenticated `prepare`/`share` require `--out`: the private recovery file is written before dispatch and retains request identity. New creation uses account defaults and summary allowances, including paid uploaded-background templates. `resume` continues saved preparation; `status` retrieves current state without starting new work. `share --yes` waits for pending preparation before publishing. Each saved identity can be a preparing, editable or published passage.
 
 ```sh
 # With PASSAGE_URL and PASSAGE_API_KEY already configured locally:
@@ -149,7 +143,7 @@ node .agents/skills/passage-share/scripts/passage.mjs status work/account-draft.
 node .agents/skills/passage-share/scripts/passage.mjs publish work/account-draft.json --json
 ```
 
-`image <draft.json>` explicitly requests another paid generation. `apply-image <draft.json>` applies a completed result when an intervening edit prevented automatic application; neither command publishes. Customize templates and reviewed text in the webapp, then refresh the saved draft. `--json` returns structured errors with available `code`, `resetAt`, `billingUrl` and operation IDs. Requests time out after 60 seconds; recover the saved operation after interruption rather than preparing a replacement. Anonymous drafts and explicit `publish`/`share --yes` behavior remain supported.
+Customize templates, upload artwork and review text in the webapp, then retrieve the saved passage through `status`. Image-generation commands are no longer available. `--json` returns structured errors with available `code`, `resetAt`, `billingUrl` and operation IDs. Requests time out after 60 seconds; recover the existing request after interruption rather than preparing a replacement. Anonymous drafts and explicit `publish`/`share --yes` behavior remain supported.
 
 ## Fork an existing passage
 

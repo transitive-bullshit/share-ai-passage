@@ -1,8 +1,6 @@
 import { z } from 'zod'
 import { start } from 'workflow/api'
-import { generatePassageBackground } from '@/workflows/generate-background'
 import { preparePassage } from '@/workflows/prepare-passage'
-import { startInitialDraftImage } from '@/lib/initial-image'
 import { accountRequest } from '@/lib/account-http'
 import {
   applyDraftGeneration,
@@ -40,9 +38,7 @@ export function POST(request: Request, context: Context) {
         await ensureDraftEnqueued(actor, id, (id) =>
           start(preparePassage, [id])
         )
-      return startInitialDraftImage(actor, draft, (operationId) =>
-        start(generatePassageBackground, [operationId])
-      )
+      return draft
     }
     if (action === 'publish') {
       await enforceBudget(`publish:${clientKey(request)}`, 60)

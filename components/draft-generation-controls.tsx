@@ -239,7 +239,7 @@ export function DraftGenerationControls({
               {' '}
               <a
                 className='auth-text-link'
-                href={authHref('/sign-up', `/create?draft=${draftId}`)}
+                href={authHref('/sign-up', `/create?passage=${draftId}`)}
               >
                 Save your work with a free account
               </a>

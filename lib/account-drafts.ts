@@ -13,7 +13,6 @@ import {
 import { readEntitlements, requirePaidAccount } from './billing'
 import { draftDesignSchema, type DraftDesign } from './paid-design'
 import { defaultDraftDesign, snapshotTemplate } from './templates'
-import { cancelUndispatchedImages } from './image-usage'
 import { DEFAULT_CARD_APPEARANCE, type CardAppearance } from './card-appearance'
 import { cardAppearanceSchema } from './card-appearance-schema'
 import { appUrl } from './config'
@@ -90,6 +89,11 @@ async function ownedDraft(tx: Transaction, actor: Actor, id: string) {
 }
 
 function sameRevision(draft: SavedDraft, revision: number) {
+  if (draft.publishedPublicationId)
+    throw new AppError(
+      'This passage is published. Create a revision to make changes.',
+      409
+    )
   if (draft.revision !== revision)
     throw new AppError(
       'This draft changed in another tab or device. Reload the saved version before continuing.',
@@ -128,11 +132,19 @@ async function present(draft: SavedDraft, actor: Actor) {
   }
   const draftToken = tokenFor(draft)
   const record = await getDraft(draftToken, actor)
+  if (draft.publishedPublicationId) {
+    const published = await getPublication(
+      record.source.provider,
+      draft.publishedPublicationId
+    )
+    if (!published || published.disabled)
+      throw new AppError('This passage is unavailable.', 410)
+    record.preview = published.preview
+  }
   const [entitlements, resolved] = await Promise.all([
     actor.registered && actor.userId ? readEntitlements(actor.userId) : null,
     draft.design
       ? resolveOwnedCardDesign(draft.ownerId, draft.design, {
-          allowPending: true,
           frozen: draft.resolvedDesign
         })
       : null
@@ -160,7 +172,12 @@ async function present(draft: SavedDraft, actor: Actor) {
   return {
     draftId: draft.id,
     revision: draft.revision,
-    status: 'ready' as const,
+    status: draft.publishedPublicationId
+      ? ('published' as const)
+      : ('ready' as const),
+    shareUrl: draft.publishedPublicationId
+      ? `${appUrl()}/${record.source.provider}/${draft.publishedPublicationId}`
+      : undefined,
     draftToken,
     provider: record.source.provider,
     sourceUrl: record.source.canonicalUrl,
@@ -532,7 +549,7 @@ export async function publishSavedDraft(
 ) {
   const draft = await getDb().transaction(async (tx) => {
     const current = await ownedDraft(tx, actor, id)
-    sameRevision(current, revision)
+    if (!current.publishedPublicationId) sameRevision(current, revision)
     return current
   })
   return publishPreview(tokenFor(draft), undefined, undefined, actor)
@@ -557,6 +574,7 @@ export async function regenerateSavedDraft(
           eq(generationOperations.ownerId, actor.userId!)
         )
       )
+    sameRevision(current, current.revision)
     if (!existing) sameRevision(current, revision)
     if (current.status !== 'ready')
       throw new AppError('Wait for this draft to finish preparing.', 409)
@@ -583,7 +601,8 @@ export async function regenerateSavedDraft(
           draftRevision: originalRevision
         })
   const saved = await finishDraft(id, async (tx, current) => {
-    if (current.revision !== originalRevision) return current
+    if (current.publishedPublicationId || current.revision !== originalRevision)
+      return current
     const [updated] = await tx
       .update(savedDrafts)
       .set({
@@ -628,23 +647,6 @@ export async function draftOperations(actor: Actor, id: string) {
         )
       )
       .orderBy(desc(generationOperations.createdAt))
-      .limit(20),
-    images: await getDb()
-      .select({
-        id: imageOperations.id,
-        status: imageOperations.status,
-        createdAt: imageOperations.createdAt,
-        draftRevision: imageOperations.draftRevision,
-        resultAssetId: imageOperations.resultAssetId
-      })
-      .from(imageOperations)
-      .where(
-        and(
-          eq(imageOperations.draftId, id),
-          eq(imageOperations.ownerId, actor.userId!)
-        )
-      )
-      .orderBy(desc(imageOperations.createdAt))
       .limit(20)
   }
 }
@@ -689,7 +691,6 @@ export async function deleteSavedDraft(actor: Actor, id: string) {
   await getDb().transaction(async (tx) => {
     await ownedDraft(tx, actor, id)
     await cancelUndispatchedSummaries(tx, actor.subjectKey, id)
-    await cancelUndispatchedImages(tx, actor.userId!, id)
     await tx
       .update(imageOperations)
       .set({

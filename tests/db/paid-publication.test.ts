@@ -126,14 +126,12 @@ async function fixture() {
     .returning()
   const recipe = {
     ...defaultTemplateRecipe(),
-    branding: { mode: 'none' as const },
-    artDirection: 'PRIVATE STYLE INSTRUCTIONS'
+    branding: { mode: 'none' as const }
   }
   const design: DraftDesign = {
     version: 1,
     recipe,
-    fromTemplate: null,
-    generatedImage: null
+    fromTemplate: null
   }
   const actor: Actor = {
     userId,

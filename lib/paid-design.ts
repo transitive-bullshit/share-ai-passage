@@ -57,12 +57,9 @@ export const templateRecipeSchema = z
     branding: brandingSchema,
     background: z.discriminatedUnion('mode', [
       z.strictObject({ mode: z.literal('curated') }),
-      z.strictObject({ mode: z.literal('uploaded'), assetId: z.uuid() }),
-      z.strictObject({ mode: z.literal('generated') })
+      z.strictObject({ mode: z.literal('uploaded'), assetId: z.uuid() })
     ]),
-    crop: cropSchema,
-    artDirection: z.string().trim().max(500),
-    referenceAssetId: z.uuid().nullable()
+    crop: cropSchema
   })
   .refine(
     (recipe) => contrastRatio(recipe.colors.surface, recipe.colors.text) >= 4.5,
@@ -77,13 +74,6 @@ export const draftDesignSchema = z.strictObject({
   recipe: templateRecipeSchema,
   fromTemplate: z
     .strictObject({ id: z.uuid(), revision: z.number().int().nonnegative() })
-    .nullable(),
-  generatedImage: z
-    .strictObject({
-      assetId: z.uuid(),
-      operationId: z.uuid(),
-      recipeHash: z.string().regex(/^[a-f0-9]{64}$/)
-    })
     .nullable()
 })
 export type DraftDesign = z.infer<typeof draftDesignSchema>
@@ -143,8 +133,7 @@ export const resolvedCardDesignSchema = z.strictObject({
       kind: z.literal('curated'),
       path: z.string().regex(/^\/social-templates\/[a-z-]+\/background\.jpg$/)
     }),
-    z.strictObject({ kind: z.literal('asset'), assetId: z.uuid() }),
-    z.strictObject({ kind: z.literal('pending') })
+    z.strictObject({ kind: z.literal('asset'), assetId: z.uuid() })
   ]),
   crop: cropSchema,
   assetVersions: z
@@ -178,9 +167,7 @@ export function defaultTemplateRecipe(
           : 'dm-sans',
     branding: { mode: 'passage' },
     background: { mode: 'curated' },
-    crop: { x: 0.5, y: 0.5 },
-    artDirection: '',
-    referenceAssetId: null
+    crop: { x: 0.5, y: 0.5 }
   }
 }
 function mix(a: string, b: string, amount: number) {
@@ -258,11 +245,7 @@ export function resolveCardDesign(
   const background =
     recipe.background.mode === 'uploaded'
       ? { kind: 'asset' as const, assetId: recipe.background.assetId }
-      : recipe.background.mode === 'generated'
-        ? design.generatedImage
-          ? { kind: 'asset' as const, assetId: design.generatedImage.assetId }
-          : { kind: 'pending' as const }
-        : { kind: 'curated' as const, path: template.backgroundImage }
+      : { kind: 'curated' as const, path: template.backgroundImage }
   return {
     version: 1,
     rendererVersion: 5,

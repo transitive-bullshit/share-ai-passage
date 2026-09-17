@@ -143,8 +143,7 @@ export async function runBillingReconciliation(args: string[]) {
     const { lockUsageSubjects } = await import('../lib/usage')
     const { readEntitlements } = await import('../lib/billing')
     const { isPaidPlan } = await import('../lib/plans')
-    const { readSubscriptionAiSpending, readPurchasedAiSpending } =
-      await import('../lib/ai-spending')
+    const { readSubscriptionAiSpending } = await import('../lib/ai-spending')
     const status = await getDb().transaction(async (tx) => {
       const subjectKey = `user:${command.userId}`
       await lockUsageSubjects(tx, subjectKey)
@@ -171,8 +170,7 @@ export async function runBillingReconciliation(args: string[]) {
               entitlement.allowanceWindow
             )
           : null
-      const purchasedImages = await readPurchasedAiSpending(tx, command.userId)
-      return { ...saved, aiSpending: { subscription, purchasedImages } }
+      return { ...saved, aiSpending: { subscription } }
     })
     return JSON.stringify(status, null, 2)
   } finally {

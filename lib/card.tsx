@@ -113,9 +113,7 @@ async function prepareCard(
     template && !policy.measureOnly
       ? design?.background.kind === 'asset'
         ? Promise.resolve(artwork.background!)
-        : design?.background.kind === 'pending'
-          ? Promise.resolve('')
-          : cardBackground(template)
+        : cardBackground(template)
       : Promise.resolve('')
   ])
   await registerFonts(fonts)

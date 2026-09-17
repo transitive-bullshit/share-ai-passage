@@ -38,7 +38,8 @@ export default async function HomePage({
     const params = new URLSearchParams()
     for (const key of ['draft', 'template']) {
       const value = query[key]
-      if (typeof value === 'string') params.set(key, value)
+      if (typeof value === 'string')
+        params.set(key === 'draft' ? 'passage' : key, value)
     }
     redirect(`/create${params.size ? `?${params}` : ''}`)
   }
