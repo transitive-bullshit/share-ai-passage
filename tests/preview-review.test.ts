@@ -363,7 +363,7 @@ it('edits each field locally and publishes the latest fitted wording, preserving
   )
 })
 
-it('shows field errors for empty and over-limit edits while counting Unicode characters correctly', async () => {
+it('requires a title but treats long Unicode text counts as recommendations', async () => {
   await act(async () => root.render(createElement(ReviewHarness)))
   await editField('summary-title', ' ')
   await finishArtwork('margin-notes')
@@ -379,17 +379,16 @@ it('shows field errors for empty and over-limit edits while counting Unicode cha
   )
   expect(publishButton().disabled).toBe(false)
 
-  const title = await editField('summary-title', '😀'.repeat(601))
-  expect(title.getAttribute('aria-invalid')).toBe('true')
-  expect(container.querySelector('#summary-title-error')?.textContent).toBe(
-    'Keep your title within 600 characters.'
-  )
-  await editField('summary-highlight-1', 'a'.repeat(1001))
+  const title = await editField('summary-title', '😀'.repeat(901))
+  expect(title.getAttribute('aria-invalid')).toBe('false')
+  expect(container.querySelector('#summary-title-error')).toBeNull()
+  await editField('summary-highlight-1', 'a'.repeat(2401))
+  expect(container.querySelector('#summary-highlight-1-error')).toBeNull()
   expect(
-    container.querySelector('#summary-highlight-1-error')?.textContent
-  ).toBe('Keep your highlight within 1000 characters.')
+    container.querySelector('#summary-highlight-1-count')?.textContent
+  ).toBe('2401 characters · 100 recommended')
   await finishArtwork('margin-notes')
-  expect(publishButton().disabled).toBe(true)
+  expect(publishButton().disabled).toBe(false)
   expect(requests).not.toHaveBeenCalled()
 })
 
@@ -555,7 +554,7 @@ it('resets readiness and text fitting when paid font or artwork inputs change wi
   )
 })
 
-it('keeps oversized text saved in the editor and requires shortening instead of publishing tiny highlights', async () => {
+it('clips oversized highlights without blocking review or publication', async () => {
   vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
     function (this: HTMLElement) {
       let height = 630
@@ -569,11 +568,15 @@ it('keeps oversized text saved in the editor and requires shortening instead of 
     }
   )
   await act(async () => root.render(createElement(ReviewHarness)))
-  const full = 'A'.repeat(1000)
+  const full = 'A'.repeat(2400)
   await editField('summary-highlight-1', full)
+  await editField('summary-title', 'T'.repeat(900))
   await finishArtwork('margin-notes')
-  expect(publishButton().disabled).toBe(true)
-  expect(container.textContent).toContain('Shorten the highlights')
+  expect(publishButton().disabled).toBe(false)
+  expect(container.textContent).not.toContain('Shorten the highlights')
+  expect(
+    container.querySelector('#summary-title')?.getAttribute('aria-invalid')
+  ).toBe('false')
   expect(
     container.querySelector<HTMLTextAreaElement>('#summary-highlight-1')?.value
   ).toBe(full)

@@ -28,6 +28,8 @@ POST persists an owned saved identity before returning its ID and enqueuing dura
 
 The editor follows publication state on initial load and browser-history restoration. A published identity shows the same published result and fixed link as successful publication; its mutation endpoints reject stale edit, regenerate and apply requests. **Revise** creates a separate editable identity and new publication URL, preserving the original. `/passages` places published work before drafts, with independent pagination.
 
+Title/highlight length counts are soft recommendations. Editing, autosave, card previews and publication accept full text beyond those counts. Cards clip titles to two lines and each highlight to three lines with ellipses; saved text and readers stay complete. Migration `0015_soft_summary_recommendations.sql` removes the database title ceiling while preserving nonempty titles.
+
 Guest signup or login transfers work/consumption once without merging independent publication namespaces. Session/account boundaries apply to private APIs, saved work, assets and CLI keys. Public readers/images remain independent of private session state and retain the aggressive cache behavior inherited from `main`.
 
 ## Uploaded assets and templates

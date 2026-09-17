@@ -126,8 +126,6 @@ it('rejects invalid appearance at the publication service boundary', async () =>
 
 it.each([
   null,
-  { title: '🌱'.repeat(601), highlights: ['One point.'] },
-  { title: 'A title', highlights: ['🦊'.repeat(1001)] },
   { title: 'A title', highlights: ['Same point', ' same\npoint '] }
 ])(
   'rejects invalid edits at the publication service boundary: %j',
@@ -486,9 +484,9 @@ describe.skipIf(!testUrl)('publication lifecycle with PostgreSQL', () => {
     expect(upstream.suggestPreview).toHaveBeenCalledTimes(1)
   })
 
-  it('preserves hard text limits and title-only deduplication while rejecting unreadable new cards', async () => {
+  it('publishes full long text while preserving title-only deduplication', async () => {
     const prepared = await prepareSource(sourceUrl())
-    const preview = { title: '🌱'.repeat(limits.title), highlights: [] }
+    const preview = { title: '🌱'.repeat(901), highlights: [] }
     const first = await publishPreview(
       prepared.draftToken,
       DEFAULT_CARD_APPEARANCE,
@@ -500,34 +498,20 @@ describe.skipIf(!testUrl)('publication lifecycle with PostgreSQL', () => {
       { ...preview, highlights: [' ', '\n\t'] }
     )
     expect(second.publicationId).toBe(first.publicationId)
-    const stored = (await getPublication('chatgpt', first.publicationId))!
-    expect(stored.preview).toEqual(preview)
-    const withHighlight = {
-      ...preview,
-      highlights: ['🦊'.repeat(limits.highlight)]
-    }
-    // Storage limits still accept the complete text; new card readability is
-    // a separate publication check, without changing the existing passage.
+    const withHighlight = { ...preview, highlights: ['🦊'.repeat(2401)] }
     expect(parseGeneratedPreview(withHighlight).success).toBe(true)
-    await expect(
-      publishPreview(
-        prepared.draftToken,
-        DEFAULT_CARD_APPEARANCE,
-        withHighlight
-      )
-    ).rejects.toMatchObject({
-      status: 400,
-      message: expect.stringContaining('Shorten the highlights')
-    })
-    expect(
-      await getDb()
-        .select({ id: publications.id })
-        .from(publications)
-        .where(eq(publications.sourceId, stored.publication.sourceId))
-    ).toEqual([{ id: first.publicationId }])
+    const long = await publishPreview(
+      prepared.draftToken,
+      DEFAULT_CARD_APPEARANCE,
+      withHighlight
+    )
+    expect(long.publicationId).not.toBe(first.publicationId)
     expect(
       (await getPublication('chatgpt', first.publicationId))!.preview
     ).toEqual(preview)
+    expect(
+      (await getPublication('chatgpt', long.publicationId))!.preview
+    ).toEqual(withHighlight)
   })
 
   it('saves different templates independently and reuses the same content and style across drafts', async () => {

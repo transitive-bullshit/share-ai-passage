@@ -325,10 +325,7 @@ export const publications = pgTable(
     ),
     index('publications_owner_idx').on(table.ownerId, table.createdAt),
     index('publications_snapshot_idx').on(table.snapshotId),
-    check(
-      'publications_title_length',
-      sql`char_length(${table.title}) between 1 and 600`
-    ),
+    check('publications_title_length', sql`char_length(${table.title}) > 0`),
     check(
       'publications_highlights_count',
       sql`jsonb_typeof(${table.highlights}) = 'array' and jsonb_array_length(${table.highlights}) between 0 and 3`

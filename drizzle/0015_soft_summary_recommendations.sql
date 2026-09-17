@@ -1,0 +1,2 @@
+ALTER TABLE "publications" DROP CONSTRAINT "publications_title_length";--> statement-breakpoint
+ALTER TABLE "publications" ADD CONSTRAINT "publications_title_length" CHECK (char_length("publications"."title") > 0);

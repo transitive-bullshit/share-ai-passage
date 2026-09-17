@@ -181,7 +181,7 @@ Summary operations persist before dispatch and settle their original usage perio
 
 ## Paid services and launch gate
 
-Phase 2 is implemented and deployed to shared Preview. The separate Neon Preview database and disposable local test database now have migrations through `0014_uploads_only`, including durable preparation and uploads-only design normalization; the local review database has the same migrations. Production has not received the accounts/paid migrations or application deployment. Apply migrations in order after an independently verified backup; schema changes are additive apart from making the Free budget reference optional for paid summaries. Do not remove the Phase 1 operations or reset their counters.
+Phase 2 is implemented and deployed to shared Preview. The separate Neon Preview database and disposable local test database now have migrations through `0015_soft_summary_recommendations`, including durable preparation, uploads-only design normalization and removal of the title length ceiling; the local review database has the same migrations. Production has not received the accounts/paid migrations or application deployment. Apply migrations in order after an independently verified backup; schema changes are additive apart from making the Free budget reference optional for paid summaries. Do not remove the Phase 1 operations or reset their counters.
 
 Configure the variables in [.env.example](../.env.example) separately for each environment. `STRIPE_LIVE_CHECKOUT_ENABLED=false` is the launch default. Test Checkout becomes available with complete sandbox configuration; live Checkout additionally requires its explicit flag.
 
@@ -272,7 +272,7 @@ Actual browser upload, template save and reload passed on the isolated review ap
 
 `withWorkflow()` retains the durable source-fetch and summary-preparation workflow. `POST /api/drafts` saves the passage identity in Neon before dispatching; `/create?passage=<id>` polls its persisted state. Queue retries reuse preparation identity; private content does not enter workflow arguments/results. Resume uses the existing saved identity, including quota/cost protections.
 
-Image generation, model settings, packs and background-generation workflows were removed September 17. Uploaded backgrounds/logos and immutable composed share cards continue using R2. Apply migration `0014_uploads_only.sql` before deploying this scope; it preserves completed artwork and published bytes. Historical image tables remain audit-only, with no new image provider submissions or purchase endpoints.
+Image generation, model settings, packs and background-generation workflows were removed September 17. Uploaded backgrounds/logos and immutable composed share cards continue using R2. Apply migrations through `0015_soft_summary_recommendations.sql` before deploying the current scope; it preserves completed artwork and published bytes. Historical image tables remain audit-only, with no new image provider submissions or purchase endpoints.
 
 Keep Vercel authentication on Preview, sandbox Stripe, live checkout disabled and `SUMMARY_AI_MONTHLY_BUDGET_USD=1`. Preserve summary service/account spending protection and the operations digest/cleanup guidance in [reconciliation](GENERATION_RECONCILIATION.md). Production requires explicit rollout configuration, migrations and initial budgets after Gate B.
 

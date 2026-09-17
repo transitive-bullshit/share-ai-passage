@@ -470,6 +470,30 @@ describe.skipIf(!testUrl)(
       }
     })
 
+    it('autosaves and publishes full text beyond character recommendations', async () => {
+      const owner = await actor()
+      const draft = await readyDraft(owner)
+      const long = { title: 'T'.repeat(901), highlights: ['A'.repeat(2401)] }
+      const edited = await editSavedDraft(owner, draft.draftId, {
+        revision: draft.revision,
+        preview: long,
+        appearance: DEFAULT_CARD_APPEARANCE
+      })
+      expect(edited.preview).toEqual(long)
+      expect((await readSavedDraft(owner, draft.draftId)).preview).toEqual(long)
+      const published = await publishSavedDraft(
+        owner,
+        draft.draftId,
+        edited.revision
+      )
+      expect(
+        (await getPublication('chatgpt', published.publicationId))!.preview
+      ).toEqual(long)
+      expect(
+        await getSummaryUsage(owner.subjectKey, owner.allowance, now)
+      ).toMatchObject({ used: 1, reserved: 0 })
+    })
+
     it('rejects stale autosaves and publication tokens without consuming another generation', async () => {
       const owner = await actor()
       const draft = await readyDraft(owner)

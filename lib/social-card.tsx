@@ -167,7 +167,14 @@ function Card({ data, scale = 1 }: { data: CardData; scale?: number }) {
                   }}
                 />
                 <span
+                  className='social-card-highlight'
                   style={{
+                    display: '-webkit-box',
+                    WebkitBoxOrient: 'vertical',
+                    WebkitLineClamp: 3,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    minWidth: 0,
                     fontSize: 28 * scale,
                     lineHeight: 1.4,
                     color: '#525252',
@@ -492,7 +499,14 @@ function TemplateCard({
                   scale={scale}
                 />
                 <span
+                  className='social-card-highlight'
                   style={{
+                    display: '-webkit-box',
+                    WebkitBoxOrient: 'vertical',
+                    WebkitLineClamp: 3,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    minWidth: 0,
                     fontFamily: cardFontFamily(font.body.family),
                     fontWeight: font.body.weight,
                     fontSize: layout.highlightSize * scale,

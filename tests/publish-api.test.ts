@@ -108,8 +108,6 @@ describe('reviewed preview publication API', () => {
 
   it.each([
     null,
-    { title: '🌱'.repeat(601), highlights: ['One point.'] },
-    { title: 'A title', highlights: ['🦊'.repeat(1001)] },
     { title: 'A title', highlights: ['One.', 'Two.', 'Three.', 'Four.'] },
     { title: 'A title', highlights: ['Same point', ' same\npoint '] },
     { title: 'A title', highlights: ['One point.'], attribution: 'Invented' }

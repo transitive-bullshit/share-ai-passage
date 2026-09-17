@@ -15,43 +15,32 @@ export function normalizeSummaryText(text: string) {
   return text.normalize('NFC').replace(/\s+/gu, ' ').trim()
 }
 
-function summaryText(limit: number, label: string, optional = false) {
-  return (
-    z
-      .string()
-      .min(optional ? 0 : 1, `Enter a ${label}.`)
-      // Zod counts UTF-16 units; the refinement applies the Unicode limit.
-      .max(limit * 2, `Keep your ${label} within ${limit} characters.`)
-      .refine((text) => {
-        const normalized = normalizeSummaryText(text)
-        return (
-          (optional || normalized.length > 0) &&
-          !invalidUnicode.test(normalized) &&
-          !Array.from(normalized).some((character) => {
-            const point = character.codePointAt(0)!
-            return point < 0x20 || point === 0x7f
-          })
-        )
-      }, `Enter a ${label} containing valid text.`)
-      .refine(
-        (text) => Array.from(normalizeSummaryText(text)).length <= limit,
-        `Keep your ${label} within ${limit} characters.`
+function summaryText(label: string, optional = false) {
+  return z
+    .string()
+    .min(optional ? 0 : 1, `Enter a ${label}.`)
+    .refine((text) => {
+      const normalized = normalizeSummaryText(text)
+      return (
+        (optional || normalized.length > 0) &&
+        !invalidUnicode.test(normalized) &&
+        !Array.from(normalized).some((character) => {
+          const point = character.codePointAt(0)!
+          return point < 0x20 || point === 0x7f
+        })
       )
-      // JSON Schema counts Unicode characters, unlike Zod's UTF-16 bound
-      // above. Advertise the same limit that our final validation enforces.
-      .meta({ maxLength: limit })
-  )
+    }, `Enter a ${label} containing valid text.`)
 }
 
 export const generatedPreviewSchema = z
   .strictObject({
-    title: summaryText(limits.title, 'title').describe(
-      `A specific, concise title. Aim for ${summaryRecommendations.titleWords} words or fewer, with the most distinctive terms first. ${limits.title} Unicode characters is the abuse-prevention ceiling, not a target.`
+    title: summaryText('title').describe(
+      `A specific, concise title. Aim for ${summaryRecommendations.titleWords} words or fewer, with the most distinctive terms first.`
     ),
     highlights: z
       .array(
-        summaryText(limits.highlight, 'highlight', true).describe(
-          `A concise paraphrased takeaway, ideally within ${summaryRecommendations.highlight} characters. Hard ceiling: ${limits.highlight} Unicode characters.`
+        summaryText('highlight', true).describe(
+          `A concise paraphrased takeaway, ideally within ${summaryRecommendations.highlight} characters.`
         )
       )
       .max(

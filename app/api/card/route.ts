@@ -69,8 +69,7 @@ export async function POST(request: Request) {
         },
         parsed.data.appearance ?? draft.appearance,
         resolved,
-        artwork,
-        { requireReadableText: true }
+        artwork
       )
     return await render(
       {
@@ -80,8 +79,7 @@ export async function POST(request: Request) {
       },
       parsed.data.appearance ?? draft.appearance ?? DEFAULT_CARD_APPEARANCE,
       undefined,
-      undefined,
-      { requireReadableText: true }
+      undefined
     )
   } catch (err) {
     return errorResponse(err)

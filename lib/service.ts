@@ -10,7 +10,7 @@ import {
   resolveOwnedCardDesign
 } from './assets'
 import { requirePaidAccount } from './billing'
-import { assertReadableCardText, renderCard } from './card'
+import { renderCard } from './card'
 import { lockUsageSubjects } from './usage'
 import { generateSummary } from './summary-generation'
 import { DEFAULT_CARD_APPEARANCE, type CardAppearance } from './card-appearance'
@@ -658,12 +658,6 @@ export async function publishPreview(
       .from(publications)
       .where(matchingPublication)
     if (!record) {
-      // Existing URLs retain their original presentation. Only new work must
-      // fit readably; the source/owner locks keep reuse and creation atomic.
-      await assertReadableCardText(
-        { ...preview, provider: source.provider },
-        appearance
-      )
       const [created] = await tx
         .insert(publications)
         .values({
@@ -751,15 +745,12 @@ async function publishPaidPreview(
       )
     return source
   }
-  const { design: resolved, provider } = await db.transaction(async (tx) => {
-    const source = await lockCurrent(tx)
-    return {
-      provider: source.provider,
-      design: await resolveOwnedCardDesign(saved.ownerId, saved.design!, {
-        tx,
-        frozen: saved.resolvedDesign
-      })
-    }
+  const resolved = await db.transaction(async (tx) => {
+    await lockCurrent(tx)
+    return resolveOwnedCardDesign(saved.ownerId, saved.design!, {
+      tx,
+      frozen: saved.resolvedDesign
+    })
   })
   const contentFingerprint = createHash('sha256')
     .update(
@@ -808,7 +799,6 @@ async function publishPaidPreview(
     }
   })
   if (reused) return reused
-  await assertReadableCardText({ ...preview, provider }, appearance, resolved)
   const card = await freezeCardPresentation({
     userId: saved.ownerId,
     presentationHash: contentFingerprint,

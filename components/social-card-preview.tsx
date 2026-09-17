@@ -6,12 +6,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import type { CardAppearance } from '@/lib/card-appearance'
 import type { ResolvedCardDesign } from '@/lib/paid-design'
-import {
-  cardTextIsReadable,
-  cardTextReadabilityMessage,
-  initialCardTextFit,
-  nextCardTextFit
-} from '@/lib/card-text-fit'
+import { initialCardTextFit, nextCardTextFit } from '@/lib/card-text-fit'
 import type { GeneratedPreview, Provider } from '@/lib/domain'
 import { SocialCard } from '@/lib/social-card'
 import { getSocialTemplate } from '@/lib/social-templates'
@@ -61,9 +56,6 @@ function CardPreviewCanvas({
   const [fit, setFit] = useState(initialCardTextFit)
   const template =
     resolvedDesign?.template ?? getSocialTemplate(appearance.templateId)
-  const readable =
-    !fit.done || cardTextIsReadable(fit.scale, template.layout.highlightSize)
-
   // Clear the parent's prior ready state before this new canvas is painted.
   useLayoutEffect(() => {
     onStatusChange?.({ appearance, attempt, loaded: false })
@@ -117,17 +109,7 @@ function CardPreviewCanvas({
   useLayoutEffect(() => {
     if (!assetsReady) return
     if (fit.done) {
-      onStatusChange?.(
-        readable
-          ? { appearance, attempt, loaded: true }
-          : {
-              appearance,
-              attempt,
-              loaded: false,
-              error: cardTextReadabilityMessage,
-              retryable: false
-            }
-      )
+      onStatusChange?.({ appearance, attempt, loaded: true })
       return
     }
     const canvas = canvasRef.current!
@@ -135,32 +117,8 @@ function CardPreviewCanvas({
     // Undo display scaling; narrow viewports keep the same 1200px text layout.
     const displayScale = canvas.getBoundingClientRect().width / 1200
     const copyHeight = copy.getBoundingClientRect().height / displayScale
-    try {
-      setFit(nextCardTextFit(fit, copyHeight <= template.layout.copy.maxHeight))
-    } catch {
-      onStatusChange?.({
-        appearance,
-        attempt,
-        loaded: false,
-        error: 'The card text could not fit within this style.'
-      })
-    }
-  }, [
-    assetsReady,
-    fit,
-    readable,
-    template,
-    appearance,
-    attempt,
-    onStatusChange
-  ])
-
-  if (!readable)
-    return (
-      <div className='card-loading'>
-        Shorten your highlights to preview this card.
-      </div>
-    )
+    setFit(nextCardTextFit(fit, copyHeight <= template.layout.copy.maxHeight))
+  }, [assetsReady, fit, template, appearance, attempt, onStatusChange])
 
   return (
     <div

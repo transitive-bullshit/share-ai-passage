@@ -9,13 +9,7 @@ import { brand } from './brand'
 import type { CardAppearance } from './card-appearance'
 import type { ResolvedCardDesign } from './paid-design'
 import { cardFonts, type CardFont } from './card-fonts'
-import {
-  cardTextIsReadable,
-  cardTextReadabilityMessage,
-  initialCardTextFit,
-  nextCardTextFit
-} from './card-text-fit'
-import { AppError } from './errors'
+import { initialCardTextFit, nextCardTextFit } from './card-text-fit'
 import { privateHeaders } from './http'
 import { SocialCard, footerText, type CardData } from './social-card'
 import { getSocialTemplate, type SocialTemplate } from './social-templates'
@@ -73,27 +67,19 @@ function copyLayout(
 }
 
 export type CardArtwork = { background?: string; logo?: string }
-export type CardRenderOptions = { requireReadableText?: boolean }
 async function prepareCard(
   data: CardData,
   appearance?: CardAppearance,
   design?: ResolvedCardDesign,
-  artwork: CardArtwork = {},
-  policy: CardRenderOptions & { measureOnly?: boolean } = {}
+  artwork: CardArtwork = {}
 ) {
   if (
-    !policy.measureOnly &&
     !data.disabled &&
     design?.background.kind === 'asset' &&
     !artwork.background
   )
     throw new Error('The selected card background is missing')
-  if (
-    !policy.measureOnly &&
-    !data.disabled &&
-    design?.branding.mode === 'custom' &&
-    !artwork.logo
-  )
+  if (!data.disabled && design?.branding.mode === 'custom' && !artwork.logo)
     throw new Error('The selected card logo is missing')
   for (const value of Object.values(artwork))
     if (value && !value.startsWith('data:image/webp;base64,'))
@@ -110,7 +96,7 @@ async function prepareCard(
       text,
       template ? [template.font.title, template.font.body] : undefined
     ),
-    template && !policy.measureOnly
+    template
       ? design?.background.kind === 'asset'
         ? Promise.resolve(artwork.background!)
         : cardBackground(template)
@@ -151,34 +137,26 @@ async function prepareCard(
     const measured = await renderer.measure(node, { ...options, css })
     const copy = copyLayout(node, measured)
     if (!copy) throw new Error('Social card is missing its copy layout')
-    if (copy.height <= maxHeight) {
+    if (copy.height <= maxHeight || fit.lower === 0) {
       fitted = { element, node, css, fonts, options }
     }
     fit = nextCardTextFit(fit, copy.height <= maxHeight)
   }
-  if (
-    policy.requireReadableText &&
-    !data.disabled &&
-    !cardTextIsReadable(fit.scale, template?.layout.highlightSize ?? 28)
-  )
-    throw new AppError(cardTextReadabilityMessage, 400)
   if (fitted) return fitted
-  throw new Error('Social card text could not fit within its template')
+  throw new Error('Social card layout was not measured')
 }
 
 export async function renderCard(
   data: CardData,
   appearance?: CardAppearance,
   design?: ResolvedCardDesign,
-  artwork?: CardArtwork,
-  policy?: CardRenderOptions
+  artwork?: CardArtwork
 ) {
   const { node, css, options } = await prepareCard(
     data,
     appearance,
     design,
-    artwork,
-    policy
+    artwork
   )
   const webp = await render(node, {
     ...options,
@@ -206,15 +184,13 @@ export async function renderCardPreview(
   data: CardData,
   appearance?: CardAppearance,
   design?: ResolvedCardDesign,
-  artwork?: CardArtwork,
-  policy?: CardRenderOptions
+  artwork?: CardArtwork
 ) {
   const { element, fonts } = await prepareCard(
     data,
     appearance,
     design,
-    artwork,
-    policy
+    artwork
   )
   const html = await renderToReadableStream(
     <html lang='en'>
@@ -235,22 +211,4 @@ export async function renderCardPreview(
   return new Response(html, {
     headers: { ...privateHeaders, 'Content-Type': 'text/html; charset=utf-8' }
   })
-}
-
-/** Validate new work without encoding an image or reading any private artwork. */
-export async function assertReadableCardText(
-  data: CardData,
-  appearance: CardAppearance,
-  design?: ResolvedCardDesign
-) {
-  await prepareCard(
-    data,
-    appearance,
-    design,
-    {},
-    {
-      requireReadableText: true,
-      measureOnly: true
-    }
-  )
 }

@@ -10,7 +10,6 @@ import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { describe, expect, it } from 'vitest'
 
-import { limits } from '../lib/domain'
 import { messageText } from '../lib/messages'
 import {
   SUMMARY_INPUT_LIMIT,
@@ -183,11 +182,11 @@ describe('share card review snapshots', () => {
     expect(() => validateSnapshot(sample)).not.toThrow()
   })
 
-  it('keeps historical summaries comparable when current length limits are tighter', () => {
+  it('keeps full long summaries comparable without character ceilings', () => {
     const baseline = snapshot()
     baseline.cases[0]!.preview = {
-      title: 'A'.repeat(limits.title + 1),
-      highlights: ['B'.repeat(limits.highlight + 1)]
+      title: 'A'.repeat(901),
+      highlights: ['B'.repeat(2401)]
     }
     const candidate = structuredClone(baseline)
     candidate.name = 'candidate'
@@ -196,7 +195,9 @@ describe('share card review snapshots', () => {
       highlights: ['Thaw only the slices you need.']
     }
 
-    expect(() => validateGeneratedPreview(baseline.cases[0]!.preview)).toThrow()
+    expect(() =>
+      validateGeneratedPreview(baseline.cases[0]!.preview)
+    ).not.toThrow()
     expect(() => validateSnapshot(baseline)).not.toThrow()
     expect(() => validateSnapshot(candidate)).not.toThrow()
     expect(() => assertComparable(baseline, candidate)).not.toThrow()

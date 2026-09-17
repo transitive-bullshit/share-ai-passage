@@ -126,8 +126,7 @@ describe('saved social-card appearance routes', () => {
       { ...savedPreview, provider: 'claude' },
       appearance,
       undefined,
-      undefined,
-      { requireReadableText: true }
+      undefined
     )
     expect(renderCard).toHaveBeenNthCalledWith(
       2,
@@ -159,8 +158,7 @@ describe('saved social-card appearance routes', () => {
       { ...savedPreview, provider: 'claude' },
       appearance,
       undefined,
-      undefined,
-      { requireReadableText: true }
+      undefined
     )
   })
 
@@ -173,8 +171,7 @@ describe('saved social-card appearance routes', () => {
       { ...savedPreview, provider: 'claude' },
       DEFAULT_CARD_APPEARANCE,
       undefined,
-      undefined,
-      { requireReadableText: true }
+      undefined
     )
   })
 
@@ -188,8 +185,7 @@ describe('saved social-card appearance routes', () => {
       { ...savedPreview, provider: 'claude' },
       appearance,
       undefined,
-      undefined,
-      { requireReadableText: true }
+      undefined
     )
     expect(renderCard).not.toHaveBeenCalled()
     expect(service.getDraft).toHaveBeenCalledExactlyOnceWith(
@@ -224,8 +220,7 @@ describe('saved social-card appearance routes', () => {
         },
         appearance,
         undefined,
-        undefined,
-        { requireReadableText: true }
+        undefined
       )
       expect(service.getDraft).toHaveBeenCalledExactlyOnceWith(
         'signed-preview',
@@ -265,8 +260,6 @@ describe('saved social-card appearance routes', () => {
     { appearance: { templateId: 'unknown' } },
     { appearance: { templateId: 'margin-notes', font: 'remote.woff' } },
     { preview: null },
-    { preview: { title: 'x'.repeat(601), highlights: ['One.'] } },
-    { preview: { title: 'Title', highlights: ['x'.repeat(1001)] } },
     { preview: { title: 'Title', highlights: ['Same', ' same '] } },
     { title: 'A client-authored title' },
     { highlights: ['A client-authored highlight'] },
@@ -283,7 +276,7 @@ describe('saved social-card appearance routes', () => {
   )
 
   it.each(['webp', 'html'] as const)(
-    'returns actionable new-draft %s feedback while an existing long publication remains available',
+    'renders clipped long draft and publication cards as %s',
     async (format) => {
       const actual =
         await vi.importActual<typeof import('@/lib/card')>('@/lib/card')
@@ -301,13 +294,13 @@ describe('saved social-card appearance routes', () => {
         ...publication(),
         preview: long
       })
-      const blocked = await previewImage(
+      const clipped = await previewImage(
         request({ draftToken: 'signed-preview', format })
       )
-      expect(blocked.status).toBe(400)
-      expect(await blocked.json()).toMatchObject({
-        error: expect.stringContaining('Shorten the highlights')
-      })
+      expect(clipped.status).toBe(200)
+      expect(clipped.headers.get('content-type')).toContain(
+        format === 'html' ? 'text/html' : 'image/webp'
+      )
       expect((await publicRequest()).status).toBe(200)
       expect(long.highlights.map((text) => text.length)).toEqual([
         1000, 1000, 637

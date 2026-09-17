@@ -50,10 +50,8 @@ export const draftEditSchema = z.strictObject({
   revision: z.number().int().nonnegative(),
   // Autosave permits unfinished text. Publication applies the full summary schema.
   preview: z.strictObject({
-    title: z.string().max(limits.title * 2),
-    highlights: z
-      .array(z.string().max(limits.highlight * 2))
-      .max(limits.highlights)
+    title: z.string(),
+    highlights: z.array(z.string()).max(limits.highlights)
   }),
   appearance: cardAppearanceSchema,
   design: draftDesignSchema.nullable().optional()
