@@ -93,6 +93,27 @@ it('announces a future downgrade and its removal or application without claiming
   ).toBe('Your Passage plan has changed')
 })
 
+it('does not call an immediate cancellation a restoration or payment recovery while prepaid access remains', () => {
+  const previous = {
+    ...plus,
+    paymentIssue: true,
+    cancellation: { effectiveAt: end }
+  }
+  const notice = subscriptionEmailChange(previous, {
+    ...plus,
+    ended: true,
+    paidThrough: end
+  })
+  expect(notice?.subject).toBe('Your Passage subscription has ended')
+  expect(notice?.paragraphs.join(' ')).toContain(
+    'Paid access remains available and ends on October 15, 2026 (UTC)'
+  )
+  expect(notice?.paragraphs.join(' ')).not.toContain('will continue renewing')
+  expect(notice?.paragraphs.join(' ')).not.toContain(
+    'payment issue has been resolved'
+  )
+})
+
 it('reports payment failure and recovery, without claiming a refund cancels the subscription', () => {
   const failed = { ...plus, paymentIssue: true }
   expect(subscriptionEmailChange(plus, failed)?.subject).toContain(

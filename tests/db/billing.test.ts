@@ -603,6 +603,38 @@ describe.skipIf(!testUrl)(
       })
     })
 
+    it('distinguishes a completed Stripe cancellation from removing its scheduled cancellation', async () => {
+      const owner = await account()
+      await reconcileStripeEvent(event(owner.customer))
+      const subscription = fixture.subscriptions[0] as Stripe.Subscription
+      subscription.cancel_at_period_end = true
+      await reconcileStripeEvent(
+        event(owner.customer, 'customer.subscription.updated')
+      )
+      subscription.status = 'canceled'
+      subscription.cancel_at_period_end = false
+      subscription.ended_at = now
+      subscription.canceled_at = now
+      await reconcileStripeEvent(
+        event(owner.customer, 'customer.subscription.deleted')
+      )
+      expect(fixture.send).toHaveBeenCalledTimes(3)
+      expect(fixture.send.mock.calls[2]?.[0]).toMatchObject({
+        subject: 'Your Passage subscription has ended',
+        text: expect.stringContaining('Your paid access has ended')
+      })
+      const endedEmail = fixture.send.mock.calls[2]![0] as { text: string }
+      expect(endedEmail.text).not.toContain('will continue renewing')
+      expect(await readEntitlements(owner.id)).toMatchObject({
+        plan: 'free',
+        paidActions: false
+      })
+      await reconcileStripeEvent(
+        event(owner.customer, 'customer.subscription.updated')
+      )
+      expect(fixture.send).toHaveBeenCalledTimes(3)
+    })
+
     it('does not retroactively announce unchanged legacy subscriptions', async () => {
       const owner = await account()
       await getDb()
@@ -611,6 +643,8 @@ describe.skipIf(!testUrl)(
           paidPlan: 'plus',
           billingInterval: 'month',
           stripeSubscriptionId: 'sub_fixture',
+          paidThrough: new Date(periodEnd * 1000),
+          allowanceAnchorAt: new Date((now - 86400) * 1000),
           status: 'active'
         })
         .where(eq(billingAccounts.userId, owner.id))

@@ -8,6 +8,7 @@ import {
   type BillingEmailState
 } from './billing-email-policy'
 import { deliverAccountBillingEmails } from './billing-emails'
+import { entitlementsFromBilling } from './billing-policy'
 import { appUrl } from './config'
 import { getDb, type Transaction } from './db'
 import {
@@ -214,6 +215,9 @@ async function reconcileCustomer(
       typeof billingAccounts.$inferSelect,
       | 'stripeSubscriptionId'
       | 'paidPlan'
+      | 'paidThrough'
+      | 'allowanceAnchorAt'
+      | 'endedAt'
       | 'billingInterval'
       | 'cancelAtPeriodEnd'
       | 'cancelAt'
@@ -222,34 +226,54 @@ async function reconcileCustomer(
       | 'pendingBillingInterval'
       | 'pendingEffectiveAt'
       | 'status'
-    >,
+    > & { closingAt?: Date | null },
     interval: string | null = state.billingInterval
-  ): BillingEmailState => ({
-    subscriptionId: state.stripeSubscriptionId,
-    plan: state.paidPlan,
-    interval:
-      interval === 'month' ? 'month' : interval === 'year' ? 'year' : null,
-    cancellation:
-      state.paidPlan !== 'free' && (state.cancelAtPeriodEnd || state.cancelAt)
-        ? {
-            effectiveAt:
-              (state.cancelAt ?? state.periodEnd)?.toISOString() ?? null
-          }
-        : null,
-    scheduledChange:
-      (state.pendingPlan === 'plus' || state.pendingPlan === 'pro') &&
-      state.pendingEffectiveAt &&
-      (state.pendingBillingInterval === 'month' ||
-        state.pendingBillingInterval === 'year')
-        ? {
-            plan: state.pendingPlan,
-            interval: state.pendingBillingInterval,
-            effectiveAt: state.pendingEffectiveAt.toISOString()
-          }
-        : null,
-    paymentIssue: state.status === 'past_due' || state.status === 'unpaid'
-  })
-  const currentEmailState = emailState(values, coverage?.interval ?? null)
+  ): BillingEmailState => {
+    const { plan } = entitlementsFromBilling(
+      { ...state, closingAt: state.closingAt ?? null },
+      now
+    )
+    return {
+      subscriptionId: state.stripeSubscriptionId,
+      plan,
+      ended: state.status === 'canceled',
+      paidThrough: state.paidThrough?.toISOString() ?? null,
+      interval:
+        plan !== 'free'
+          ? interval === 'month'
+            ? 'month'
+            : interval === 'year'
+              ? 'year'
+              : null
+          : null,
+      cancellation:
+        state.status !== 'canceled' &&
+        plan !== 'free' &&
+        (state.cancelAtPeriodEnd || state.cancelAt)
+          ? {
+              effectiveAt:
+                (state.cancelAt ?? state.periodEnd)?.toISOString() ?? null
+            }
+          : null,
+      scheduledChange:
+        state.status !== 'canceled' &&
+        (state.pendingPlan === 'plus' || state.pendingPlan === 'pro') &&
+        state.pendingEffectiveAt &&
+        (state.pendingBillingInterval === 'month' ||
+          state.pendingBillingInterval === 'year')
+          ? {
+              plan: state.pendingPlan,
+              interval: state.pendingBillingInterval,
+              effectiveAt: state.pendingEffectiveAt.toISOString()
+            }
+          : null,
+      paymentIssue: state.status === 'past_due' || state.status === 'unpaid'
+    }
+  }
+  const currentEmailState = emailState(
+    { ...values, closingAt: existing?.closingAt ?? null },
+    coverage?.interval ?? null
+  )
   // Existing accounts start from their saved state; enabling emails does not
   // retroactively announce an unchanged active subscription.
   const previousEmailState =
