@@ -53,7 +53,7 @@ describe('public Codex snapshots', () => {
     expect(result.status).toBe('available')
     if (result.status !== 'available') return
     expect(result.conversation.title).toBe('A shared code discussion')
-    expect(result.conversation.parserVersion).toBe('codex-public-json-v3')
+    expect(result.conversation.parserVersion).toBe('codex-public-json-v4')
     expect(result.conversation.messages.map((entry) => entry.role)).toEqual([
       'user',
       'assistant',

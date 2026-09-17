@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { messageMarkdown, messageText } from '../../lib/messages'
 import { fetchSource, parseSourceUrl } from '../../lib/providers'
+import { downloadSourceImage } from '../../lib/conversation-images'
 
 const network = vi.hoisted(() => ({
   lookup:
@@ -93,6 +94,47 @@ beforeEach(() => {
 })
 
 describe('public Codex downloads through the provider fetch boundary', () => {
+  it('downloads shared image bytes across CDN redirects and pins every connection', async () => {
+    respond(302, '', downloadUrl('cdn.oaiusercontent.com'))
+    respond(200, 'binary image bytes', undefined, 'image/png')
+    const bytes = await downloadSourceImage(
+      'codex:shared-asset/asset-1',
+      source,
+      AbortSignal.timeout(1000)
+    )
+    expect(bytes).toEqual(Buffer.from('binary image bytes'))
+    expect(network.request.mock.calls[0]![0].href).toBe(
+      `${upstream}/assets/asset-1`
+    )
+    expect(network.lookup.mock.calls.map(([host]) => host)).toEqual([
+      'chatgpt.com',
+      'cdn.oaiusercontent.com'
+    ])
+  })
+
+  it('refuses shared-image redirects outside provider storage', async () => {
+    respond(302, '', 'https://untrusted.example/image.png')
+    await expect(
+      downloadSourceImage(
+        'codex:shared-asset/asset-1',
+        source,
+        AbortSignal.timeout(1000)
+      )
+    ).rejects.toThrow('outside its supported public endpoint')
+    expect(network.request).toHaveBeenCalledTimes(1)
+  })
+
+  it('rejects private DNS for ordinary HTTPS images before requesting bytes', async () => {
+    network.lookup.mockResolvedValueOnce([{ address: '127.0.0.1', family: 4 }])
+    await expect(
+      downloadSourceImage(
+        'https://images.example/image.png',
+        source,
+        AbortSignal.timeout(1000)
+      )
+    ).rejects.toThrow('unsupported network address')
+    expect(network.request).not.toHaveBeenCalled()
+  })
   it.each([
     'sdmntprnznorth.oaiusercontent.com',
     'sdmntprwestus.oaiusercontent.com'

@@ -16,7 +16,7 @@ A conversation-sharing service makes public AI conversations more engaging to sh
 
 **Message**: An ordered contribution to a snapshot, with its original role and content blocks. An assistant message may identify itself as commentary or a final answer when the source makes that distinction.
 
-**Content block**: One ordered piece of a message, such as text or an explicit omission of known media, a tool interaction, or an artifact. An omission records what is missing without presenting a placeholder as original conversation text.
+**Content block**: One ordered piece of a message, such as text, a captured still image, or an explicit omission of known media, a tool interaction, or an artifact. An omission records what is missing without presenting a placeholder as original conversation text.
 
 **Preview**: A concise title and highlights describing a snapshot, generated initially and editable by the sharer before publication.
 

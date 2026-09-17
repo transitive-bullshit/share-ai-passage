@@ -121,11 +121,49 @@ const markdownComponents: Components = {
 
 export function SavedMessage({
   message,
-  index
+  index,
+  imageBasePath
 }: {
   message: Message
   index: number
+  imageBasePath?: string
 }) {
+  const images = [
+    ...(message.images ?? []),
+    ...message.content.flatMap((block) =>
+      block.type === 'image' ? [block] : []
+    )
+  ]
+  const savedImage = (url: string) =>
+    images.find(
+      (image) =>
+        url === `passage-image:${image.sha256}` &&
+        /^[a-f0-9]{64}$/.test(image.sha256)
+    )
+  const components: Components = {
+    ...markdownComponents,
+    img: ({ src, alt }) => {
+      const image = typeof src === 'string' ? savedImage(src) : undefined
+      return image && imageBasePath ? (
+        <img
+          className='conversation-image'
+          src={`${imageBasePath}/${image.sha256}`}
+          alt={alt || 'Shared image'}
+          width={image.width}
+          height={image.height}
+          loading='lazy'
+          decoding='async'
+        />
+      ) : (
+        <span className='omitted-content image-placeholder'>
+          <ImageOff aria-hidden='true' />
+          <span>[Image omitted{alt ? `: ${alt}` : ''}]</span>
+        </span>
+      )
+    }
+  }
+  const urlTransform: UrlTransform = (url, key, node) =>
+    key === 'src' && savedImage(url) ? url : safeLink(url, key, node)
   const { markdown, fromTask, questionReplies } = readerMessageContent(message)
   const visibleLength = questionReplies
     ? questionReplies.reduce((length, reply) => length + reply.answer.length, 0)
@@ -135,8 +173,8 @@ export function SavedMessage({
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeHighlight]}
-        urlTransform={safeLink}
-        components={markdownComponents}
+        urlTransform={urlTransform}
+        components={components}
       >
         {markdown}
       </ReactMarkdown>
@@ -175,8 +213,8 @@ export function SavedMessage({
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
                       rehypePlugins={[rehypeHighlight]}
-                      urlTransform={safeLink}
-                      components={markdownComponents}
+                      urlTransform={urlTransform}
+                      components={components}
                     >
                       {reply.answer}
                     </ReactMarkdown>

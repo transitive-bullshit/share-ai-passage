@@ -29,6 +29,7 @@ import {
 import { createDraftToken, readDraftToken } from '@/lib/drafts'
 import { AppError } from '@/lib/errors'
 import { message } from '@/lib/messages'
+import * as conversationImages from '@/lib/conversation-images'
 import {
   checkAvailability,
   cleanupPreparations,
@@ -209,6 +210,69 @@ describe.skipIf(!testUrl)('publication lifecycle with PostgreSQL', () => {
     if (rateKeys.length)
       await getDb().delete(rateLimits).where(inArray(rateLimits.key, rateKeys))
     await closeDatabase()
+  })
+
+  it('refetches older text-only parser captures even within the freshness window', async () => {
+    const url = sourceUrl()
+    upstream.fetchSource.mockResolvedValueOnce({
+      status: 'available',
+      conversation: { ...original, parserVersion: 'chatgpt-public-json-v2' }
+    })
+    const before = await prepareSource(url)
+    upstream.fetchSource.mockResolvedValueOnce({
+      status: 'available',
+      conversation: { ...original, parserVersion: 'chatgpt-public-json-v3' }
+    })
+    const after = await prepareSource(url)
+    expect(readDraftToken(after.draftToken).snapshotId).not.toBe(
+      readDraftToken(before.draftToken).snapshotId
+    )
+    expect(upstream.fetchSource).toHaveBeenCalledTimes(2)
+  })
+
+  it('persists captured images before publication and does not persist transient provider references', async () => {
+    const saved = {
+      sha256: 'a'.repeat(64),
+      objectKey: `assets/conversations/${'b'.repeat(64)}/${'a'.repeat(64)}.webp`,
+      width: 12,
+      height: 8
+    }
+    const capture = vi
+      .spyOn(conversationImages, 'captureConversationImages')
+      .mockResolvedValueOnce({
+        ...original,
+        messages: [
+          ...original.messages,
+          message('image', 'tool', [{ type: 'image', ...saved }])
+        ]
+      })
+    try {
+      const { published } = await preparedPublication()
+      const record = await getPublication('chatgpt', published.publicationId)
+      expect(record!.snapshot.messages.at(-1)!.content[0]).toEqual({
+        type: 'image',
+        ...saved
+      })
+      expect(capture).toHaveBeenCalledTimes(1)
+    } finally {
+      capture.mockRestore()
+    }
+  })
+
+  it('does not save a snapshot when image storage fails and releases the preparation lease', async () => {
+    const capture = vi
+      .spyOn(conversationImages, 'captureConversationImages')
+      .mockRejectedValueOnce(new AppError('Image storage unavailable', 503))
+    try {
+      const url = sourceUrl()
+      await expect(prepareSource(url)).rejects.toMatchObject({ status: 503 })
+      const source = await sourceRecord(url)
+      expect(source.latestSnapshotId).toBeNull()
+      expect(source.preparationLeaseToken).toBeNull()
+      expect(upstream.suggestPreview).not.toHaveBeenCalled()
+    } finally {
+      capture.mockRestore()
+    }
   })
 
   it('copies a passage into a draft without ingestion and preserves its source, snapshot, text and style', async () => {

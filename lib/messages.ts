@@ -79,7 +79,11 @@ function omissionLabel(content: Extract<MessageContent, { type: 'omitted' }>) {
 export function messageMarkdown(message: Message): string {
   return message.content
     .map((content) =>
-      content.type === 'omitted' ? omissionLabel(content) : content.text
+      content.type === 'omitted'
+        ? omissionLabel(content)
+        : content.type === 'image'
+          ? `![Shared image](passage-image:${content.sha256})`
+          : content.text
     )
     .join('\n\n')
 }
@@ -88,7 +92,43 @@ export function messageMarkdown(message: Message): string {
 export function messageText(message: Message): string {
   return plainText(
     message.content
-      .flatMap((content) => (content.type === 'omitted' ? [] : [content.text]))
+      .flatMap((content) =>
+        content.type === 'input_text' || content.type === 'output_text'
+          ? [content.text]
+          : []
+      )
       .join('\n\n')
   )
+}
+
+/** Image nodes only: fenced code and ordinary links are not media requests. */
+export function markdownImages(markdown: string) {
+  const images: { url: string; start: number; end: number; alt: string }[] = []
+  const tree = markdownParser.parse(markdown)
+  const definitions = new Map<string, string>()
+  function visit(node: typeof tree | (typeof tree.children)[number]) {
+    if (node.type === 'definition') definitions.set(node.identifier, node.url)
+    if ('children' in node) node.children.forEach(visit)
+  }
+  visit(tree)
+  function collect(node: typeof tree | (typeof tree.children)[number]) {
+    const url =
+      node.type === 'image'
+        ? node.url
+        : node.type === 'imageReference'
+          ? definitions.get(node.identifier)
+          : undefined
+    const start = node.position?.start.offset
+    const end = node.position?.end.offset
+    if (
+      url &&
+      start !== undefined &&
+      end !== undefined &&
+      (node.type === 'image' || node.type === 'imageReference')
+    )
+      images.push({ url, start, end, alt: node.alt ?? '' })
+    if ('children' in node) node.children.forEach(collect)
+  }
+  collect(tree)
+  return images
 }

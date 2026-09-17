@@ -1,6 +1,7 @@
 export type Provider = 'chatgpt' | 'claude'
 
 export type MessageContent =
+  | ({ type: 'image' } & SavedImage)
   | {
       /** Source Markdown supplied to the assistant. */
       text: string
@@ -45,6 +46,21 @@ export type Message = {
   phase?: 'commentary' | 'final_answer'
   /** A reasoning summary explicitly exposed by the public source. */
   kind?: 'reasoning_summary'
+  /** Captured Markdown images, addressed by content hash in the text. */
+  images?: SavedImage[]
+}
+
+export type SavedImage = {
+  sha256: string
+  objectKey: string
+  width: number
+  height: number
+}
+
+export type ImageSource = {
+  messageId: string
+  contentIndex: number
+  url: string
 }
 
 export type SourceReference = {
@@ -63,6 +79,8 @@ export type ExtractedConversation = {
   messages: Message[]
   /** Adapter format version used for this capture. */
   parserVersion: string
+  /** Transient provider references; removed before snapshot persistence. */
+  imageSources?: ImageSource[]
 }
 
 export type ProviderResult =

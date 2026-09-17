@@ -5,6 +5,7 @@ import { and, eq, exists, isNull, lt, notExists, or, sql } from 'drizzle-orm'
 import { DEFAULT_CARD_APPEARANCE, type CardAppearance } from './card-appearance'
 import { cardAppearanceSchema } from './card-appearance-schema'
 import { appUrl } from './config'
+import { captureConversationImages } from './conversation-images'
 import { getDb, type Transaction } from './db'
 import { consumeRateLimit } from './db/rate-limit'
 import {
@@ -155,6 +156,9 @@ export async function prepareSource(input: string) {
       const capture = source.latestSnapshotVerifiedAt || snapshot?.capturedAt
       if (
         snapshot &&
+        !/^(codex-public-json-v[1-3]|(?:chatgpt|claude)-public-json-v2)$/.test(
+          snapshot.parserVersion
+        ) &&
         capture &&
         now.getTime() - capture.getTime() < limits.freshnessMs
       ) {
@@ -230,7 +234,12 @@ export async function prepareSource(input: string) {
       )
     }
 
-    const conversation = result.conversation
+    const conversation = claim.snapshotToSummarize
+      ? result.conversation
+      : await captureConversationImages(
+          result.conversation,
+          sourceReference(claim.source)
+        )
     if (
       !conversation.messages.length ||
       Buffer.byteLength(JSON.stringify(conversation.messages)) >

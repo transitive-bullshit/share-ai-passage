@@ -1,4 +1,9 @@
-import type { Message, MessageContent, ProviderResult } from '../domain'
+import type {
+  ImageSource,
+  Message,
+  MessageContent,
+  ProviderResult
+} from '../domain'
 import { finishConversation, message, record } from './normalize'
 
 const invalidSnapshot = (): ProviderResult => ({
@@ -31,6 +36,15 @@ export function parseCodex(payload: unknown, status: number): ProviderResult {
   }
 
   const messages: Message[] = []
+  const imageSources: ImageSource[] = []
+  const image = (url: string, messageId: string, contentIndex = 0) => {
+    if (
+      /^codex:shared-asset\/[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(url) ||
+      url.startsWith('https://')
+    )
+      imageSources.push({ messageId, contentIndex, url })
+    return omittedImage(url)
+  }
   for (const [turnIndex, turnValue] of data.turns.entries()) {
     const turn = record(turnValue)
     if (!Array.isArray(turn?.items) || !turn.items.length) {
@@ -55,7 +69,7 @@ export function parseCodex(payload: unknown, status: number): ProviderResult {
               block?.type === 'image' &&
               typeof block.url === 'string'
             ) {
-              content.push(omittedImage(block.url))
+              content.push(image(block.url, id, content.length))
             } else {
               return invalidSnapshot()
             }
@@ -108,14 +122,14 @@ export function parseCodex(payload: unknown, status: number): ProviderResult {
 
         case 'imageView':
           if (typeof item.url !== 'string') return invalidSnapshot()
-          messages.push(message(id, 'tool', [omittedImage(item.url)]))
+          messages.push(message(id, 'tool', [image(item.url, id)]))
           break
 
         case 'imageGeneration':
           if (item.status !== 'completed' || typeof item.result !== 'string') {
             return invalidSnapshot()
           }
-          messages.push(message(id, 'tool', [omittedImage(item.result)]))
+          messages.push(message(id, 'tool', [image(item.result, id)]))
           break
 
         default:
@@ -123,14 +137,13 @@ export function parseCodex(payload: unknown, status: number): ProviderResult {
       }
     }
   }
-  return {
-    status: 'available',
-    conversation: finishConversation(
-      data.title,
-      messages,
-      'codex-public-json-v3'
-    )
-  }
+  const conversation = finishConversation(
+    data.title,
+    messages,
+    'codex-public-json-v4'
+  )
+  if (imageSources.length) conversation.imageSources = imageSources
+  return { status: 'available', conversation }
 }
 
 function omittedImage(reference: string): MessageContent {

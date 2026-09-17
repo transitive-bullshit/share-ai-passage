@@ -61,6 +61,13 @@ export async function readBoundedBody(
   stream: Readable,
   limit = responseLimit
 ): Promise<string> {
+  return (await readBoundedBytes(stream, limit)).toString('utf8')
+}
+
+export async function readBoundedBytes(
+  stream: Readable,
+  limit = responseLimit
+): Promise<Buffer> {
   const chunks: Buffer[] = []
   let length = 0
   for await (const value of stream) {
@@ -69,20 +76,36 @@ export async function readBoundedBody(
     if (length > limit) {
       stream.destroy()
       throw new Error(
-        'The provider response exceeds the supported 5 MiB limit.'
+        `The provider response exceeds the supported ${limit / 1024 / 1024} MiB limit.`
       )
     }
     chunks.push(chunk)
   }
-  return Buffer.concat(chunks).toString('utf8')
+  return Buffer.concat(chunks)
 }
 
 export async function fetchPublicJson(
   source: SourceReference
 ): Promise<UpstreamResponse> {
-  const signal = AbortSignal.timeout(timeoutMs)
-  let url = upstreamUrl(source)
+  const initial = upstreamUrl(source)
+  const response = await fetchPublicResource(initial, (next, current) =>
+    isAllowedRedirect(next, source, current)
+  )
+  return { ...response, body: response.body.toString('utf8') }
+}
+
+/** Validate and pin DNS on every hop for bounded anonymous downloads. */
+export async function fetchPublicResource(
+  initial: URL,
+  allowRedirect: (next: URL, current: URL) => boolean,
+  options: { limit?: number; signal?: AbortSignal; accept?: string } = {}
+): Promise<Omit<UpstreamResponse, 'body'> & { body: Buffer }> {
+  const signal = options.signal ?? AbortSignal.timeout(timeoutMs)
+  const limit = options.limit ?? responseLimit
+  let url = initial
   for (let hop = 0; hop <= 2; hop++) {
+    if (url.protocol !== 'https:' || url.username || url.password || url.port)
+      throw new Error('The provider returned an unsupported resource URL.')
     signal.throwIfAborted()
     // Bind the socket to a validated result, eliminating a second DNS lookup and rebinding gap.
     const addresses = await Promise.race([
@@ -107,7 +130,7 @@ export async function fetchPublicJson(
     const address =
       addresses.find((entry) => entry.family === 4) ?? addresses[0]!
     const response = await new Promise<{
-      result?: UpstreamResponse
+      result?: Omit<UpstreamResponse, 'body'> & { body: Buffer }
       redirect?: string
     }>((resolve, reject) => {
       const req = request(
@@ -121,7 +144,7 @@ export async function fetchPublicJson(
           headers: {
             'user-agent':
               'ConversationSharing/0.1 (anonymous public-share reader)',
-            accept: 'application/json',
+            accept: options.accept ?? 'application/json',
             'accept-encoding': 'gzip, deflate, br'
           }
         },
@@ -138,10 +161,10 @@ export async function fetchPublicJson(
           let wireBytes = 0
           incoming.on('data', (chunk: Buffer) => {
             wireBytes += chunk.byteLength
-            if (wireBytes > responseLimit)
+            if (wireBytes > limit)
               incoming.destroy(
                 new Error(
-                  'The provider response exceeds the supported 5 MiB limit.'
+                  `The provider response exceeds the supported ${limit / 1024 / 1024} MiB limit.`
                 )
               )
           })
@@ -161,13 +184,13 @@ export async function fetchPublicJson(
             return
           }
           incoming.on('error', (error) => body.destroy(error))
-          void readBoundedBody(body).then(
+          void readBoundedBytes(body, limit).then(
             (text) => {
               resolve({
                 result: {
                   status,
                   body: text,
-                  redirected: url.href !== upstreamUrl(source).href,
+                  redirected: url.href !== initial.href,
                   contentType: incoming.headers['content-type'] ?? '',
                   challenged: incoming.headers['cf-mitigated'] === 'challenge'
                 }
@@ -185,7 +208,7 @@ export async function fetchPublicJson(
     })
     if (response.result) return response.result
     const next = new URL(response.redirect!, url)
-    if (!isAllowedRedirect(next, source, url))
+    if (!allowRedirect(next, url))
       throw new Error(
         'The provider redirected outside its supported public endpoint.'
       )

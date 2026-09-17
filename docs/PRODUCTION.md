@@ -94,6 +94,12 @@ On another machine, copy [.env.prod.example](../.env.prod.example) to `.env.prod
 
 ## Hosting configuration
 
+### Conversation image storage
+
+Imported conversation images use the R2 module shared with the account-assets implementation. Configure `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_API_ENDPOINT`, `S3_BUCKET_NAME`, `S3_PRIVATE_BUCKET_NAME` and `S3_PUBLIC_URL` per environment. The equivalent `R2_*` variables take precedence; the account ID is inferred from the R2 endpoint unless explicitly supplied. Use separate public/private buckets and credentials scoped to both. Keep public access disabled on the private bucket. Imported images live under `assets/conversations/` in that bucket and are served through publication-bound media routes; account ownership/paid access is not required for conversation capture.
+
+Text-only imports work without R2. A readable image that cannot be stored causes preparation to fail for retry. Ensure storage is configured before deploying image capture. Development storage is provisioned locally; this feature's implementation did not configure production storage or deploy it. Captured images remain part of the immutable snapshot and are not subject to account upload cleanup.
+
 Use Node 24, a frozen-lockfile pnpm installation, `pnpm build`, and the [example environment](../.env.example). New preview generation requires `OPENAI_API_KEY`; `AI_PROVIDER` currently supports `openai`, with `AI_MODEL` selecting the model. `APP_SECRET` must be stable and at least 32 characters; rotating it expires prepared drafts, while published links remain valid.
 
 Keep database and function regions together. Use separate data for preview deployments unless deliberately testing production. Reader and image routes must be anonymously accessible over HTTPS for social crawlers.

@@ -77,7 +77,9 @@ function transcript(reviewCase: ReviewCase) {
         .map((content) =>
           content.type === 'omitted'
             ? `<p class="omission">[${escape(content.kind)} omitted · ${escape(content.reason)}${content.count === undefined ? '' : ` · ${content.count} items`}]</p>`
-            : `<pre>${escape(content.text)}</pre>`
+            : content.type === 'image'
+              ? '<p class="omission">[Saved image]</p>'
+              : `<pre>${escape(content.text)}</pre>`
         )
         .join('')}</section>`
       )

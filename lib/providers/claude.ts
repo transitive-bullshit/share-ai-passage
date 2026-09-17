@@ -1,5 +1,7 @@
 import type { Message, MessageContent, ProviderResult } from '../domain'
 import { finishConversation, message, record, textContent } from './normalize'
+import { exposedImage } from './images'
+import type { ImageSource } from '../domain'
 
 export function parseClaude(payload: unknown, status: number): ProviderResult {
   const data = record(payload)
@@ -43,6 +45,7 @@ export function parseClaude(payload: unknown, status: number): ProviderResult {
       return value
     })
     .sort((a, b) => Number(a.index) - Number(b.index))
+  const imageSources: ImageSource[] = []
   const messages: Message[] = entries.map((entry) => {
     const role = entry.sender === 'human' ? 'user' : entry.sender
     if (role !== 'user' && role !== 'assistant')
@@ -74,6 +77,7 @@ export function parseClaude(payload: unknown, status: number): ProviderResult {
             reason: 'unsupported'
           })
         } else if (block?.type === 'image') {
+          exposedImage(block, imageSources, String(entry.uuid), content.length)
           content.push({
             type: 'omitted',
             kind: 'image',
@@ -119,14 +123,13 @@ export function parseClaude(payload: unknown, status: number): ProviderResult {
     }
     return message(String(entry.uuid), role, content)
   })
-  return {
-    status: 'available',
-    conversation: finishConversation(
-      data.snapshot_name,
-      messages,
-      'claude-public-json-v2'
-    )
-  }
+  const conversation = finishConversation(
+    data.snapshot_name,
+    messages,
+    'claude-public-json-v3'
+  )
+  if (imageSources.length) conversation.imageSources = imageSources
+  return { status: 'available', conversation }
 }
 
 function positiveCount(value: unknown): number {

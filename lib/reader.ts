@@ -114,7 +114,9 @@ export function groupReaderMessages(messages: Message[], parserVersion = '') {
     const activity =
       entry.kind === 'reasoning_summary' ||
       entry.phase === 'commentary' ||
-      entry.role === 'tool' ||
+      (entry.role === 'tool' &&
+        !entry.content.some((block) => block.type === 'image') &&
+        !entry.images?.length) ||
       (legacyCodex &&
         turn !== undefined &&
         entry.role === 'assistant' &&

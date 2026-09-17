@@ -1,5 +1,7 @@
 import type { Message, MessageContent, ProviderResult } from '../domain'
 import { finishConversation, message, record, textContent } from './normalize'
+import { exposedImage } from './images'
+import type { ImageSource } from '../domain'
 
 export function parseChatgpt(payload: unknown, status: number): ProviderResult {
   const data = record(payload)
@@ -32,6 +34,7 @@ export function parseChatgpt(payload: unknown, status: number): ProviderResult {
     }
   }
   const messages: Message[] = []
+  const imageSources: ImageSource[] = []
   for (const item of data.linear_conversation) {
     const node = record(item)
     if (!node)
@@ -62,6 +65,7 @@ export function parseChatgpt(payload: unknown, status: number): ProviderResult {
         else {
           const block = record(part)
           if (block?.content_type === 'image_asset_pointer') {
+            exposedImage(block, imageSources, entry.id, parts.length)
             parts.push({
               type: 'omitted',
               kind: 'image',
@@ -94,16 +98,18 @@ export function parseChatgpt(payload: unknown, status: number): ProviderResult {
       })
     }
     if (role === 'tool') {
+      imageSources
+        .filter((image) => image.messageId === entry.id)
+        .forEach((image) => image.contentIndex++)
       parts.unshift({ type: 'omitted', kind: 'tool', reason: 'unsupported' })
     }
     messages.push(message(entry.id, role, parts))
   }
-  return {
-    status: 'available',
-    conversation: finishConversation(
-      data.title,
-      messages,
-      'chatgpt-public-json-v2'
-    )
-  }
+  const conversation = finishConversation(
+    data.title,
+    messages,
+    'chatgpt-public-json-v3'
+  )
+  if (imageSources.length) conversation.imageSources = imageSources
+  return { status: 'available', conversation }
 }

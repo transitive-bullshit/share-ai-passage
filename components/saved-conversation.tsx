@@ -6,10 +6,12 @@ import { SavedMessage } from './saved-message'
 
 export function SavedConversation({
   groups,
-  linkPreviews = false
+  linkPreviews = false,
+  imageBasePath
 }: {
   groups: ReaderGroup[]
   linkPreviews?: boolean
+  imageBasePath?: string
 }) {
   const content = groups.map((group) =>
     group.type === 'activity' ? (
@@ -24,12 +26,21 @@ export function SavedConversation({
         </summary>
         <div className='activity-messages'>
           {group.entries.map(({ message, index }) => (
-            <SavedMessage key={message.id} message={message} index={index} />
+            <SavedMessage
+              key={message.id}
+              message={message}
+              index={index}
+              imageBasePath={imageBasePath}
+            />
           ))}
         </div>
       </details>
     ) : (
-      <SavedMessage key={group.entries[0]!.message.id} {...group.entries[0]!} />
+      <SavedMessage
+        key={group.entries[0]!.message.id}
+        {...group.entries[0]!}
+        imageBasePath={imageBasePath}
+      />
     )
   )
   return linkPreviews ? (

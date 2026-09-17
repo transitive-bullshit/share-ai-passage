@@ -10,7 +10,7 @@ This document owns product scope and remaining work. See the [glossary](CONTEXT.
 2. Generate a concise title and up to three grounded highlights for an uncached snapshot; use fewer for short sources and omit highlights that only repeat the title. Aim for a 4–7 word title, roughly 10 words at most, with the most distinctive terms first. Highlights are paraphrases, not attributed quotations. Successful generation is required; failures return a retryable error.
 3. Review and edit the title, add or remove optional highlights, then choose one of five curated card styles in the in-page preview. Text and style changes update the card as you work. Publish stays disabled while text is invalid or artwork, fonts, and text fitting are not ready.
 4. Publish the reviewed wording and chosen style, then copy or open the share URL. Repeated publication of the same presentation reuses its link while available. Forks have a separate identity from their parent even when unchanged; repeated publication of the same fork reuses its link.
-5. Read the saved conversation with its original-source link. Questions use a distinct surface; reasoning summaries, commentary, and tool entries are folded into expandable activity disclosures. Highlights and long questions can be expanded. Preserve extracted text, ordering, roles, Markdown, syntax-highlighted code with copying, tables with desktop expansion and mobile scrolling, and safe links with local favicon glyphs. Known unsupported media, tools, and artifacts retain explicit omissions. See the [message model](MESSAGE_MODEL.md) for older-capture compatibility.
+5. Read the saved conversation with its original-source link and captured still images. Questions use a distinct surface; reasoning summaries, commentary, and tool entries without images are folded into expandable activity disclosures. Highlights and long questions can be expanded. Preserve extracted text, ordering, roles, Markdown, syntax-highlighted code with copying, tables with desktop expansion and mobile scrolling, and safe links with local favicon glyphs. Known unsupported media, tools, and artifacts retain explicit omissions. See the [message model](MESSAGE_MODEL.md) for older-capture compatibility.
 
 The browser, CLI, and [agent skill](../.agents/skills/passage-share/SKILL.md) use the same prepare/publish operations. Install the skill with `npx skills add transitive-bullshit/share-ai-passage --skill passage-share`; its bundled CLI defaults to the hosted Passage service. Browser drafts support text editing before publication; the standalone CLI publishes its original saved draft without regenerating. Draft tokens authorize publication for 24 hours and stay private.
 
@@ -43,6 +43,7 @@ Generation currently uses OpenAI with a configurable model, defaulting to `gpt-5
 | --- | --- |
 | Title / highlight | Soft guidance: roughly 10 words for the title, 100 characters per highlight. Hard caps: 600 / 1,000 Unicode code points; 0–3 distinct nonblank highlights |
 | Provider fetch | 15 seconds total, 2 redirects, 5 MiB wire and decompressed body |
+| Conversation images | 20 distinct references, 10 MiB per input/output, 50 MiB total downloads, 40 million pixels per image; 20-second shared download budget |
 | Saved transcript | 1 MiB encoded message JSON; oversized input is rejected |
 | Mutation body | 16 KiB |
 | Prepare / manual check | 10 / 5 attempts per client per hour |
@@ -50,7 +51,7 @@ Generation currently uses OpenAI with a configurable model, defaulting to `gpt-5
 
 Accept supported HTTPS provider shares and trusted Passage reader links (see the fork rules in the extraction guide), canonicalize copied query parameters/fragments away, and validate redirects and resolved public IPs. Keep compatibility within those rules; observed CDN paths, signing parameters, and MIME labels are not permanent provider contracts. See [extraction](EXTRACTION.md).
 
-Use validated POST mutations, configured proxy trust, atomic database budgets, escaped text, and safe Markdown. Provider content and model input are untrusted; neither can execute HTML, scripts, or tools. Keep transcript text, draft tokens, signed URLs, and credentials out of routine logs. Rendering uses local assets and does not load remote media.
+Use validated POST mutations, configured proxy trust, atomic database budgets, escaped text, and safe Markdown. Provider content and model input are untrusted; neither can execute HTML, scripts, or tools. Keep transcript text, draft tokens, signed URLs, and credentials out of routine logs. Social card rendering uses local assets. Conversation images are decoded, saved in private R2 and served only through available passages; the reader does not load provider media URLs directly.
 
 ## Remaining work
 
@@ -69,4 +70,4 @@ The accepted [brand identity](brand-identity.md) defines Passage’s current cop
 
 Included: public ChatGPT/Codex/Claude sources, generated previews with title/highlight editing during draft review, five curated card styles, browser preferences, immutable saved content and published wording, CLI/skill access, lazy removal checks, basic abuse controls, Vercel hosting, and practical self-hosting.
 
-Deferred: accounts, payments, analytics dashboards, discovery feeds, custom domains/slugs, user-authored themes, uploads, generated per-conversation artwork, editing published passages, private shares, creator deletion tokens, conversation continuation, rich media/artifact rendering, scheduled polling, and additional infrastructure. Expand scope when a concrete need warrants it.
+Deferred: accounts, payments, analytics dashboards, discovery feeds, custom domains/slugs, user-authored themes, uploads, generated per-conversation artwork, editing published passages, private shares, creator deletion tokens, conversation continuation, audio/video/interactive artifact rendering, scheduled polling, and additional infrastructure. Expand scope when a concrete need warrants it.

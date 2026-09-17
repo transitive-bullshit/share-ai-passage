@@ -166,6 +166,7 @@ export default async function ReaderPage({ params }: Props) {
       <SavedConversation
         key={`${provider}/${publicationId}`}
         groups={groups}
+        imageBasePath={`/${provider}/${publicationId}/media`}
         linkPreviews
       />
     </main>
