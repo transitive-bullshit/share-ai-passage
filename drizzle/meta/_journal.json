@@ -113,6 +113,13 @@
       "when": 1789646090032,
       "tag": "0015_soft_summary_recommendations",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1789649055758,
+      "tag": "0016_subscription_emails",
+      "breakpoints": true
     }
   ]
 }

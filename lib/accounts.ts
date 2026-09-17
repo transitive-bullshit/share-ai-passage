@@ -9,6 +9,7 @@ import {
   accountPreferences,
   authUsers,
   billingAccounts,
+  billingEmails,
   generationOperations,
   guestImports,
   imageOperations,
@@ -126,6 +127,7 @@ export async function deleteAccountData(userId: string) {
         }
       })
     await cancelUndispatchedSummaries(tx, accountSubject(userId))
+    await tx.delete(billingEmails).where(eq(billingEmails.userId, userId))
     await tx
       .update(publications)
       .set({

@@ -25,6 +25,17 @@ it('requires explicit repair approval and rejects asserted plans and unknown arg
     action: 'refresh',
     userId: 'account-id'
   })
+  expect(() => parseBillingArgs(['retry-emails'])).toThrow('--apply')
+  expect(() => parseBillingArgs(['pending-emails', '--apply'])).toThrow(
+    'read-only'
+  )
+  expect(parseBillingArgs(['pending-emails', '--limit', '10'])).toEqual({
+    action: 'pending-emails',
+    limit: 10
+  })
+  expect(parseBillingArgs(['retry-emails', '--apply'])).toEqual({
+    action: 'retry-emails'
+  })
 })
 
 it('does not load environment files or require credentials to show operator help', async () => {

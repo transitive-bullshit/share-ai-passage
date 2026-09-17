@@ -3,8 +3,19 @@ import type Stripe from 'stripe'
 
 import { accountSubject } from './accounts'
 import { billingConfiguration, getStripe, planForPrice } from './billing-config'
+import {
+  subscriptionEmailChange,
+  type BillingEmailState
+} from './billing-email-policy'
+import { deliverAccountBillingEmails } from './billing-emails'
+import { appUrl } from './config'
 import { getDb, type Transaction } from './db'
-import { authUsers, billingAccounts, billingEvents } from './db/schema'
+import {
+  authUsers,
+  billingAccounts,
+  billingEmails,
+  billingEvents
+} from './db/schema'
 import { AppError } from './errors'
 import { type PaidPlanId } from './plans'
 import { lockUsageSubjects } from './usage'
@@ -85,7 +96,11 @@ async function paidCoverage(client: Stripe, subscriptionId: string, now: Date) {
     status: 'paid',
     limit: 100
   })) {
-    const candidates: { plan: PaidPlanId; through: Date }[] = []
+    const candidates: {
+      plan: PaidPlanId
+      interval: 'month' | 'year'
+      through: Date
+    }[] = []
     for await (const line of client.invoices.listLineItems(invoice.id, {
       limit: 100
     })) {
@@ -101,6 +116,7 @@ async function paidCoverage(client: Stripe, subscriptionId: string, now: Date) {
       )
         candidates.push({
           plan: plan.plan,
+          interval: plan.interval,
           through: new Date(line.period.end * 1000)
         })
     }
@@ -193,10 +209,80 @@ async function reconcileCustomer(
     reconciledAt: now,
     updatedAt: now
   }
+  const emailState = (
+    state: Pick<
+      typeof billingAccounts.$inferSelect,
+      | 'stripeSubscriptionId'
+      | 'paidPlan'
+      | 'billingInterval'
+      | 'cancelAtPeriodEnd'
+      | 'cancelAt'
+      | 'periodEnd'
+      | 'pendingPlan'
+      | 'pendingBillingInterval'
+      | 'pendingEffectiveAt'
+      | 'status'
+    >,
+    interval: string | null = state.billingInterval
+  ): BillingEmailState => ({
+    subscriptionId: state.stripeSubscriptionId,
+    plan: state.paidPlan,
+    interval:
+      interval === 'month' ? 'month' : interval === 'year' ? 'year' : null,
+    cancellation:
+      state.paidPlan !== 'free' && (state.cancelAtPeriodEnd || state.cancelAt)
+        ? {
+            effectiveAt:
+              (state.cancelAt ?? state.periodEnd)?.toISOString() ?? null
+          }
+        : null,
+    scheduledChange:
+      (state.pendingPlan === 'plus' || state.pendingPlan === 'pro') &&
+      state.pendingEffectiveAt &&
+      (state.pendingBillingInterval === 'month' ||
+        state.pendingBillingInterval === 'year')
+        ? {
+            plan: state.pendingPlan,
+            interval: state.pendingBillingInterval,
+            effectiveAt: state.pendingEffectiveAt.toISOString()
+          }
+        : null,
+    paymentIssue: state.status === 'past_due' || state.status === 'unpaid'
+  })
+  const currentEmailState = emailState(values, coverage?.interval ?? null)
+  // Existing accounts start from their saved state; enabling emails does not
+  // retroactively announce an unchanged active subscription.
+  const previousEmailState =
+    existing?.emailState ?? (existing ? emailState(existing) : null)
+  const message = subscriptionEmailChange(previousEmailState, currentEmailState)
   await tx
     .insert(billingAccounts)
-    .values({ userId, ...values })
-    .onConflictDoUpdate({ target: billingAccounts.userId, set: values })
+    .values({ userId, ...values, emailState: currentEmailState })
+    .onConflictDoUpdate({
+      target: billingAccounts.userId,
+      set: { ...values, emailState: currentEmailState }
+    })
+  if (message && !existing?.closingAt) {
+    const [user] = await tx
+      .select()
+      .from(authUsers)
+      .where(eq(authUsers.id, userId))
+    if (
+      user &&
+      user.emailVerified &&
+      !user.isAnonymous &&
+      !user.deletionRequestedAt
+    )
+      await tx.insert(billingEmails).values({
+        userId,
+        recipient: user.email,
+        message: {
+          ...message,
+          billingUrl: new URL('/account/billing', appUrl()).href
+        },
+        createdAt: new Date()
+      })
+  }
   const needsCancellation = Boolean(existing?.closingAt && renewable.length)
   if (needsCancellation)
     await tx
@@ -325,6 +411,7 @@ export async function reconcileStripeEvent(event: Stripe.Event) {
       .where(eq(billingEvents.id, event.id))
     throw err
   }
+  await deliverAccountBillingEmails(userId)
 }
 
 export async function reconcileBillingAccount(userId: string) {
@@ -338,6 +425,7 @@ export async function reconcileBillingAccount(userId: string) {
     await lockUsageSubjects(tx, accountSubject(userId))
     await reconcileCustomer(tx, userId, account.stripeCustomerId!, client)
   })
+  await deliverAccountBillingEmails(userId)
 }
 
 /** Called by the durable account-deletion orchestrator, outside its DB transaction. */

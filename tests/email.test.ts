@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   isEmailConfigured,
   sendAuthEmail,
+  prepareSubscriptionEmail,
+  sendSubscriptionEmail,
   withEmailDeliveryStatus
 } from '@/lib/email'
 
@@ -10,7 +12,7 @@ import type { Resend } from 'resend'
 
 const { send } = vi.hoisted(() => ({
   send: vi.fn<
-    (input: Parameters<Resend['emails']['send']>[0]) => Promise<unknown>
+    (...args: Parameters<Resend['emails']['send']>) => Promise<unknown>
   >()
 }))
 vi.mock('resend', () => ({
@@ -25,6 +27,44 @@ beforeEach(() => {
   send
     .mockReset()
     .mockResolvedValue({ data: { id: 'fixture-email' }, error: null })
+})
+
+it('freezes subscription email content and envelope across retries and escapes HTML', async () => {
+  vi.stubEnv('RESEND_REPLY_TO', 'support@passage.example')
+  const payload = prepareSubscriptionEmail('reader@example.com', {
+    subject: 'Your Plus plan is active',
+    paragraphs: ['A <branded> plan & your saved passages.'],
+    billingUrl: 'https://passage.example/account/billing?fixture=1&view=plan'
+  })
+  vi.stubEnv('EMAIL_FROM', 'Changed sender <changed@accounts.example.com>')
+  vi.stubEnv('RESEND_REPLY_TO', 'changed@passage.example')
+  await sendSubscriptionEmail(payload, 'fixture-change')
+  await sendSubscriptionEmail(payload, 'fixture-change')
+  expect(send).toHaveBeenCalledTimes(2)
+  for (const [input, options] of send.mock.calls) {
+    expect(input).toEqual(payload)
+    expect(input.from).toBe('Passage <hello@accounts.example.com>')
+    expect(input.replyTo).toBe('support@passage.example')
+    expect(input.text).toContain('A <branded> plan & your saved passages.')
+    expect(input.html).toContain(
+      'A &lt;branded&gt; plan &amp; your saved passages.'
+    )
+    expect(input.html).toContain('fixture=1&amp;view=plan')
+    expect(options?.idempotencyKey).toBe('passage-subscription/fixture-change')
+  }
+})
+
+it('keeps a subscription email failure separate from the auth delivery status', async () => {
+  const payload = prepareSubscriptionEmail('reader@example.com', {
+    subject: 'Your Passage plan has changed',
+    paragraphs: ['Your paid plan is active.'],
+    billingUrl: 'https://passage.example/account/billing'
+  })
+  send.mockRejectedValue(new Error('private provider details'))
+  const result = await withEmailDeliveryStatus(() =>
+    sendSubscriptionEmail(payload, 'fixture-change').catch(() => undefined)
+  )
+  expect(result.failed).toBe(false)
 })
 
 afterEach(() => vi.unstubAllEnvs())

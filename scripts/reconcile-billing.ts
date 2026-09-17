@@ -2,13 +2,15 @@ import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 
-import { asc, eq, isNull } from 'drizzle-orm'
+import { asc, eq, inArray, isNull } from 'drizzle-orm'
 
 import { requireReconciliationDatabase } from './reconcile-summary'
 
 const help = `Billing reconciliation:
   status <account ID>
   failed-events [--limit 50]
+  pending-emails [--limit 50]
+  retry-emails --apply
   refresh <account ID> --apply
   cancel-closing <account ID> --apply
 
@@ -16,13 +18,17 @@ Set DATABASE_URL explicitly. Environment files are never loaded.
 status includes the account’s AI spending ceilings and current liabilities.
 refresh retrieves authoritative Stripe payment state; it accepts no asserted plan.
 cancel-closing retries cancellation only for an account already marked closing.
-Mutations require explicit Stripe credentials and --apply. No invoice is created.
+Stripe repairs require explicit Stripe credentials and --apply. No invoice is created.
+Email retries require Resend configuration and --apply; they never alter subscriptions.
+pending-emails lists pending/review IDs without recipients or email content.
 Replay failed event IDs through Stripe's signed webhook delivery tooling.`
 
 class BillingCommandError extends Error {}
 type BillingCommand =
   | { action: 'help' }
   | { action: 'failed-events'; limit: number }
+  | { action: 'pending-emails'; limit: number }
+  | { action: 'retry-emails' }
   | { action: 'status' | 'refresh' | 'cancel-closing'; userId: string }
 
 export function parseBillingArgs(args: string[]): BillingCommand {
@@ -44,7 +50,14 @@ export function parseBillingArgs(args: string[]): BillingCommand {
     return { action: 'help' as const }
   const [action, userId, ...extra] = parsed.positionals
   if (extra.length) throw new BillingCommandError('Supply one account ID.')
-  if (action === 'failed-events') {
+  if (action === 'retry-emails') {
+    if (userId || parsed.values.limit || !parsed.values.apply)
+      throw new BillingCommandError(
+        'Use retry-emails --apply with no account ID or limit.'
+      )
+    return { action }
+  }
+  if (action === 'failed-events' || action === 'pending-emails') {
     const limit = Number(parsed.values.limit || 50)
     if (
       userId ||
@@ -54,7 +67,7 @@ export function parseBillingArgs(args: string[]): BillingCommand {
       limit > 200
     )
       throw new BillingCommandError(
-        'failed-events is read-only; choose a limit of 1–200.'
+        `${action} is read-only; choose a limit of 1–200.`
       )
     return { action, limit }
   }
@@ -82,8 +95,31 @@ export async function runBillingReconciliation(args: string[]) {
   if (command.action === 'help') return help
   requireReconciliationDatabase(process.env.DATABASE_URL)
   const { getDb, closeDatabase } = await import('../lib/db')
-  const { billingAccounts, billingEvents } = await import('../lib/db/schema')
+  const { billingAccounts, billingEvents, billingEmails } =
+    await import('../lib/db/schema')
   try {
+    if (command.action === 'retry-emails') {
+      const { deliverBillingEmails } = await import('../lib/billing-emails')
+      return JSON.stringify(await deliverBillingEmails({ limit: 10 }), null, 2)
+    }
+    if (command.action === 'pending-emails') {
+      const emails = await getDb()
+        .select({
+          id: billingEmails.id,
+          userId: billingEmails.userId,
+          status: billingEmails.status,
+          createdAt: billingEmails.createdAt,
+          attempts: billingEmails.attempts,
+          retryAt: billingEmails.retryAt,
+          firstAttemptAt: billingEmails.firstAttemptAt,
+          lastError: billingEmails.lastError
+        })
+        .from(billingEmails)
+        .where(inArray(billingEmails.status, ['pending', 'needs_review']))
+        .orderBy(asc(billingEmails.createdAt))
+        .limit(command.limit)
+      return JSON.stringify(emails, null, 2)
+    }
     if (command.action === 'failed-events') {
       const events = await getDb()
         .select({

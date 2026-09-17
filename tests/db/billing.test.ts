@@ -17,13 +17,16 @@ import { readEntitlements } from '@/lib/billing'
 import { deleteAccountData } from '@/lib/accounts'
 import {
   reconcileStripeEvent,
+  reconcileBillingAccount,
   saveBillingCustomer
 } from '@/lib/billing-reconciliation'
 import { closeDatabase, getDb } from '@/lib/db'
+import { deliverBillingEmails } from '@/lib/billing-emails'
 import {
   authUsers,
   billingAccounts,
   billingEvents,
+  billingEmails,
   imageCreditGrants
 } from '@/lib/db/schema'
 
@@ -38,7 +41,19 @@ const fixture = vi.hoisted(() => ({
   payments: [] as unknown[],
   charges: new Map<string, unknown>(),
   cancel: vi.fn<() => Promise<unknown>>(),
-  expire: vi.fn<() => Promise<unknown>>()
+  expire: vi.fn<() => Promise<unknown>>(),
+  send: vi.fn<
+    (
+      _payload: unknown,
+      _options?: { idempotencyKey?: string }
+    ) => Promise<unknown>
+  >()
+}))
+
+vi.mock('resend', () => ({
+  Resend: class {
+    emails = { send: fixture.send }
+  }
 }))
 
 vi.mock('stripe', () => {
@@ -171,6 +186,14 @@ describe.skipIf(!testUrl)(
       process.env.DATABASE_URL = testUrl!
     })
     beforeEach(() => {
+      vi.stubEnv('RESEND_API_KEY', 'fixture-email-key')
+      vi.stubEnv(
+        'RESEND_FROM_EMAIL',
+        'Passage <hello@accounts.example.invalid>'
+      )
+      fixture.send
+        .mockReset()
+        .mockResolvedValue({ data: { id: 'fixture-receipt' }, error: null })
       vi.stubEnv('STRIPE_SECRET_KEY', 'sk_test_fixture_not_a_credential')
       vi.stubEnv('STRIPE_WEBHOOK_SECRET', 'whsec_fixture')
       for (const plan of ['plus', 'pro'])
@@ -225,6 +248,20 @@ describe.skipIf(!testUrl)(
         .from(billingEvents)
         .where(eq(billingEvents.id, initial.id))
       expect(record!.attempts).toBe(1)
+      const activation = await getDb()
+        .select()
+        .from(billingEmails)
+        .where(eq(billingEmails.userId, owner.id))
+      expect(activation).toHaveLength(1)
+      expect(activation[0]).toMatchObject({
+        status: 'sent',
+        message: { subject: 'Your Passage Plus plan is active' }
+      })
+      expect(fixture.send).toHaveBeenCalledTimes(1)
+      await reconcileStripeEvent(
+        event(owner.customer, 'customer.subscription.updated')
+      )
+      expect(fixture.send).toHaveBeenCalledTimes(1)
       const [first] = await getDb()
         .select()
         .from(billingAccounts)
@@ -238,6 +275,7 @@ describe.skipIf(!testUrl)(
         plan: 'pro',
         allowanceAnchorAt: first!.allowanceAnchorAt
       })
+      expect(fixture.send).toHaveBeenCalledTimes(2)
     })
 
     it('refreshes future phases from schedule-only events and does not revive a released schedule from stale events', async () => {
@@ -432,6 +470,188 @@ describe.skipIf(!testUrl)(
         .from(billingEvents)
         .where(eq(billingEvents.id, created.id))
       expect(completed!.processedAt).toBeInstanceOf(Date)
+    })
+
+    it('does not announce an unpaid price change and preserves the paid invoice cadence', async () => {
+      const owner = await account()
+      await reconcileStripeEvent(event(owner.customer))
+      fixture.send.mockClear()
+      paidSubscription('pro')
+      const subscription = fixture.subscriptions[0] as Stripe.Subscription
+      subscription.items.data[0]!.price.id = 'price_pro_year'
+      subscription.items.data[0]!.price.recurring!.interval = 'year'
+      await reconcileStripeEvent(
+        event(owner.customer, 'customer.subscription.updated')
+      )
+      expect(fixture.send).not.toHaveBeenCalled()
+      const [mirror] = await getDb()
+        .select()
+        .from(billingAccounts)
+        .where(eq(billingAccounts.userId, owner.id))
+      expect(mirror?.emailState).toMatchObject({
+        plan: 'plus',
+        interval: 'month'
+      })
+      paidInvoice('pro')
+      const line = fixture.lines[0] as {
+        pricing: { price_details: { price: string } }
+      }
+      line.pricing.price_details.price = 'price_pro_year'
+      await reconcileBillingAccount(owner.id)
+      expect(fixture.send).toHaveBeenCalledTimes(1)
+      expect(fixture.send.mock.calls[0]?.[0]).toMatchObject({
+        subject: 'Your Passage plan has changed',
+        text: expect.stringContaining('Pro ($240 USD/year)')
+      })
+      await reconcileStripeEvent(event(owner.customer))
+      expect(fixture.send).toHaveBeenCalledTimes(1)
+    })
+
+    it('keeps billing committed on delivery failure and retries frozen messages in order', async () => {
+      const owner = await account()
+      const activation = event(owner.customer)
+      fixture.send.mockRejectedValueOnce(new Error('private provider failure'))
+      await reconcileStripeEvent(activation)
+      const [receipt] = await getDb()
+        .select()
+        .from(billingEvents)
+        .where(eq(billingEvents.id, activation.id))
+      expect(receipt?.processedAt).toBeInstanceOf(Date)
+      expect(await readEntitlements(owner.id)).toMatchObject({
+        plan: 'plus',
+        paidActions: true
+      })
+      const [pending] = await getDb()
+        .select()
+        .from(billingEmails)
+        .where(eq(billingEmails.userId, owner.id))
+      expect(pending).toMatchObject({
+        status: 'pending',
+        attempts: 1,
+        lastError: 'Subscription email delivery failed; retry pending.'
+      })
+      const firstSend = fixture.send.mock.calls[0]!
+      vi.stubEnv(
+        'RESEND_FROM_EMAIL',
+        'Changed sender <changed@accounts.example.invalid>'
+      )
+      paidSubscription('pro')
+      paidInvoice('pro')
+      await reconcileBillingAccount(owner.id)
+      expect(fixture.send).toHaveBeenCalledTimes(1)
+      await getDb()
+        .update(billingEmails)
+        .set({ retryAt: new Date(0) })
+        .where(eq(billingEmails.id, pending!.id))
+      await Promise.all([
+        deliverBillingEmails({ userId: owner.id, limit: 1 }),
+        deliverBillingEmails({ userId: owner.id, limit: 1 })
+      ])
+      const retry = fixture.send.mock.calls[1]!
+      expect(retry[0]).toEqual(firstSend[0])
+      expect(retry[1]?.idempotencyKey).toBe(firstSend[1]?.idempotencyKey)
+      await deliverBillingEmails({ userId: owner.id })
+      expect(fixture.send).toHaveBeenCalledTimes(3)
+      const delivered = await getDb()
+        .select()
+        .from(billingEmails)
+        .where(eq(billingEmails.userId, owner.id))
+      expect(delivered).toHaveLength(2)
+      expect(delivered.every((record) => record.status === 'sent')).toBe(true)
+    })
+
+    it('recovers an expired delivery lease with the same key and pauses outside the provider deduplication window', async () => {
+      const owner = await account()
+      await reconcileStripeEvent(event(owner.customer))
+      const [accepted] = await getDb()
+        .select()
+        .from(billingEmails)
+        .where(eq(billingEmails.userId, owner.id))
+      const firstSend = fixture.send.mock.calls[0]!
+      // Simulate acceptance followed by process death before the DB receipt commit.
+      await getDb()
+        .update(billingEmails)
+        .set({
+          status: 'pending',
+          sentAt: null,
+          leaseUntil: new Date(0),
+          retryAt: new Date(0)
+        })
+        .where(eq(billingEmails.id, accepted!.id))
+      await deliverBillingEmails({ userId: owner.id })
+      expect(fixture.send.mock.calls[1]?.[0]).toEqual(firstSend[0])
+      expect(fixture.send.mock.calls[1]?.[1]?.idempotencyKey).toBe(
+        firstSend[1]?.idempotencyKey
+      )
+      await getDb()
+        .update(billingEmails)
+        .set({
+          status: 'pending',
+          firstAttemptAt: new Date(Date.now() - 24 * 60 * 60_000),
+          leaseUntil: null,
+          retryAt: new Date(0)
+        })
+        .where(eq(billingEmails.id, accepted!.id))
+      expect(await deliverBillingEmails({ userId: owner.id })).toMatchObject({
+        needsReview: 1,
+        sent: 0
+      })
+      expect(fixture.send).toHaveBeenCalledTimes(2)
+      expect(await deliverBillingEmails({ userId: owner.id })).toMatchObject({
+        needsReview: 1,
+        examined: 0
+      })
+    })
+
+    it('does not retroactively announce unchanged legacy subscriptions', async () => {
+      const owner = await account()
+      await getDb()
+        .update(billingAccounts)
+        .set({
+          paidPlan: 'plus',
+          billingInterval: 'month',
+          stripeSubscriptionId: 'sub_fixture',
+          status: 'active'
+        })
+        .where(eq(billingAccounts.userId, owner.id))
+      await reconcileBillingAccount(owner.id)
+      expect(fixture.send).not.toHaveBeenCalled()
+      expect(
+        await getDb()
+          .select()
+          .from(billingEmails)
+          .where(eq(billingEmails.userId, owner.id))
+      ).toHaveLength(0)
+    })
+
+    it('suppresses pending confirmations after an account email change or closure', async () => {
+      const owner = await account()
+      fixture.send.mockRejectedValueOnce(new Error('fixture network failure'))
+      await reconcileStripeEvent(event(owner.customer))
+      await getDb()
+        .update(authUsers)
+        .set({ email: `${randomUUID()}@example.invalid` })
+        .where(eq(authUsers.id, owner.id))
+      await getDb()
+        .update(billingEmails)
+        .set({ retryAt: new Date(0) })
+        .where(eq(billingEmails.userId, owner.id))
+      expect(await deliverBillingEmails({ userId: owner.id })).toMatchObject({
+        skipped: 1,
+        sent: 0
+      })
+      expect(fixture.send).toHaveBeenCalledTimes(1)
+      await deleteAccountData(owner.id)
+      expect(
+        await getDb()
+          .select()
+          .from(billingEmails)
+          .where(eq(billingEmails.userId, owner.id))
+      ).toHaveLength(0)
+      await reconcileStripeEvent(
+        event(owner.customer, 'customer.subscription.updated')
+      )
+      expect(fixture.send).toHaveBeenCalledTimes(1)
     })
 
     it('rejects mismatched live events before reading payment state', async () => {

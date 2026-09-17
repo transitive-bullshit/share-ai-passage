@@ -25,6 +25,11 @@ import type {
   TemplateRecipe
 } from '@/lib/paid-design'
 import type { PlanId } from '@/lib/plans'
+import type {
+  BillingEmailMessage,
+  BillingEmailState
+} from '@/lib/billing-email-policy'
+import type { TransactionalEmailPayload } from '@/lib/email'
 
 // Better Auth's standard PostgreSQL models. Application ownership is separate
 // from the provider account records used to authenticate a user.
@@ -609,6 +614,7 @@ export const billingAccounts = pgTable(
     pendingEffectiveAt: timestamp('pending_effective_at', {
       withTimezone: true
     }),
+    emailState: jsonb('email_state').$type<BillingEmailState>(),
     reconciledAt: timestamp('reconciled_at', { withTimezone: true }),
     closingAt: timestamp('closing_at', { withTimezone: true }),
     cancellationCompletedAt: timestamp('cancellation_completed_at', {
@@ -649,6 +655,42 @@ export const billingEvents = pgTable(
   },
   (table) => [
     index('billing_events_pending_idx').on(table.processedAt, table.receivedAt)
+  ]
+)
+
+/** Transactional outbox; committed with billing state, delivered after commit. */
+export const billingEmails = pgTable(
+  'billing_emails',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => authUsers.id, { onDelete: 'cascade' }),
+    recipient: text('recipient').notNull(),
+    message: jsonb('message').$type<BillingEmailMessage>().notNull(),
+    payload: jsonb('payload').$type<TransactionalEmailPayload>(),
+    status: text('status')
+      .$type<'pending' | 'sent' | 'skipped' | 'needs_review'>()
+      .notNull()
+      .default('pending'),
+    attempts: integer('attempts').notNull().default(0),
+    firstAttemptAt: timestamp('first_attempt_at', { withTimezone: true }),
+    retryAt: timestamp('retry_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    leaseUntil: timestamp('lease_until', { withTimezone: true }),
+    sentAt: timestamp('sent_at', { withTimezone: true }),
+    lastError: text('last_error'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow()
+  },
+  (table) => [
+    index('billing_emails_pending_idx').on(table.status, table.retryAt),
+    check(
+      'billing_emails_status_valid',
+      sql`${table.status} in ('pending', 'sent', 'skipped', 'needs_review')`
+    )
   ]
 )
 

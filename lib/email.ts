@@ -3,6 +3,17 @@ import { createHash } from 'node:crypto'
 
 import { Resend } from 'resend'
 
+import type { BillingEmailMessage } from './billing-email-policy'
+
+export type TransactionalEmailPayload = {
+  to: string
+  from: string
+  replyTo?: string
+  subject: string
+  text: string
+  html: string
+}
+
 const deliveryContext = new AsyncLocalStorage<{ failed: boolean }>()
 
 /** Report delivery failure at the HTTP boundary even when an auth callback catches it. */
@@ -98,6 +109,33 @@ export function sendOperationsEmail(input: {
   )
 }
 
+/** Freeze the complete payload before the first send so retries remain identical. */
+export function prepareSubscriptionEmail(
+  to: string,
+  message: BillingEmailMessage
+): TransactionalEmailPayload {
+  if (!isEmailConfigured()) throw new EmailDeliveryError()
+  const { subject, paragraphs, billingUrl } = message
+  return {
+    to,
+    from: emailFrom()!,
+    replyTo:
+      process.env.RESEND_REPLY_TO?.trim() ||
+      process.env.EMAIL_REPLY_TO?.trim() ||
+      undefined,
+    subject,
+    text: `${subject}\n\n${paragraphs.join('\n\n')}\n\nPlans and billing: ${billingUrl}\n\nPassage — Good conversations deserve to travel.`,
+    html: `<div style="font-family:Inter,Arial,sans-serif;color:#171717;max-width:520px;margin:32px auto;padding:24px"><p style="font-size:20px;font-weight:600;letter-spacing:-0.5px">Passage</p><h1 style="font-size:24px;font-weight:500">${escapeHtml(subject)}</h1>${paragraphs.map((paragraph) => `<p style="line-height:1.7">${escapeHtml(paragraph)}</p>`).join('')}<p style="margin:28px 0"><a href="${escapeHtml(billingUrl)}" style="display:inline-block;background:#171717;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:24px">Plans and billing</a></p><p style="color:#737373;font-size:13px;border-top:1px solid #e8e8e8;padding-top:20px">Good conversations deserve to travel.</p></div>`
+  }
+}
+
+export function sendSubscriptionEmail(
+  payload: TransactionalEmailPayload,
+  id: string
+) {
+  return deliverEmail(payload, `passage-subscription/${id}`, payload)
+}
+
 async function deliverEmail(
   input: {
     to: string
@@ -105,31 +143,37 @@ async function deliverEmail(
     text: string
     html?: string
   },
-  idempotencyKey?: string
+  idempotencyKey?: string,
+  frozenSender?: TransactionalEmailPayload
 ) {
   if (!isEmailConfigured()) {
     const state = deliveryContext.getStore()
-    if (state) state.failed = true
+    if (state && !frozenSender) state.failed = true
     throw new EmailDeliveryError()
   }
   try {
     const resend = new Resend(process.env.RESEND_API_KEY!.trim())
     const payload = {
       ...input,
-      from: emailFrom()!,
-      replyTo:
-        process.env.RESEND_REPLY_TO?.trim() ||
-        process.env.EMAIL_REPLY_TO?.trim() ||
-        undefined
+      from: frozenSender?.from ?? emailFrom()!,
+      replyTo: frozenSender
+        ? frozenSender.replyTo
+        : process.env.RESEND_REPLY_TO?.trim() ||
+          process.env.EMAIL_REPLY_TO?.trim() ||
+          undefined
     }
+    // The pinned SDK forwards request options to fetch; bound billing retries.
+    const options = frozenSender
+      ? { idempotencyKey, signal: AbortSignal.timeout(10_000) }
+      : { idempotencyKey }
     const result = idempotencyKey
-      ? await resend.emails.send(payload, { idempotencyKey })
+      ? await resend.emails.send(payload, options)
       : await resend.emails.send(payload)
     if (result.error || !result.data?.id) throw new EmailDeliveryError()
   } catch {
     // Provider errors may contain request details; never expose recipients, links or tokens.
     const state = deliveryContext.getStore()
-    if (state) state.failed = true
+    if (state && !frozenSender) state.failed = true
     throw new EmailDeliveryError()
   }
 }
