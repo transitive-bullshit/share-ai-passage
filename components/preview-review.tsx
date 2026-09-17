@@ -255,7 +255,6 @@ export function PreviewReview({
     if (editingDisabled || shareUrl) return
     setPreview(next)
     autosave?.change({ preview: next, appearance: activeAppearance, design })
-    setCardAttempt((attempt) => attempt + 1)
     setError('')
   }
 

@@ -319,6 +319,8 @@ it('edits each field locally and publishes the latest fitted wording, preserving
   await finishArtwork('margin-notes')
 
   const earlierArtwork = [...imageDecodes]
+  const editedFonts = Promise.withResolvers<FontFace[]>()
+  loadFont.mockImplementation(() => editedFonts.promise)
   const title = await editField('summary-title', '  A clearer way to share  ')
   await editField('summary-highlight-1', '  Keep the   useful idea. ')
   await editField('summary-highlight-2', 'Make the next step clear.')
@@ -334,7 +336,7 @@ it('edits each field locally and publishes the latest fitted wording, preserving
 
   await act(async () => earlierArtwork.forEach((image) => image.resolve()))
   expect(publishButton().disabled).toBe(true)
-  await finishArtwork('margin-notes')
+  await act(async () => editedFonts.resolve([]))
   expect(publishButton().disabled).toBe(false)
   await act(async () => publishButton().click())
   expect(title.disabled).toBe(true)
@@ -586,4 +588,103 @@ it('clips oversized highlights without blocking review or publication', async ()
   expect(publishButton().disabled).toBe(false)
   expect(container.textContent).not.toContain('Shorten the highlights')
   expect(requests).not.toHaveBeenCalled()
+})
+
+it('keeps fitted preview geometry while typing without restarting artwork loading', async () => {
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
+    function (this: HTMLElement) {
+      const title = this.querySelector<HTMLElement>('.social-card-title')
+      const scale = title ? Number.parseFloat(title.style.fontSize) / 68 : 1
+      return new DOMRect(
+        0,
+        0,
+        1200,
+        this.classList.contains('social-card-copy') ? 600 * scale : 630
+      )
+    }
+  )
+  await act(async () => root.render(createElement(ReviewHarness)))
+  await finishArtwork('margin-notes')
+  const canvas = container.querySelector('.social-card-canvas')!
+  const fontSize =
+    container.querySelector<HTMLElement>('.social-card-title')!.style.fontSize
+  expect(Number.parseFloat(fontSize)).toBeLessThan(68)
+  const decodes = imageDecodes.length
+  // A new glyph's font preparation must not expose an unfitted full-size card.
+  const earlierFonts = Promise.withResolvers<FontFace[]>()
+  loadFont.mockImplementation(() => earlierFonts.promise)
+  await editField('summary-highlight-1', 'Keep the useful ideas.')
+  expect(
+    container.querySelector<HTMLElement>('.social-card-title')!.style.fontSize
+  ).toBe(fontSize)
+  expect(container.querySelector('.social-card-canvas')).toBe(canvas)
+  expect(imageDecodes).toHaveLength(decodes)
+  expect(publishButton().disabled).toBe(true)
+
+  const latestFonts = Promise.withResolvers<FontFace[]>()
+  loadFont.mockImplementation(() => latestFonts.promise)
+  await editField('summary-title', 'A useful conversation deserves to travels')
+  await act(async () => earlierFonts.resolve([]))
+  expect(publishButton().disabled).toBe(true)
+  expect(
+    canvas.querySelector<HTMLElement>('.social-card-title')!.style.fontSize
+  ).toBe(fontSize)
+  await act(async () => latestFonts.resolve([]))
+  expect(publishButton().disabled).toBe(false)
+  expect(
+    canvas.querySelector<HTMLElement>('.social-card-title')!.style.fontSize
+  ).toBe(fontSize)
+
+  // Ordinary typing with cached glyphs skips async font work entirely.
+  Object.defineProperty(document.fonts, 'check', {
+    value: vi.fn<FontFaceSet['check']>(() => true)
+  })
+  const fontLoads = loadFont.mock.calls.length
+  await editField('summary-title', 'A useful conversation deserves to travel')
+  await editField('summary-highlight-1', 'Keep the useful idea.')
+  expect(publishButton().disabled).toBe(false)
+  expect(loadFont).toHaveBeenCalledTimes(fontLoads)
+  expect(container.querySelector('.social-card-canvas')).toBe(canvas)
+  expect(
+    canvas.querySelector<HTMLElement>('.social-card-title')!.style.fontSize
+  ).toBe(fontSize)
+  expect(imageDecodes).toHaveLength(decodes)
+})
+
+it('refits real wrapping changes before becoming publish-ready without reloading artwork', async () => {
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
+    function (this: HTMLElement) {
+      const title = this.querySelector<HTMLElement>('.social-card-title')
+      const scale = title ? Number.parseFloat(title.style.fontSize) / 68 : 1
+      const long = (this.textContent?.length ?? 0) > 500
+      return new DOMRect(
+        0,
+        0,
+        1200,
+        this.classList.contains('social-card-copy')
+          ? long
+            ? 780 * scale
+            : 200
+          : 630
+      )
+    }
+  )
+  await act(async () => root.render(createElement(ReviewHarness)))
+  await finishArtwork('margin-notes')
+  const canvas = container.querySelector('.social-card-canvas')!
+  const decodes = imageDecodes.length
+  await editField('summary-highlight-1', 'A long highlight. '.repeat(150))
+  expect(publishButton().disabled).toBe(false)
+  expect(
+    Number.parseFloat(
+      container.querySelector<HTMLElement>('.social-card-title')!.style.fontSize
+    )
+  ).toBeLessThan(68)
+  expect(container.querySelector('.social-card-canvas')).toBe(canvas)
+  await editField('summary-highlight-1', 'A short highlight.')
+  expect(publishButton().disabled).toBe(false)
+  expect(
+    container.querySelector<HTMLElement>('.social-card-title')!.style.fontSize
+  ).toBe('68px')
+  expect(imageDecodes).toHaveLength(decodes)
 })
