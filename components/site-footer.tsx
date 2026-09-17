@@ -12,6 +12,7 @@ const navigation = [
     links: [
       { label: 'How it works', href: '/#how-it-works' },
       { label: 'Pricing', href: '/pricing' },
+      { label: 'Privacy', href: '/privacy' },
       { label: 'Help and FAQs', href: '/#help-heading' }
     ]
   },

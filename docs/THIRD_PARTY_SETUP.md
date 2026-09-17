@@ -2,7 +2,7 @@
 
 September 14, 2026. Companion to the [implementation handoff](ACCOUNTS_PAID_FEATURES_PLAN.md). The user can prepare accounts, DNS and credentials now, including prerequisites for Phase 2. Application implementation still runs accounts first, pauses for feedback, and only then begins billing/paid integration. This checklist is setup guidance, not a claim that these external resources have been provisioned.
 
-Scope updated September 17: paid customization uses uploaded artwork and templates; image generation and image packs have been removed. Current provisioned resources and remaining launch checks are recorded in [paid review](PAID_REVIEW.md) and [production guidance](PRODUCTION.md).
+Scope updated September 17: paid customization uses uploaded artwork and templates; image generation and image packs have been removed. Existing vendors cover the launch; no additional service account is needed. Production database migration and initial environment preparation are complete; live Stripe credentials/configuration and Google console review remain. Current provisioned resources and remaining launch checks are recorded in [paid review](PAID_REVIEW.md) and [production guidance](PRODUCTION.md). The checklist below preserves setup instructions, not pending tasks already completed in those records.
 
 The current repository records production at `https://www.share-ai-passage.com`, with the apex redirecting there. Use the www origin for production OAuth callbacks. Neon, Vercel and OpenAI are already part of the project; reuse those accounts. Better Auth runs in the application and needs no separate hosted authentication-service account. The email-provider default in the handoff is Resend unless an existing configured sender is reused.
 
@@ -60,11 +60,11 @@ Configure Plus/Pro monthly and annual prices, Checkout, Portal and webhooks so t
 
 ### 5. Cloudflare R2 — use the existing account
 
-Create dedicated Standard-class buckets if you want them ready: suggested names `passage-public` and `passage-private`. The names are proposals; record the actual names if different. Keep both unexposed during preparation. The private bucket must never get a public domain or public `r2.dev` access. Separate development storage will be used during integration.
+The configured buckets are `passage` (public) and `passage-private` (private), reused across the agreed initial environments. The private bucket must never get a public domain or public `r2.dev` access. Both buckets are provisioned; production access and private upload CORS were verified September 17.
 
 Create R2 S3 credentials with **Object Read & Write**, scoped to the selected Passage buckets. Save the Access Key ID, Secret Access Key, account ID/S3 endpoint and bucket names. These S3 credentials are distinct from a general Cloudflare API token. [R2 S3 setup](https://developers.cloudflare.com/r2/get-started/s3/).
 
-Reserve `assets.share-ai-passage.com` as the proposed delivery domain for the public bucket. Connect it during integration once public/private routing is verified. R2's custom-domain route requires the domain's zone in the same Cloudflare account. If it is not already there, record that dependency for the implementation instead of making an incidental nameserver migration now. `r2.dev` is for development, not production delivery. [R2 public domains](https://developers.cloudflare.com/r2/buckets/public-buckets/).
+Production delivery uses `https://passage.cultural-alignment.com`, configured on `main` and retained in this branch. Development uses the existing `r2.dev` origin. R2's custom-domain route requires the domain's zone in the same Cloudflare account; do not make an incidental nameserver migration. [R2 public domains](https://developers.cloudflare.com/r2/buckets/public-buckets/).
 
 ## Credential handoff
 
@@ -78,6 +78,6 @@ Store secrets in the appropriate Vercel environment, a password manager, or igno
 | Chosen sender           | `RESEND_FROM_EMAIL`                        |
 | Optional reply address  | `RESEND_REPLY_TO`                          |
 
-The accounts implementation reads these settings. Configure the Better Auth secret and environment-specific base URL; see the [production guide](PRODUCTION.md) for current provider setup status and the [local HTTPS instructions](../contributing.md#google-sign-in-with-local-https) for Google development with Portless. Keep the existing `APP_SECRET` stable. Stripe/R2 runtime configuration is implemented; use the [environment example](../.env.example) and [paid-service setup](PRODUCTION.md#paid-services-and-launch-gate) for current variables and permissions. Keep development and production credentials separate.
+The accounts implementation reads these settings and reuses the stable existing `APP_SECRET` with automatic platform-origin resolution; no additional Better Auth secret/base-URL variables are required for the standard Vercel deployment. See the [production guide](PRODUCTION.md) for current provider setup status and the [local HTTPS instructions](../contributing.md#google-sign-in-with-local-https) for Google development with Portless. Stripe/R2 runtime configuration is implemented; use the [environment example](../.env.example) and [paid-service setup](PRODUCTION.md#paid-services-and-launch-gate) for current variables and permissions. Keep development and production credentials separate.
 
-There is no need to sign up for another image provider, a separate auth SaaS, or a separate workflow vendor. The [paid-feature review](PAID_REVIEW.md) records completed development checks and the remaining image qualification and hosted Workflow gates; the pending 25-call qualification batch still requires the approval already requested.
+There is no need to sign up for another image provider, a separate auth SaaS, or a separate workflow vendor. The [paid-feature review](PAID_REVIEW.md) records completed checks and the remaining hosted paid upload/template/publication journey and rollout work. Historical image qualification is not a launch gate.
