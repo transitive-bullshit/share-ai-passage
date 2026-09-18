@@ -311,11 +311,6 @@ export function AuthForm({
                   without signing in.
                 </AlertDescription>
               </Alert>
-            ) : !config ? (
-              <p className='auth-loading'>
-                <Spinner />
-                Loading sign-in options…
-              </p>
             ) : null}
             {entryMode && (
               <>

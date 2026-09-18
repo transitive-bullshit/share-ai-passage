@@ -92,11 +92,11 @@ Register the HTTPS origin above as the development Google client's authorized Ja
 
 ## Paid-feature development
 
-Gate A is approved. Phase 2 provides Stripe subscriptions, uploaded backgrounds/logos, reusable templates and branded share cards; Gate B still precedes production launch. See the [review](docs/PAID_REVIEW.md), [handoff](docs/ACCOUNTS_PAID_FEATURES_PLAN.md) and [production guide](docs/PRODUCTION.md#paid-services-and-launch-gate).
+Gate A is approved. Phase 2 provides Stripe subscriptions, uploaded backgrounds/logos, reusable templates and branded share cards. Accounts are deployed to production and the owner authorized live Checkout activation on September 18; complete hosted paid customization QA remains open. See the [review](docs/PAID_REVIEW.md), [handoff](docs/ACCOUNTS_PAID_FEATURES_PLAN.md) and [production guide](docs/PRODUCTION.md#paid-services-and-launch-gate).
 
 Configure the standard Stripe sandbox subscription prices and private/public R2 buckets from `.env.example`. Image generation and image packs were removed on September 17; create artwork in an external app and upload it in the template editor. Ordinary tests never make paid provider requests.
 
-Vercel Workflow durably prepares source conversation text and its AI summary. Neon stores the passage identity before kickoff; `/create?passage=<id>` follows its current preparing, failed, editable or published state. Preview retains Vercel authentication and a $1/month operational summary budget (`SUMMARY_AI_MONTHLY_BUDGET_USD=1`); live Checkout stays disabled. Keep the summary reconciliation and per-account spending protections.
+Vercel Workflow durably prepares source conversation text and its AI summary. Neon stores the passage identity before kickoff; `/create?passage=<id>` follows its current preparing, failed, editable or published state. Preview retains Vercel authentication and a $1/month operational summary budget (`SUMMARY_AI_MONTHLY_BUDGET_USD=1`); Preview live Checkout stays disabled. Keep the summary reconciliation and per-account spending protections.
 
 ## CLI and agent skill
 

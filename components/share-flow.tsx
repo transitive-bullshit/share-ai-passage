@@ -173,24 +173,29 @@ export function ShareFlow({
     })
   }
 
-  const showDraft = useCallback((result: SavedDraft) => {
-    setDraftAppearance(result.appearance)
-    setDraft(result)
-    setLoadingId('')
-    preparationRecovery.clear()
-    window.history.replaceState(
-      null,
-      '',
-      `/create?passage=${encodeURIComponent(result.draftId)}`
-    )
-  }, [])
+  const showDraft = useCallback(
+    (result: SavedDraft) => {
+      setDraftAppearance(result.appearance)
+      setDraft(result)
+      setLoadingId('')
+      preparationRecovery.clear()
+      // Restore the saved passage through the router so Back retains its page
+      // identity as well as its URL. A native history edit retains the old RSC.
+      if (initialDraftId !== result.draftId)
+        router.replace(
+          `/create?passage=${encodeURIComponent(result.draftId)}`,
+          { scroll: false }
+        )
+    },
+    [initialDraftId, router]
+  )
 
   function back() {
     setDraft(null)
     setDraftAppearance(null)
     setLoadingId('')
     preparationRecovery.clear()
-    window.history.replaceState(null, '', '/create')
+    router.replace('/create', { scroll: false })
   }
 
   useEffect(() => {
@@ -257,10 +262,9 @@ export function ShareFlow({
       else {
         setLoadingId(result.draftId)
         preparationRecovery.clear()
-        window.history.replaceState(
-          null,
-          '',
-          `/create?passage=${encodeURIComponent(result.draftId)}`
+        router.replace(
+          `/create?passage=${encodeURIComponent(result.draftId)}`,
+          { scroll: false }
         )
       }
     } catch (err) {
@@ -274,10 +278,9 @@ export function ShareFlow({
       ) {
         setLoadingId(err.details.draftId)
         preparationRecovery.clear()
-        window.history.replaceState(
-          null,
-          '',
-          `/create?passage=${encodeURIComponent(err.details.draftId)}`
+        router.replace(
+          `/create?passage=${encodeURIComponent(err.details.draftId)}`,
+          { scroll: false }
         )
       }
       if (err instanceof ClientRequestError && err.retryAt && !resetAt) {

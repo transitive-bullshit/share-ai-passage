@@ -3,7 +3,11 @@ import { brand } from './brand'
 import type { CardAppearance } from './card-appearance'
 import type { ResolvedCardDesign, TemplateRecipe } from './paid-design'
 import { providerNames, type Provider } from './domain'
-import { getSocialTemplate, type SocialTemplate } from './social-templates'
+import {
+  getSocialTemplate,
+  MIN_CARD_TITLE_LINE_HEIGHT,
+  type SocialTemplate
+} from './social-templates'
 
 /** Explicit local fallbacks keep the browser and image renderer on the same faces. */
 export function cardFontFamily(family: string) {
@@ -120,7 +124,7 @@ function Card({ data, scale = 1 }: { data: CardData; scale?: number }) {
             textWrap: 'balance',
             fontSize: 60 * scale,
             fontWeight: 500,
-            lineHeight: 1.08,
+            lineHeight: MIN_CARD_TITLE_LINE_HEIGHT,
             letterSpacing: '-2.5px',
             overflowWrap: 'anywhere'
           }}
@@ -461,7 +465,11 @@ function TemplateCard({
             fontFamily: cardFontFamily(font.title.family),
             fontWeight: font.title.weight,
             fontSize: layout.titleSize * scale,
-            lineHeight: layout.titleLineHeight,
+            // Persisted custom designs can contain the older, tighter leading.
+            lineHeight: Math.max(
+              layout.titleLineHeight,
+              MIN_CARD_TITLE_LINE_HEIGHT
+            ),
             letterSpacing: layout.titleLetterSpacing * scale,
             overflowWrap: 'anywhere'
           }}

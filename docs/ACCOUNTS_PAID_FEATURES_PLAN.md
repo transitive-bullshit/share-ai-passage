@@ -1,12 +1,12 @@
 # Accounts and paid features implementation plan
 
-Updated September 17, 2026. This is the current implementation and launch contract. The [earlier plan](archive/ACCOUNTS_PAID_FEATURES_PLAN_2026_09_17.md) and [historical paid review](archive/PAID_REVIEW_2026_09_17.md) preserve prior decisions; removed image-generation features are no longer launch requirements.
+Updated September 18, 2026. This is the current implementation and launch contract. The [earlier plan](archive/ACCOUNTS_PAID_FEATURES_PLAN_2026_09_17.md) and [historical paid review](archive/PAID_REVIEW_2026_09_17.md) preserve prior decisions; removed image-generation features are no longer launch requirements.
 
 ## Sequence and gates
 
 1. Accounts and related Free features first: Better Auth email/password, Google/GitHub, verification/reset, profile/preferences, guest import, saved work, CLI keys, usage and owner deletion. **Gate A approved.**
-2. Stripe billing and paid customization immediately afterward: individual subscriptions, backgrounds/logos uploaded to R2, reusable templates, branding and immutable composed share cards. **Implemented; Gate B before production.**
-3. Review protected Preview, then configure production OAuth/Stripe, apply migrations, set conservative summary spending limits and deploy following the production guide. No production rollout is implied by Preview testing.
+2. Stripe billing and paid customization immediately afterward: individual subscriptions, backgrounds/logos uploaded to R2, reusable templates, branding and immutable composed share cards. **Implemented and deployed; remaining hosted paid QA is recorded below.**
+3. Production OAuth/Stripe configuration, migrations, conservative summary spending limits and deployment are complete. The owner explicitly authorized live Checkout activation on September 18; production initialization passed without a payment. Preview remains protected with sandbox Stripe and a tighter summary budget. See [activation evidence](PRODUCTION.md#live-billing-activation--september-18).
 
 ## Product contract
 
