@@ -12,6 +12,8 @@ The public `/pricing` page compares Free, Plus, and Pro using the billing plan c
 
 The public `/privacy` page describes accounts, conversation capture, uploads, payments, providers and retention. The footer links to it; it remains statically rendered without session reads.
 
+Sign-in and signup show their forms immediately without a configuration-loading spinner or message. Actions become available when their sign-in options are ready.
+
 Verified account email addresses receive Resend subscription-change confirmations, including scheduled changes and payment failure/recovery. Confirmations follow authoritative, payment-confirmed billing state, with a durable outbox and bounded retries that do not block paid access on delivery failure. See [email operations](PRODUCTION.md#subscription-emails).
 
 1. Paste a supported public conversation URL. Fetch or reuse its saved content and normalize the messages. A Passage reader URL instead forks the existing publication into an editable draft, reusing its exact saved conversation, reviewed text, and original provider link; owned revisions preserve their saved style, while another sharer’s passage uses the new sharer’s defaults without fetching or summary generation.
