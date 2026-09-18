@@ -10,6 +10,7 @@ import { brand } from '@/lib/brand'
 import { renderCard, renderCardPreview } from '@/lib/card'
 import { cardFonts } from '@/lib/card-fonts'
 import { initialCardTextFit, nextCardTextFit } from '@/lib/card-text-fit'
+import { defaultTemplateRecipe, resolveCardDesign } from '@/lib/paid-design'
 import { SocialCard, cardFontFamily } from '@/lib/social-card'
 import { socialTemplates } from '@/lib/social-templates'
 import { webpDimensions } from '@/lib/webp'
@@ -285,6 +286,48 @@ it.each(socialTemplates)(
     }
   }
 )
+
+const savedDesign = resolveCardDesign(
+  { templateId: 'margin-notes' },
+  {
+    version: 1,
+    recipe: { ...defaultTemplateRecipe(), fontPairing: 'dm-sans-inter' },
+    fromTemplate: null
+  }
+)!
+savedDesign.template.layout.titleLineHeight = 1.04
+
+it.each([
+  { name: 'legacy', appearance: undefined, design: undefined },
+  {
+    name: 'saved custom design with older leading',
+    appearance: { templateId: 'margin-notes' as const },
+    design: savedDesign
+  },
+  ...socialTemplates.map(({ id }) => ({
+    name: id,
+    appearance: { templateId: id },
+    design: undefined
+  }))
+])('keeps title descenders intact in $name', async ({ appearance, design }) => {
+  await renderCard(
+    { title: 'Typography gypqj', highlights: [], provider: 'chatgpt' },
+    appearance,
+    design
+  )
+  const title = renderedLayout().find(
+    ({ node }) => node.className === 'social-card-title'
+  )!
+  const [tree, options] = vi.mocked(render).mock.lastCall!
+  const pngOptions = { ...options, format: 'png' as const }
+  const clipped = await render(tree, pngOptions)
+
+  // A title that fits on one line must paint exactly the same glyphs with
+  // and without clipping. Keep the real bundled fonts and native renderer.
+  title.node.style = { ...title.node.style, overflow: 'visible' }
+  const unclipped = await render(tree, pngOptions)
+  expect(Buffer.from(clipped).equals(Buffer.from(unclipped))).toBe(true)
+})
 
 // The numbered layout has the narrowest copy box and smallest height allowance.
 it('paints an ellipsis on a two-line title without shortening the saved title', async () => {

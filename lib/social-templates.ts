@@ -9,6 +9,8 @@ export const socialTemplateIds = [
 
 export type SocialTemplateId = (typeof socialTemplateIds)[number]
 export const DEFAULT_SOCIAL_TEMPLATE_ID: SocialTemplateId = 'margin-notes'
+/** Leave room for glyph ascenders and descenders inside clamped title lines. */
+export const MIN_CARD_TITLE_LINE_HEIGHT = 1.2
 
 export type SocialTemplateFont = {
   family: 'Inter' | 'DM Sans' | 'Newsreader'
@@ -77,7 +79,7 @@ export const socialTemplates: readonly SocialTemplate[] = [
     layout: {
       copy: { left: 66, top: 134, width: 710, maxHeight: 396 },
       titleSize: 68,
-      titleLineHeight: 1.04,
+      titleLineHeight: MIN_CARD_TITLE_LINE_HEIGHT,
       titleLetterSpacing: -1.5,
       highlightSize: 27,
       highlightLineHeight: 1.35,
@@ -109,7 +111,7 @@ export const socialTemplates: readonly SocialTemplate[] = [
     layout: {
       copy: { left: 62, top: 138, width: 684, maxHeight: 392 },
       titleSize: 61,
-      titleLineHeight: 1.04,
+      titleLineHeight: MIN_CARD_TITLE_LINE_HEIGHT,
       titleLetterSpacing: -2.4,
       highlightSize: 26,
       highlightLineHeight: 1.34,
@@ -142,7 +144,7 @@ export const socialTemplates: readonly SocialTemplate[] = [
     layout: {
       copy: { left: 72, top: 143, width: 681, maxHeight: 387 },
       titleSize: 62,
-      titleLineHeight: 1.07,
+      titleLineHeight: MIN_CARD_TITLE_LINE_HEIGHT,
       titleLetterSpacing: -1.9,
       highlightSize: 27,
       highlightLineHeight: 1.35,
@@ -174,7 +176,7 @@ export const socialTemplates: readonly SocialTemplate[] = [
     layout: {
       copy: { left: 65, top: 138, width: 700, maxHeight: 392 },
       titleSize: 69,
-      titleLineHeight: 1.04,
+      titleLineHeight: MIN_CARD_TITLE_LINE_HEIGHT,
       titleLetterSpacing: -1.4,
       highlightSize: 26,
       highlightLineHeight: 1.4,
@@ -207,7 +209,7 @@ export const socialTemplates: readonly SocialTemplate[] = [
     layout: {
       copy: { left: 65, top: 138, width: 714, maxHeight: 392 },
       titleSize: 62,
-      titleLineHeight: 1.07,
+      titleLineHeight: MIN_CARD_TITLE_LINE_HEIGHT,
       titleLetterSpacing: -1.8,
       highlightSize: 27,
       highlightLineHeight: 1.35,
