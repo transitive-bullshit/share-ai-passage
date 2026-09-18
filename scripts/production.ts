@@ -104,6 +104,28 @@ export function productionPlan(
     throw new ConfigurationError(
       `AI_PROVIDER in ${configurationFile} must be openai.`
     )
+  const authUrl = values.BETTER_AUTH_URL?.trim()
+  if (
+    authUrl &&
+    (action === 'dev' || action === 'build' || action === 'start')
+  ) {
+    const localOrigin = `http://localhost:${port}`
+    let matchesLocalOrigin = false
+    try {
+      const parsed = new URL(authUrl)
+      matchesLocalOrigin =
+        parsed.origin === localOrigin &&
+        !parsed.username &&
+        !parsed.password &&
+        parsed.pathname === '/' &&
+        !parsed.search &&
+        !parsed.hash
+    } catch {}
+    if (!matchesLocalOrigin)
+      throw new ConfigurationError(
+        `BETTER_AUTH_URL in ${configurationFile} must match ${localOrigin}, or be omitted for the local origin default.`
+      )
+  }
 
   const env: NodeJS.ProcessEnv = {
     NODE_ENV: action === 'dev' ? 'development' : 'production'
@@ -131,25 +153,6 @@ export function productionPlan(
   ]) {
     if (inherited[name] !== undefined) env[name] = inherited[name]
   }
-  // Missing production storage values stay empty so Next cannot load development
-  // credentials or a competing alias from an automatically discovered .env file.
-  for (const name of [
-    'S3_ACCESS_KEY_ID',
-    'S3_SECRET_ACCESS_KEY',
-    'S3_API_ENDPOINT',
-    'S3_BUCKET_NAME',
-    'S3_PRIVATE_BUCKET_NAME',
-    'S3_PUBLIC_URL',
-    'R2_ACCOUNT_ID',
-    'R2_ACCESS_KEY_ID',
-    'R2_SECRET_ACCESS_KEY',
-    'R2_ENDPOINT',
-    'R2_PUBLIC_BUCKET',
-    'R2_PRIVATE_BUCKET',
-    'R2_PUBLIC_URL'
-  ]) {
-    env[name] = values[name]?.trim() || ''
-  }
   Object.assign(env, {
     DATABASE_URL: databaseUrl,
     DIRECT_DATABASE_URL: directUrl,
@@ -160,6 +163,9 @@ export function productionPlan(
     AI_MODEL: values.AI_MODEL?.trim() || '',
     // Defined values take precedence over every automatically loaded Next .env file.
     PASSAGE_PRODUCTION_LOCAL: '1',
+    WORKFLOW_TARGET_WORLD: 'local',
+    WORKFLOW_LOCAL_DATA_DIR: '.next-prod/workflow-data',
+    WORKFLOW_LOCAL_BASE_URL: `http://localhost:${port}`,
     PORT: String(port),
     PORTLESS_URL: '',
     TRUST_PROXY: 'none',
@@ -174,6 +180,45 @@ export function productionPlan(
     AI_GATEWAY_API_KEY: '',
     VERCEL_OIDC_TOKEN: ''
   })
+  // Empty values also block Next from loading development credentials or aliases
+  // from .env.local while this child is connected to the production database.
+  for (const name of [
+    'BETTER_AUTH_SECRET',
+    'BETTER_AUTH_URL',
+    'GOOGLE_CLIENT_ID',
+    'GOOGLE_CLIENT_SECRET',
+    'GITHUB_CLIENT_ID',
+    'GITHUB_CLIENT_SECRET',
+    'CRON_SECRET',
+    'RESEND_API_KEY',
+    'RESEND_FROM_EMAIL',
+    'RESEND_REPLY_TO',
+    'EMAIL_FROM',
+    'EMAIL_REPLY_TO',
+    'STRIPE_SECRET_KEY',
+    'STRIPE_WEBHOOK_SECRET',
+    'STRIPE_UPGRADE_PORTAL_CONFIGURATION_ID',
+    'STRIPE_PLUS_MONTHLY_PRICE_ID',
+    'STRIPE_PLUS_ANNUAL_PRICE_ID',
+    'STRIPE_PRO_MONTHLY_PRICE_ID',
+    'STRIPE_PRO_ANNUAL_PRICE_ID',
+    'STRIPE_LIVE_CHECKOUT_ENABLED',
+    'R2_ACCOUNT_ID',
+    'R2_ACCESS_KEY_ID',
+    'R2_SECRET_ACCESS_KEY',
+    'R2_PUBLIC_BUCKET',
+    'R2_PRIVATE_BUCKET',
+    'R2_PUBLIC_URL',
+    'R2_ENDPOINT',
+    'S3_ACCESS_KEY_ID',
+    'S3_SECRET_ACCESS_KEY',
+    'S3_API_ENDPOINT',
+    'S3_BUCKET_NAME',
+    'S3_PRIVATE_BUCKET_NAME',
+    'S3_PUBLIC_URL'
+  ]) {
+    env[name] = values[name]?.trim() || ''
+  }
   const steps: Step[] = []
   if (action === 'dev' || action === 'build') {
     steps.push({

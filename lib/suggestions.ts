@@ -1,5 +1,11 @@
 import { createOpenAI } from '@ai-sdk/openai'
-import { generateText, Output } from 'ai'
+import {
+  APICallError,
+  generateText,
+  NoObjectGeneratedError,
+  Output,
+  type LanguageModelUsage
+} from 'ai'
 
 import {
   type ExtractedConversation,
@@ -38,13 +44,36 @@ function previewModel() {
   )
 }
 
+export type PreviewUsage = {
+  usage?: LanguageModelUsage
+  requestId?: string
+  definitiveFailure?: boolean
+  rejected?: boolean
+}
+
+/** Metered calls only support the task whose conservative cost bound we reserve. */
+export function assertMeteredPreviewModel() {
+  if (
+    (process.env.AI_MODEL?.trim() || defaultPreviewModel) !==
+    defaultPreviewModel
+  ) {
+    throw new AppError(
+      'This summary model has no configured usage budget. Use the supported default model.',
+      503
+    )
+  }
+  previewModel()
+}
+
 /** Preparation requires a generated summary; source excerpts are not a substitute. */
 export async function suggestPreview(
-  conversation: ExtractedConversation
+  conversation: ExtractedConversation,
+  observe?: (event: PreviewUsage) => void
 ): Promise<GeneratedPreview> {
   const startedAt = performance.now()
+  let completed: PreviewUsage | undefined
   try {
-    const { output } = await generateText({
+    const { output, usage, response } = await generateText({
       model: previewModel(),
       output: Output.object({
         name: 'conversation_preview',
@@ -70,8 +99,26 @@ export async function suggestPreview(
       maxRetries: 0,
       abortSignal: AbortSignal.timeout(15_000)
     })
+    completed = { usage, requestId: response?.id }
+    observe?.(completed)
     return validateGeneratedPreview(output)
   } catch (err) {
+    if (completed) {
+      observe?.({ ...completed, definitiveFailure: true })
+    } else if (NoObjectGeneratedError.isInstance(err)) {
+      observe?.({
+        usage: err.usage,
+        requestId: err.response?.id,
+        definitiveFailure: true
+      })
+    } else if (
+      APICallError.isInstance(err) &&
+      err.statusCode &&
+      err.statusCode >= 400 &&
+      err.statusCode !== 408
+    ) {
+      observe?.({ definitiveFailure: true, rejected: err.statusCode < 500 })
+    }
     if (err instanceof AppError) throw err
     console.error(
       getPreviewFailureDiagnostic(err, performance.now() - startedAt)

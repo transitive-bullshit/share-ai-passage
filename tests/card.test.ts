@@ -9,6 +9,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { brand } from '@/lib/brand'
 import { renderCard, renderCardPreview } from '@/lib/card'
 import { cardFonts } from '@/lib/card-fonts'
+import { initialCardTextFit, nextCardTextFit } from '@/lib/card-text-fit'
 import { SocialCard, cardFontFamily } from '@/lib/social-card'
 import { socialTemplates } from '@/lib/social-templates'
 import { webpDimensions } from '@/lib/webp'
@@ -415,7 +416,7 @@ it.each([undefined, ...socialTemplates.map(({ id }) => ({ templateId: id }))])(
   }
 )
 
-it('renders the expanded hard limits without overflowing the tightest template', async () => {
+it('renders long saved text without overflowing the tightest template', async () => {
   const data = {
     title: 'W'.repeat(600),
     provider: 'claude' as const,
@@ -429,4 +430,77 @@ it('renders the expanded hard limits without overflowing the tightest template',
     width: 1200,
     height: 630
   })
+})
+
+it.each(socialTemplates)(
+  'clips long $name highlights to three lines while retaining full saved text',
+  async (template) => {
+    const data = {
+      title: 'W'.repeat(901),
+      highlights: ['界'.repeat(2401), 'W'.repeat(2401), '🌱'.repeat(1401)],
+      provider: 'claude' as const
+    }
+    const response = await renderCard(data, { templateId: template.id })
+    const withEllipsis = Buffer.from(await response.arrayBuffer())
+    expect(webpDimensions(withEllipsis)).toEqual({ width: 1200, height: 630 })
+    const nodes = renderedLayout()
+    const highlights = nodes.filter(
+      ({ node }) => node.className === 'social-card-highlight'
+    )
+    expect(highlights).toHaveLength(3)
+    for (const highlight of highlights) {
+      const fontSize = Number(highlight.node.style?.fontSize)
+      expect(fontSize).toBeGreaterThan(0)
+      expect(highlight.height).toBeLessThanOrEqual(
+        Math.ceil(fontSize * template.layout.highlightLineHeight) * 3 + 1
+      )
+      expect(highlight.node.style).toMatchObject({
+        WebkitLineClamp: 3,
+        textOverflow: 'ellipsis'
+      })
+    }
+    const copy = nodes.find(
+      ({ node }) => node.className === 'social-card-copy'
+    )!
+    const footer = nodes.find(
+      ({ node }) => node.className === 'social-card-footer'
+    )!
+    expect(copy.top + copy.height).toBeLessThan(footer.top)
+    expect(layoutText(nodes)).toEqual(
+      expect.arrayContaining([data.title, ...data.highlights])
+    )
+    // Check painted ellipsis, not only layout heights or CSS declarations.
+    const [tree, options] = vi.mocked(render).mock.lastCall!
+    for (const { node } of highlights)
+      node.style = { ...node.style, textOverflow: 'clip' }
+    expect(withEllipsis).not.toEqual(Buffer.from(await render(tree, options)))
+  }
+)
+
+it('keeps a long saved title and its two-line ellipsis', async () => {
+  const data = {
+    title: 'W'.repeat(600),
+    highlights: ['Keep the full title in the passage.'],
+    provider: 'claude' as const
+  }
+  const template = socialTemplates[0]!
+  await renderCard(data, { templateId: template.id })
+  const title = renderedLayout().find(
+    ({ node }) => node.className === 'social-card-title'
+  )!
+  expect(title.height).toBeLessThanOrEqual(
+    template.layout.titleSize * template.layout.titleLineHeight * 2 + 1
+  )
+  expect(layoutText()).toContain(data.title)
+  expect(data.title.length).toBe(600)
+})
+
+it('uses the smallest measured display when fitting never succeeds', () => {
+  let fit = initialCardTextFit()
+  for (let attempt = 0; attempt < 8; attempt++) {
+    fit = nextCardTextFit(fit, false)
+  }
+  expect(fit.done).toBe(true)
+  expect(fit.scale).toBeGreaterThan(0)
+  expect(fit.scale).toBeLessThan(1)
 })

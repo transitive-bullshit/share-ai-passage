@@ -8,11 +8,11 @@ import { brand } from '@/lib/brand'
 
 export function HeaderCreateLink() {
   const pathname = usePathname()
-  if (pathname === '/') return null
+  if (pathname === '/' || pathname === '/create') return null
 
   return (
     <Button asChild variant='outline' className='header-cta rounded-full'>
-      <a href='/'>
+      <a href='/create'>
         {brand.cta}
         <ExternalLink data-icon='inline-end' aria-hidden='true' />
       </a>

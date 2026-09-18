@@ -1,6 +1,7 @@
 import { BrandMark } from '../components/brand-mark'
 import { brand } from './brand'
 import type { CardAppearance } from './card-appearance'
+import type { ResolvedCardDesign, TemplateRecipe } from './paid-design'
 import { providerNames, type Provider } from './domain'
 import { getSocialTemplate, type SocialTemplate } from './social-templates'
 
@@ -23,12 +24,17 @@ export type CardData =
       disabled?: false
     }
 
-export function footerText(data: CardData) {
+export function footerText(
+  data: CardData,
+  branding?: TemplateRecipe['branding']
+) {
   return data.disabled
     ? 'Original unavailable'
-    : data.example
-      ? brand.mantra
-      : `A passage from ${providerNames[data.provider]} worth sharing`
+    : branding && branding.mode !== 'passage'
+      ? `From ${providerNames[data.provider]}`
+      : data.example
+        ? brand.mantra
+        : `A passage from ${providerNames[data.provider]} worth sharing`
 }
 
 function Card({ data, scale = 1 }: { data: CardData; scale?: number }) {
@@ -161,7 +167,14 @@ function Card({ data, scale = 1 }: { data: CardData; scale?: number }) {
                   }}
                 />
                 <span
+                  className='social-card-highlight'
                   style={{
+                    display: '-webkit-box',
+                    WebkitBoxOrient: 'vertical',
+                    WebkitLineClamp: 3,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    minWidth: 0,
                     fontSize: 28 * scale,
                     lineHeight: 1.4,
                     color: '#525252',
@@ -284,12 +297,16 @@ function TemplateCard({
   data,
   template,
   background,
-  scale
+  scale,
+  design,
+  logo
 }: {
   data: SummaryCardData
   template: SocialTemplate
   background: string
   scale: number
+  design?: ResolvedCardDesign
+  logo?: string
 }) {
   const { layout, colors, font } = template
   return (
@@ -311,21 +328,26 @@ function TemplateCard({
         fontFamily: cardFontFamily('Inter')
       }}
     >
-      <img
-        src={background}
-        alt=''
-        width={1200}
-        height={630}
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: 1200,
-          height: 630,
-          maxWidth: 'none',
-          objectFit: 'cover'
-        }}
-      />
+      {background ? (
+        <img
+          src={background}
+          alt=''
+          width={1200}
+          height={630}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: 1200,
+            height: 630,
+            maxWidth: 'none',
+            objectFit: 'cover',
+            objectPosition: design
+              ? `${design.crop.x * 100}% ${design.crop.y * 100}%`
+              : undefined
+          }}
+        />
+      ) : null}
       <div
         style={{
           position: 'absolute',
@@ -358,16 +380,55 @@ function TemplateCard({
             letterSpacing: '-0.8px'
           }}
         >
-          <span
-            style={{ display: 'flex', width: 30, height: 30, flexShrink: 0 }}
-          >
-            <BrandMark
-              size={30}
-              color={colors.text}
-              style={{ width: 30, height: 30, flexShrink: 0 }}
-            />
-          </span>
-          <span>{brand.name}</span>
+          {design?.branding.mode === 'none' ? null : design?.branding.mode ===
+            'custom' ? (
+            <>
+              {logo ? (
+                <img
+                  src={logo}
+                  alt=''
+                  width={30}
+                  height={30}
+                  style={{
+                    width: 30,
+                    height: 30,
+                    objectFit: 'contain',
+                    flexShrink: 0
+                  }}
+                />
+              ) : null}
+              {design.branding.name ? (
+                <span
+                  style={{
+                    maxWidth: 550,
+                    overflow: 'hidden',
+                    whiteSpace: 'nowrap',
+                    textOverflow: 'ellipsis'
+                  }}
+                >
+                  {design.branding.name}
+                </span>
+              ) : null}
+            </>
+          ) : (
+            <>
+              <span
+                style={{
+                  display: 'flex',
+                  width: 30,
+                  height: 30,
+                  flexShrink: 0
+                }}
+              >
+                <BrandMark
+                  size={30}
+                  color={colors.text}
+                  style={{ width: 30, height: 30, flexShrink: 0 }}
+                />
+              </span>
+              <span>{brand.name}</span>
+            </>
+          )}
         </div>
         {data.example ? (
           <span style={{ fontSize: 17, color: colors.muted }}>
@@ -438,7 +499,14 @@ function TemplateCard({
                   scale={scale}
                 />
                 <span
+                  className='social-card-highlight'
                   style={{
+                    display: '-webkit-box',
+                    WebkitBoxOrient: 'vertical',
+                    WebkitLineClamp: 3,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    minWidth: 0,
                     fontFamily: cardFontFamily(font.body.family),
                     fontWeight: font.body.weight,
                     fontSize: layout.highlightSize * scale,
@@ -472,7 +540,7 @@ function TemplateCard({
           fontSize: layout.footerSize
         }}
       >
-        <span>{footerText(data)}</span>
+        <span>{footerText(data, design?.branding)}</span>
       </div>
     </div>
   )
@@ -483,25 +551,31 @@ export function SocialCard({
   data,
   appearance,
   scale = 1,
-  background
+  background,
+  design,
+  logo
 }: {
   data: CardData
   appearance?: CardAppearance
   scale?: number
   background?: string
+  design?: ResolvedCardDesign
+  logo?: string
 }) {
   const filtered = data.disabled
     ? data
     : { ...data, highlights: data.highlights.filter((text) => text.trim()) }
-  if (filtered.disabled || !appearance)
+  if (filtered.disabled || (!appearance && !design))
     return <Card data={filtered} scale={scale} />
-  const template = getSocialTemplate(appearance.templateId)
+  const template = design?.template ?? getSocialTemplate(appearance!.templateId)
   return (
     <TemplateCard
       data={filtered}
       template={template}
       background={background ?? template.backgroundImage}
       scale={scale}
+      design={design}
+      logo={logo}
     />
   )
 }

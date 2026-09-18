@@ -42,6 +42,7 @@ type RecordedRequest = {
   method: string | undefined
   origin: string | undefined
   body: Record<string, unknown>
+  authorization?: string
 }
 
 let baseUrl: string
@@ -63,7 +64,10 @@ const server = createServer(async (request, response) => {
     route: request.url,
     method: request.method,
     origin: request.headers.origin,
-    body: JSON.parse(Buffer.concat(chunks).toString())
+    body: JSON.parse(Buffer.concat(chunks).toString() || '{}'),
+    ...(request.headers.authorization
+      ? { authorization: request.headers.authorization }
+      : {})
   })
   respond(request, response)
 })
@@ -73,11 +77,15 @@ const foreignServer = createServer((_request, response) => {
   json(response, { error: 'A redirected request reached another origin.' })
 })
 
-function run(args: string[], passageUrl = baseUrl) {
+function run(args: string[], passageUrl = baseUrl, apiKey = '') {
   return new Promise<{ code: number | null; stdout: string; stderr: string }>(
     (resolve, reject) => {
       const child = spawn(process.execPath, [cliPath, ...args], {
-        env: { ...process.env, PASSAGE_URL: passageUrl },
+        env: {
+          ...process.env,
+          PASSAGE_URL: passageUrl,
+          PASSAGE_API_KEY: apiKey
+        },
         stdio: ['pipe', 'pipe', 'pipe'],
         // Reap a stuck CLI before Vitest times out and closes its local servers.
         timeout: 5000,
@@ -149,6 +157,108 @@ afterAll(async () => {
 })
 
 describe('portable Passage CLI', () => {
+  it('persists an authenticated request before dispatch and publishes its saved account revision', async () => {
+    const file = path.join(directory, 'account-ready.json')
+    const draftId = '00000000-0000-4000-8000-000000000003'
+    let recovery: Record<string, unknown> | undefined
+    respond = (request, response) => {
+      if (request.url === '/api/drafts') {
+        void readFile(file, 'utf8').then((text) => {
+          recovery = JSON.parse(text)
+          json(response, { ...prepared, status: 'ready', draftId, revision: 3 })
+        })
+      } else if (request.url === `/api/drafts/${draftId}/publish`)
+        json(response, {
+          publicationId,
+          shareUrl: `${baseUrl}/chatgpt/${publicationId}`
+        })
+      else json(response, { error: 'Unexpected endpoint' }, 404)
+    }
+    const result = await run(
+      ['prepare', sourceUrl, '--out', file, '--json'],
+      baseUrl,
+      'passage_fixture_key'
+    )
+    expect(result.code).toBe(0)
+    expect(recovery).toMatchObject({ version: 2, status: 'pending', sourceUrl })
+    expect(requests[0]!.body).toEqual({
+      url: sourceUrl,
+      requestKey: recovery!.requestKey
+    })
+    expect(requests[0]!.authorization).toBe('Bearer passage_fixture_key')
+    expect(await readFile(file, 'utf8')).not.toContain('passage_fixture_key')
+    expect(
+      (await run(['publish', file, '--json'], baseUrl, 'passage_fixture_key'))
+        .code
+    ).toBe(0)
+    expect(requests[1]!.body).toEqual({ revision: 3 })
+    expect(requests[1]!.route).toBe(`/api/drafts/${draftId}/publish`)
+  })
+
+  it('refuses a foreign origin and missing recovery file before sending an account key', async () => {
+    const file = path.join(directory, 'foreign-account.json')
+    const mismatch = await run(
+      ['prepare', sourceUrl, '--out', file, '--base-url', foreignUrl, '--json'],
+      baseUrl,
+      'passage_fixture_key'
+    )
+    expect(mismatch.code).toBe(2)
+    expect(mismatch.stderr).not.toContain('passage_fixture_key')
+    expect(foreignRequests).toBe(0)
+    expect(requests).toHaveLength(0)
+    expect(
+      (
+        await run(
+          ['prepare', sourceUrl, '--json'],
+          baseUrl,
+          'passage_fixture_key'
+        )
+      ).code
+    ).toBe(2)
+    const legacy = await savedDraft('legacy-key-binding.json', {
+      baseUrl: foreignUrl
+    })
+    expect(
+      (await run(['publish', legacy, '--json'], baseUrl, 'passage_fixture_key'))
+        .code
+    ).toBe(2)
+    expect(foreignRequests).toBe(0)
+  })
+
+  it('resumes the identical request after an interrupted account preparation', async () => {
+    const file = path.join(directory, 'account-interrupted.json')
+    respond = (_request, response) =>
+      json(response, { error: 'Fixture timeout' }, 503)
+    expect(
+      (
+        await run(
+          ['prepare', sourceUrl, '--out', file, '--json'],
+          baseUrl,
+          'passage_fixture_key'
+        )
+      ).code
+    ).toBe(1)
+    const first = requests[0]!.body.requestKey
+    respond = (_request, response) =>
+      json(response, {
+        ...prepared,
+        status: 'ready',
+        draftId: '00000000-0000-4000-8000-000000000003',
+        revision: 0
+      })
+    const resumed = await run(
+      ['resume', file, '--json'],
+      baseUrl,
+      'passage_fixture_key'
+    )
+    expect(resumed.code).toBe(0)
+    expect(requests.map((request) => request.body.requestKey)).toEqual([
+      first,
+      first
+    ])
+    expect(JSON.parse(resumed.stdout).status).toBe('prepared')
+  })
+
   it('saves a prepared draft and later publishes its exact token at the original server', async () => {
     const file = path.join(directory, 'prepared.json')
     const preparation = await run([

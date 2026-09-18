@@ -122,8 +122,6 @@ export const summaryRecommendations = {
 } as const
 
 export const limits = {
-  title: summaryRecommendations.title * 10,
-  highlight: summaryRecommendations.highlight * 10,
   highlights: 3,
   transcriptBytes: 1024 * 1024,
   freshnessMs: 7 * 24 * 60 * 60 * 1000,

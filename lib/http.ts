@@ -89,7 +89,7 @@ export function errorResponse(error: unknown) {
     const headers = new Headers(privateHeaders)
     if (error.retryAfter) headers.set('Retry-After', String(error.retryAfter))
     return Response.json(
-      { error: error.message },
+      { error: error.message, ...error.details },
       {
         status: error.status,
         headers

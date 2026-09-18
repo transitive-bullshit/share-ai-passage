@@ -7,7 +7,9 @@ export class ClientRequestError extends Error {
   constructor(
     message: string,
     public readonly status?: number,
-    public readonly retryAt?: number
+    public readonly retryAt?: number,
+    public readonly code?: string,
+    public readonly resetAt?: string
   ) {
     super(message)
     this.name = 'ClientRequestError'
@@ -27,6 +29,18 @@ export function parseRetryAfter(value: string | null, now = Date.now()) {
 
 export function clientErrorMessage(error: unknown) {
   return error instanceof ClientRequestError ? error.message : connectionError
+}
+
+export function generationResetAt(error: unknown): number | undefined {
+  if (
+    !(error instanceof ClientRequestError) ||
+    !['SUMMARY_LIMIT', 'FREE_BUDGET_LIMIT', 'SUMMARY_BUDGET_LIMIT'].includes(
+      error.code ?? ''
+    )
+  )
+    return undefined
+  const timestamp = error.resetAt ? Date.parse(error.resetAt) : error.retryAt
+  return timestamp && Number.isFinite(timestamp) ? timestamp : undefined
 }
 
 async function postResponse(path: string, body: unknown) {
@@ -54,7 +68,19 @@ async function postResponse(path: string, body: unknown) {
     throw new ClientRequestError(
       message,
       response.status,
-      parseRetryAfter(response.headers.get('Retry-After'))
+      parseRetryAfter(response.headers.get('Retry-After')),
+      result &&
+        typeof result === 'object' &&
+        'code' in result &&
+        typeof result.code === 'string'
+        ? result.code
+        : undefined,
+      result &&
+        typeof result === 'object' &&
+        'resetAt' in result &&
+        typeof result.resetAt === 'string'
+        ? result.resetAt
+        : undefined
     )
   }
   return response

@@ -1,14 +1,19 @@
+import { redirect } from 'next/navigation'
+
 import { JsonLd } from '@/components/json-ld'
 import { ShareFlow } from '@/components/share-flow'
 import { LandingDetails } from '@/components/landing-details'
 import { brand } from '@/lib/brand'
 import { appUrl } from '@/lib/config'
-import { homepageJsonLd, publicPageMetadata } from '@/lib/seo'
+import { homepageJsonLd, noindex, publicPageMetadata } from '@/lib/seo'
 
-export function generateMetadata() {
+export async function generateMetadata(props?: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
+}) {
+  const query = await props?.searchParams
   const url = appUrl()
   const title = `${brand.name} — ${brand.headline}`
-  return {
+  const metadata = {
     ...publicPageMetadata({
       title,
       description: brand.productDescription,
@@ -18,9 +23,26 @@ export function generateMetadata() {
     }),
     title: { absolute: title }
   }
+  if (query?.draft !== undefined || query?.template !== undefined)
+    metadata.robots = noindex
+  return metadata
 }
 
-export default function HomePage() {
+export default async function HomePage({
+  searchParams
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
+  const query = await searchParams
+  if (query.draft !== undefined || query.template !== undefined) {
+    const params = new URLSearchParams()
+    for (const key of ['draft', 'template']) {
+      const value = query[key]
+      if (typeof value === 'string')
+        params.set(key === 'draft' ? 'passage' : key, value)
+    }
+    redirect(`/create${params.size ? `?${params}` : ''}`)
+  }
   return (
     <main id='main'>
       <JsonLd data={homepageJsonLd()} />

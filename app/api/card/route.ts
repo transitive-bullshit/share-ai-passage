@@ -1,3 +1,5 @@
+import { resolveActor } from '@/lib/actors'
+import { loadCardArtwork, resolveOwnedCardDesign } from '@/lib/assets'
 import { z } from 'zod'
 
 import { renderCard, renderCardPreview } from '@/lib/card'
@@ -41,17 +43,43 @@ export async function POST(request: Request) {
       throw new AppError(
         edited.error.issues[0]?.message ?? 'Enter a valid preview summary.'
       )
-    const draft = await getDraft(parsed.data.draftToken)
+    const draft = await getDraft(
+      parsed.data.draftToken,
+      await resolveActor(request)
+    )
     const preview = edited?.data ?? draft.preview
     const render =
       parsed.data.format === 'html' ? renderCardPreview : renderCard
+    const resolved =
+      draft.design && draft.saved
+        ? await resolveOwnedCardDesign(draft.saved.ownerId, draft.design, {
+            frozen: draft.saved.resolvedDesign
+          })
+        : null
+    const artwork =
+      resolved && draft.saved
+        ? await loadCardArtwork(draft.saved.ownerId, resolved)
+        : undefined
+    if (resolved)
+      return await render(
+        {
+          title: preview.title,
+          highlights: preview.highlights,
+          provider: draft.source.provider
+        },
+        parsed.data.appearance ?? draft.appearance,
+        resolved,
+        artwork
+      )
     return await render(
       {
         title: preview.title,
         highlights: preview.highlights,
         provider: draft.source.provider
       },
-      parsed.data.appearance ?? draft.appearance ?? DEFAULT_CARD_APPEARANCE
+      parsed.data.appearance ?? draft.appearance ?? DEFAULT_CARD_APPEARANCE,
+      undefined,
+      undefined
     )
   } catch (err) {
     return errorResponse(err)

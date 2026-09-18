@@ -16,10 +16,8 @@ export function nextCardTextFit(fit: CardTextFit, fits: boolean): CardTextFit {
   const upper = fits ? fit.upper : fit.scale
   const attempt = fit.attempt + 1
   const done = (fits && fit.scale === 1) || attempt === 8
-  if (done && lower === 0)
-    throw new Error('Social card text could not fit within its template')
   return {
-    scale: done ? lower : (lower + upper) / 2,
+    scale: done ? lower || fit.scale : (lower + upper) / 2,
     lower,
     upper,
     attempt,

@@ -50,6 +50,76 @@
       "when": 1789306240747,
       "tag": "0006_short_vertigo",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1789397220348,
+      "tag": "0007_hard_black_crow",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1789398722997,
+      "tag": "0008_silly_mephisto",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1789415537943,
+      "tag": "0009_early_firestar",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1789416056619,
+      "tag": "0010_crazy_cobalt_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1789416333394,
+      "tag": "0011_flashy_morph",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1789416746943,
+      "tag": "0012_chemical_secret_warriors",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1789563406304,
+      "tag": "0013_fixed_ultron",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1789643593234,
+      "tag": "0014_uploads_only",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1789646090032,
+      "tag": "0015_soft_summary_recommendations",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1789649055758,
+      "tag": "0016_subscription_emails",
+      "breakpoints": true
     }
   ]
 }

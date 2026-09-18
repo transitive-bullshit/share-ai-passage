@@ -54,7 +54,7 @@ describe('generated preview validation', () => {
     ).toThrow()
   })
 
-  it('counts astral characters once and normalizes before enforcing lengths', () => {
+  it('normalizes Unicode and preserves text beyond character recommendations', () => {
     expect(
       validateGeneratedPreview({
         title: '🌱'.repeat(60),
@@ -70,12 +70,13 @@ describe('generated preview validation', () => {
         highlights: ['A\n'.repeat(50)]
       }).title
     ).toBe('é'.repeat(60))
-    expect(() =>
-      validateGeneratedPreview({ ...preview, title: '🌱'.repeat(601) })
-    ).toThrow('600 characters')
-    expect(() =>
-      validateGeneratedPreview({ ...preview, highlights: ['🦊'.repeat(1001)] })
-    ).toThrow('1000 characters')
+    expect(
+      validateGeneratedPreview({ ...preview, title: '🌱'.repeat(901) }).title
+    ).toBe('🌱'.repeat(901))
+    expect(
+      validateGeneratedPreview({ ...preview, highlights: ['🦊'.repeat(2401)] })
+        .highlights
+    ).toEqual(['🦊'.repeat(2401)])
   })
 
   it.each([
@@ -95,7 +96,7 @@ describe('generated preview validation', () => {
     expect(() => validateGeneratedPreview(input)).toThrow()
   })
 
-  it('allows optional highlights, filters blank slots, and accepts the full hard limits', () => {
+  it('allows optional highlights, filters blank slots, and preserves long text', () => {
     expect(
       validateGeneratedPreview({
         title: 'Title',
@@ -176,33 +177,28 @@ describe('mandatory generated previews', () => {
   })
 
   it.each(['title', 'highlights'] as const)(
-    'accepts %s at the character limit advertised to the model',
+    'keeps %s recommendations soft in the model schema and final validation',
     async (field) => {
+      const text = 'x'.repeat(field === 'title' ? 901 : 2401)
       generate.mockImplementationOnce(async ({ responseFormat }) => {
         expect(responseFormat?.type).toBe('json')
         const schema =
           responseFormat?.type === 'json' ? responseFormat.schema : undefined
         const properties = schema?.properties as {
-          title: { maxLength: number }
-          highlights: { items: { maxLength: number } }
+          title: Record<string, unknown>
+          highlights: { items: Record<string, unknown> }
         }
-        const advertisedLimit =
-          field === 'title'
-            ? properties.title.maxLength
-            : properties.highlights.items.maxLength
-        // A structured-output provider can legitimately return any length
-        // allowed by this schema, including the advertised maximum.
+        expect(
+          field === 'title' ? properties.title : properties.highlights.items
+        ).not.toHaveProperty('maxLength')
         return response({
           ...preview,
-          [field]:
-            field === 'title'
-              ? 'x'.repeat(advertisedLimit)
-              : ['x'.repeat(advertisedLimit)]
+          [field]: field === 'title' ? text : [text]
         })
       })
       await expect(suggestPreview(conversation)).resolves.toEqual({
         ...preview,
-        [field]: field === 'title' ? 'x'.repeat(600) : ['x'.repeat(1000)]
+        [field]: field === 'title' ? text : [text]
       })
       expect(generate).toHaveBeenCalledTimes(1)
     }
@@ -236,7 +232,6 @@ describe('mandatory generated previews', () => {
   })
 
   it.each([
-    { ...preview, title: 'x'.repeat(601) },
     { ...preview, highlights: ['Same', ' same '] },
     { ...preview, excerpt: 'Invented text' }
   ])(

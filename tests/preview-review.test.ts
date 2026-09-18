@@ -45,6 +45,89 @@ let imageDecodes: { source: string | null; resolve: () => void }[]
 let loadFont: ReturnType<typeof vi.fn<FontFaceSet['load']>>
 let originalFonts: PropertyDescriptor | undefined
 
+it('reopens a published passage in the published result without editing controls', async () => {
+  await act(async () =>
+    root.render(
+      createElement(PreviewReview, {
+        draft: {
+          ...draft,
+          draftId: 'published-passage',
+          revision: 1,
+          status: 'published',
+          shareUrl: 'https://passage.example/claude/published'
+        },
+        appearance: { templateId: 'margin-notes' },
+        onAppearanceChange: vi.fn<(appearance: CardAppearance) => void>(),
+        preferencesReady: true,
+        preferencesAvailable: true,
+        onBack: vi.fn<() => void>()
+      })
+    )
+  )
+  expect(container.textContent).toContain('Your passage is published.')
+  expect(container.textContent).not.toContain('Review your passage')
+  expect(container.querySelector('#summary-title')).toBeNull()
+  expect(
+    container.querySelector(
+      'a[href="https://passage.example/claude/published"]'
+    )
+  ).not.toBeNull()
+  expect(requests).not.toHaveBeenCalled()
+})
+
+it('replaces a restored editor with persisted published state without saving stale edits', async () => {
+  const shareUrl = 'https://passage.example/claude/published'
+  requests.mockImplementation(async (path) =>
+    Response.json(
+      (typeof path === 'string'
+        ? path
+        : path instanceof URL
+          ? path.href
+          : path.url
+      ).endsWith('/operations')
+        ? { operations: [] }
+        : { ...draft, status: 'ready' }
+    )
+  )
+  await act(async () =>
+    root.render(
+      createElement(PreviewReview, {
+        draft: {
+          ...draft,
+          draftId: 'restored-passage',
+          revision: 1,
+          status: 'ready'
+        },
+        appearance: { templateId: 'margin-notes' },
+        onAppearanceChange: vi.fn<(appearance: CardAppearance) => void>(),
+        preferencesReady: true,
+        preferencesAvailable: true,
+        onBack: vi.fn<() => void>()
+      })
+    )
+  )
+  expect(container.textContent).toContain('Review your passage')
+  requests.mockResolvedValueOnce(
+    Response.json({
+      ...draft,
+      draftId: 'restored-passage',
+      status: 'published',
+      shareUrl,
+      appearance: { templateId: 'margin-notes' }
+    })
+  )
+  await act(async () => {
+    window.dispatchEvent(new Event('pageshow'))
+  })
+  expect(container.textContent).toContain('Your passage is published.')
+  expect(container.querySelector('#summary-title')).toBeNull()
+  expect(
+    requests.mock.calls.every(
+      ([, options]) => !options?.method || options.method === 'GET'
+    )
+  ).toBe(true)
+})
+
 beforeEach(() => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
   requests = vi.fn<typeof fetch>(() => new Promise(() => {}))
@@ -152,6 +235,27 @@ it('switches the actual review preview locally across rapid style changes withou
   expect(requests).not.toHaveBeenCalled()
 })
 
+it('previews the draft’s current title and highlights in every card style, including live edits', async () => {
+  await act(async () => root.render(createElement(ReviewHarness)))
+  const thumbnails = container.querySelectorAll('.social-template-thumbnail')
+  expect(thumbnails).toHaveLength(5)
+  for (const thumbnail of thumbnails) {
+    expect(thumbnail.textContent).toContain(draft.preview.title)
+    expect(thumbnail.textContent).toContain(draft.preview.highlights[0])
+    expect(thumbnail.textContent).not.toContain('Make room for the unexpected')
+  }
+  await editField('summary-title', 'A clearer introduction for this draft')
+  await editField('summary-highlight-1', 'Bring the context with the link')
+  for (const thumbnail of thumbnails) {
+    expect(thumbnail.textContent).toContain(
+      'A clearer introduction for this draft'
+    )
+    expect(thumbnail.textContent).toContain('Bring the context with the link')
+    expect(thumbnail.textContent).not.toContain(draft.preview.title)
+  }
+  expect(requests).not.toHaveBeenCalled()
+})
+
 it('ignores stale artwork readiness and publishes only the current reviewed style', async () => {
   requests.mockResolvedValue(
     Response.json({ shareUrl: 'http://localhost:3000/claude/example-passage' })
@@ -185,7 +289,7 @@ it('ignores stale artwork readiness and publishes only the current reviewed styl
 })
 
 it('keeps publishing disabled after a font failure until a retried preview finishes loading', async () => {
-  loadFont.mockRejectedValueOnce(new Error('Font request failed'))
+  loadFont.mockRejectedValue(new Error('Font request failed'))
   await act(async () => root.render(createElement(ReviewHarness)))
   expect(publishButton().disabled).toBe(true)
   expect(container.querySelector('[role="alert"]')?.textContent).toContain(
@@ -193,7 +297,7 @@ it('keeps publishing disabled after a font failure until a retried preview finis
   )
 
   const retryFont = Promise.withResolvers<FontFace[]>()
-  loadFont.mockImplementationOnce(() => retryFont.promise)
+  loadFont.mockImplementation(() => retryFont.promise)
   const retryButton = Array.from(container.querySelectorAll('button')).find(
     (button) => button.textContent === 'Try preview again'
   )!
@@ -215,6 +319,8 @@ it('edits each field locally and publishes the latest fitted wording, preserving
   await finishArtwork('margin-notes')
 
   const earlierArtwork = [...imageDecodes]
+  const editedFonts = Promise.withResolvers<FontFace[]>()
+  loadFont.mockImplementation(() => editedFonts.promise)
   const title = await editField('summary-title', '  A clearer way to share  ')
   await editField('summary-highlight-1', '  Keep the   useful idea. ')
   await editField('summary-highlight-2', 'Make the next step clear.')
@@ -230,7 +336,7 @@ it('edits each field locally and publishes the latest fitted wording, preserving
 
   await act(async () => earlierArtwork.forEach((image) => image.resolve()))
   expect(publishButton().disabled).toBe(true)
-  await finishArtwork('margin-notes')
+  await act(async () => editedFonts.resolve([]))
   expect(publishButton().disabled).toBe(false)
   await act(async () => publishButton().click())
   expect(title.disabled).toBe(true)
@@ -259,7 +365,7 @@ it('edits each field locally and publishes the latest fitted wording, preserving
   )
 })
 
-it('shows field errors for empty and over-limit edits while counting Unicode characters correctly', async () => {
+it('requires a title but treats long Unicode text counts as recommendations', async () => {
   await act(async () => root.render(createElement(ReviewHarness)))
   await editField('summary-title', ' ')
   await finishArtwork('margin-notes')
@@ -275,17 +381,16 @@ it('shows field errors for empty and over-limit edits while counting Unicode cha
   )
   expect(publishButton().disabled).toBe(false)
 
-  const title = await editField('summary-title', '😀'.repeat(601))
-  expect(title.getAttribute('aria-invalid')).toBe('true')
-  expect(container.querySelector('#summary-title-error')?.textContent).toBe(
-    'Keep your title within 600 characters.'
-  )
-  await editField('summary-highlight-1', 'a'.repeat(1001))
+  const title = await editField('summary-title', '😀'.repeat(901))
+  expect(title.getAttribute('aria-invalid')).toBe('false')
+  expect(container.querySelector('#summary-title-error')).toBeNull()
+  await editField('summary-highlight-1', 'a'.repeat(2401))
+  expect(container.querySelector('#summary-highlight-1-error')).toBeNull()
   expect(
-    container.querySelector('#summary-highlight-1-error')?.textContent
-  ).toBe('Keep your highlight within 1000 characters.')
+    container.querySelector('#summary-highlight-1-count')?.textContent
+  ).toBe('2401 characters · 100 recommended')
   await finishArtwork('margin-notes')
-  expect(publishButton().disabled).toBe(true)
+  expect(publishButton().disabled).toBe(false)
   expect(requests).not.toHaveBeenCalled()
 })
 
@@ -347,4 +452,239 @@ it('removes every highlight and restores an optional empty field', async () => {
   expect(field.required).toBe(false)
   await finishArtwork('margin-notes')
   expect(publishButton().disabled).toBe(false)
+})
+
+it('resets readiness and text fitting when paid font or artwork inputs change within the same style', async () => {
+  const { SocialCardPreview } = await import('@/components/social-card-preview')
+  const { defaultTemplateRecipe, resolveCardDesign } =
+    await import('@/lib/paid-design')
+  const onStatusChange =
+    vi.fn<
+      (
+        status: import('@/components/social-card-preview').CardPreviewStatus
+      ) => void
+    >()
+  const appearance: CardAppearance = { templateId: 'margin-notes' }
+  const recipe = defaultTemplateRecipe()
+  const firstDesign = resolveCardDesign(appearance, {
+    version: 1,
+    recipe,
+    fromTemplate: null
+  })!
+  const props = {
+    preview: draft.preview,
+    provider: draft.provider,
+    appearance,
+    onStatusChange
+  }
+  await act(async () =>
+    root.render(
+      createElement(SocialCardPreview, {
+        ...props,
+        resolvedDesign: firstDesign
+      })
+    )
+  )
+  await finishArtwork('margin-notes')
+  expect(onStatusChange).toHaveBeenLastCalledWith(
+    expect.objectContaining({ loaded: true })
+  )
+  const nextDesign = resolveCardDesign(appearance, {
+    version: 1,
+    recipe: {
+      ...recipe,
+      fontPairing: 'dm-sans-inter',
+      background: {
+        mode: 'uploaded',
+        assetId: '00000000-0000-4000-8000-000000000001'
+      }
+    },
+    fromTemplate: null
+  })!
+  await act(async () =>
+    root.render(
+      createElement(SocialCardPreview, {
+        ...props,
+        resolvedDesign: nextDesign,
+        artwork: { background: '/fixture-new-artwork.webp' }
+      })
+    )
+  )
+  expect(onStatusChange).toHaveBeenLastCalledWith(
+    expect.objectContaining({ loaded: false })
+  )
+  expect(loadFont).toHaveBeenCalledWith(
+    '700 16px "DM Sans"',
+    expect.any(String)
+  )
+  const nextArtwork = imageDecodes.filter(
+    (image) => image.source === '/fixture-new-artwork.webp'
+  )
+  expect(nextArtwork.length).toBeGreaterThan(0)
+  await act(async () => {
+    for (const image of nextArtwork) image.resolve()
+  })
+  expect(onStatusChange).toHaveBeenLastCalledWith(
+    expect.objectContaining({ loaded: true })
+  )
+  await act(async () =>
+    root.render(
+      createElement(SocialCardPreview, {
+        ...props,
+        resolvedDesign: nextDesign,
+        artwork: { background: '/fixture-renewed-artwork.webp' }
+      })
+    )
+  )
+  expect(onStatusChange).toHaveBeenLastCalledWith(
+    expect.objectContaining({ loaded: false })
+  )
+  await act(async () => {
+    for (const image of nextArtwork) image.resolve()
+  })
+  expect(onStatusChange).toHaveBeenLastCalledWith(
+    expect.objectContaining({ loaded: false })
+  )
+  await act(async () => {
+    for (const image of imageDecodes.filter(
+      (image) => image.source === '/fixture-renewed-artwork.webp'
+    ))
+      image.resolve()
+  })
+  expect(onStatusChange).toHaveBeenLastCalledWith(
+    expect.objectContaining({ loaded: true })
+  )
+})
+
+it('clips oversized highlights without blocking review or publication', async () => {
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
+    function (this: HTMLElement) {
+      let height = 630
+      if (this.classList.contains('social-card-copy')) {
+        const title = this.querySelector<HTMLElement>('.social-card-title')!
+        const scale = Number.parseFloat(title.style.fontSize) / 68
+        const long = (this.textContent?.length ?? 0) > 500
+        height = long ? 780 * scale : 200
+      }
+      return new DOMRect(0, 0, 1200, height)
+    }
+  )
+  await act(async () => root.render(createElement(ReviewHarness)))
+  const full = 'A'.repeat(2400)
+  await editField('summary-highlight-1', full)
+  await editField('summary-title', 'T'.repeat(900))
+  await finishArtwork('margin-notes')
+  expect(publishButton().disabled).toBe(false)
+  expect(container.textContent).not.toContain('Shorten the highlights')
+  expect(
+    container.querySelector('#summary-title')?.getAttribute('aria-invalid')
+  ).toBe('false')
+  expect(
+    container.querySelector<HTMLTextAreaElement>('#summary-highlight-1')?.value
+  ).toBe(full)
+  expect(container.textContent).not.toContain('Try preview again')
+  await editField('summary-highlight-1', 'A shorter highlight.')
+  await finishArtwork('margin-notes')
+  expect(publishButton().disabled).toBe(false)
+  expect(container.textContent).not.toContain('Shorten the highlights')
+  expect(requests).not.toHaveBeenCalled()
+})
+
+it('keeps fitted preview geometry while typing without restarting artwork loading', async () => {
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
+    function (this: HTMLElement) {
+      const title = this.querySelector<HTMLElement>('.social-card-title')
+      const scale = title ? Number.parseFloat(title.style.fontSize) / 68 : 1
+      return new DOMRect(
+        0,
+        0,
+        1200,
+        this.classList.contains('social-card-copy') ? 600 * scale : 630
+      )
+    }
+  )
+  await act(async () => root.render(createElement(ReviewHarness)))
+  await finishArtwork('margin-notes')
+  const canvas = container.querySelector('.social-card-canvas')!
+  const fontSize =
+    container.querySelector<HTMLElement>('.social-card-title')!.style.fontSize
+  expect(Number.parseFloat(fontSize)).toBeLessThan(68)
+  const decodes = imageDecodes.length
+  // A new glyph's font preparation must not expose an unfitted full-size card.
+  const earlierFonts = Promise.withResolvers<FontFace[]>()
+  loadFont.mockImplementation(() => earlierFonts.promise)
+  await editField('summary-highlight-1', 'Keep the useful ideas.')
+  expect(
+    container.querySelector<HTMLElement>('.social-card-title')!.style.fontSize
+  ).toBe(fontSize)
+  expect(container.querySelector('.social-card-canvas')).toBe(canvas)
+  expect(imageDecodes).toHaveLength(decodes)
+  expect(publishButton().disabled).toBe(true)
+
+  const latestFonts = Promise.withResolvers<FontFace[]>()
+  loadFont.mockImplementation(() => latestFonts.promise)
+  await editField('summary-title', 'A useful conversation deserves to travels')
+  await act(async () => earlierFonts.resolve([]))
+  expect(publishButton().disabled).toBe(true)
+  expect(
+    canvas.querySelector<HTMLElement>('.social-card-title')!.style.fontSize
+  ).toBe(fontSize)
+  await act(async () => latestFonts.resolve([]))
+  expect(publishButton().disabled).toBe(false)
+  expect(
+    canvas.querySelector<HTMLElement>('.social-card-title')!.style.fontSize
+  ).toBe(fontSize)
+
+  // Ordinary typing with cached glyphs skips async font work entirely.
+  Object.defineProperty(document.fonts, 'check', {
+    value: vi.fn<FontFaceSet['check']>(() => true)
+  })
+  const fontLoads = loadFont.mock.calls.length
+  await editField('summary-title', 'A useful conversation deserves to travel')
+  await editField('summary-highlight-1', 'Keep the useful idea.')
+  expect(publishButton().disabled).toBe(false)
+  expect(loadFont).toHaveBeenCalledTimes(fontLoads)
+  expect(container.querySelector('.social-card-canvas')).toBe(canvas)
+  expect(
+    canvas.querySelector<HTMLElement>('.social-card-title')!.style.fontSize
+  ).toBe(fontSize)
+  expect(imageDecodes).toHaveLength(decodes)
+})
+
+it('refits real wrapping changes before becoming publish-ready without reloading artwork', async () => {
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
+    function (this: HTMLElement) {
+      const title = this.querySelector<HTMLElement>('.social-card-title')
+      const scale = title ? Number.parseFloat(title.style.fontSize) / 68 : 1
+      const long = (this.textContent?.length ?? 0) > 500
+      return new DOMRect(
+        0,
+        0,
+        1200,
+        this.classList.contains('social-card-copy')
+          ? long
+            ? 780 * scale
+            : 200
+          : 630
+      )
+    }
+  )
+  await act(async () => root.render(createElement(ReviewHarness)))
+  await finishArtwork('margin-notes')
+  const canvas = container.querySelector('.social-card-canvas')!
+  const decodes = imageDecodes.length
+  await editField('summary-highlight-1', 'A long highlight. '.repeat(150))
+  expect(publishButton().disabled).toBe(false)
+  expect(
+    Number.parseFloat(
+      container.querySelector<HTMLElement>('.social-card-title')!.style.fontSize
+    )
+  ).toBeLessThan(68)
+  expect(container.querySelector('.social-card-canvas')).toBe(canvas)
+  await editField('summary-highlight-1', 'A short highlight.')
+  expect(publishButton().disabled).toBe(false)
+  expect(
+    container.querySelector<HTMLElement>('.social-card-title')!.style.fontSize
+  ).toBe('68px')
+  expect(imageDecodes).toHaveLength(decodes)
 })

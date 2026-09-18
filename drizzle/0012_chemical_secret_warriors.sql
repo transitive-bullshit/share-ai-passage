@@ -1,0 +1,1 @@
+ALTER TABLE "saved_drafts" ADD COLUMN "resolved_design" jsonb;

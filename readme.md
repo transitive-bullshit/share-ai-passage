@@ -12,7 +12,8 @@ Turn your AI chats into links you’ll be proud to share.
 
 - Free
 - Open source
-- No account needed
+- No account needed to create
+- Optional accounts for saved drafts, history, and synced card styles
 - Supports ChatGPT, Codex, and Claude
 
 ## For humans
@@ -39,6 +40,6 @@ Requires Node.js 24+. The skill includes its CLI and uses the hosted Passage ser
 - **Start with a public link.** Use the provider’s Share option; private conversation addresses and workspace-only links aren’t supported.
 - **The context comes with it.** Passages include saved conversation text, supported formatting and code, and the original-source link. Unsupported media, tools, and artifacts are marked as omissions.
 - **Review before publishing.** Published wording and style stay fixed. Public passages can appear in search results.
-- **Removal follows the source, lazily.** Remove public access at the provider; Passage checks availability during lazy revalidation. Confirmed removal disables the stored passage and card here; cached copies can remain available until revalidation, and external platforms may retain previews they already fetched.
+- **Manage your passages.** With an account, resume drafts, revise a passage into a new link, or delete your own links in My passages. Removing public access at the provider also disables affected passages once confirmed; cached copies can remain available until lazy revalidation, and external platforms may retain previews they already fetched.
 
 [Contributing](contributing.md) · [Brand identity](docs/brand-identity.md) · [MIT license](license)

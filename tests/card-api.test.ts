@@ -121,14 +121,22 @@ describe('saved social-card appearance routes', () => {
     )
     const published = await bytes(publishedResponse)
     expect(published.equals(preview)).toBe(true)
-    for (const call of [1, 2]) {
-      expect(renderCard).toHaveBeenNthCalledWith(
-        call,
-        { ...savedPreview, provider: 'claude' },
-        appearance
-      )
-    }
-    expect(service.getDraft).toHaveBeenCalledExactlyOnceWith('signed-preview')
+    expect(renderCard).toHaveBeenNthCalledWith(
+      1,
+      { ...savedPreview, provider: 'claude' },
+      appearance,
+      undefined,
+      undefined
+    )
+    expect(renderCard).toHaveBeenNthCalledWith(
+      2,
+      { ...savedPreview, provider: 'claude' },
+      appearance
+    )
+    expect(service.getDraft).toHaveBeenCalledExactlyOnceWith(
+      'signed-preview',
+      expect.objectContaining({ userId: null, allowance: 5 })
+    )
     expect(service.getPublication).toHaveBeenCalledExactlyOnceWith(
       'claude',
       'publication-id'
@@ -148,7 +156,9 @@ describe('saved social-card appearance routes', () => {
     expect(response.status).toBe(200)
     expect(renderCard).toHaveBeenCalledExactlyOnceWith(
       { ...savedPreview, provider: 'claude' },
-      appearance
+      appearance,
+      undefined,
+      undefined
     )
   })
 
@@ -159,7 +169,9 @@ describe('saved social-card appearance routes', () => {
     expect(response.status).toBe(200)
     expect(renderCard).toHaveBeenCalledExactlyOnceWith(
       { ...savedPreview, provider: 'claude' },
-      DEFAULT_CARD_APPEARANCE
+      DEFAULT_CARD_APPEARANCE,
+      undefined,
+      undefined
     )
   })
 
@@ -171,10 +183,15 @@ describe('saved social-card appearance routes', () => {
     expect(response.status).toBe(200)
     expect(renderCardPreview).toHaveBeenCalledExactlyOnceWith(
       { ...savedPreview, provider: 'claude' },
-      appearance
+      appearance,
+      undefined,
+      undefined
     )
     expect(renderCard).not.toHaveBeenCalled()
-    expect(service.getDraft).toHaveBeenCalledExactlyOnceWith('signed-preview')
+    expect(service.getDraft).toHaveBeenCalledExactlyOnceWith(
+      'signed-preview',
+      expect.objectContaining({ userId: null, allowance: 5 })
+    )
   })
 
   it.each(['webp', 'html'])(
@@ -201,9 +218,14 @@ describe('saved social-card appearance routes', () => {
           highlights: ['Start small.'],
           provider: 'claude'
         },
-        appearance
+        appearance,
+        undefined,
+        undefined
       )
-      expect(service.getDraft).toHaveBeenCalledExactlyOnceWith('signed-preview')
+      expect(service.getDraft).toHaveBeenCalledExactlyOnceWith(
+        'signed-preview',
+        expect.objectContaining({ userId: null, allowance: 5 })
+      )
       expect(savedPreview).toEqual(original)
     }
   )
@@ -238,8 +260,6 @@ describe('saved social-card appearance routes', () => {
     { appearance: { templateId: 'unknown' } },
     { appearance: { templateId: 'margin-notes', font: 'remote.woff' } },
     { preview: null },
-    { preview: { title: 'x'.repeat(601), highlights: ['One.'] } },
-    { preview: { title: 'Title', highlights: ['x'.repeat(1001)] } },
     { preview: { title: 'Title', highlights: ['Same', ' same '] } },
     { title: 'A client-authored title' },
     { highlights: ['A client-authored highlight'] },
@@ -252,6 +272,39 @@ describe('saved social-card appearance routes', () => {
       )
       expect(response.status).toBe(400)
       expect(service.getDraft).not.toHaveBeenCalled()
+    }
+  )
+
+  it.each(['webp', 'html'] as const)(
+    'renders clipped long draft and publication cards as %s',
+    async (format) => {
+      const actual =
+        await vi.importActual<typeof import('@/lib/card')>('@/lib/card')
+      vi.mocked(renderCard).mockImplementation(actual.renderCard)
+      vi.mocked(renderCardPreview).mockImplementation(actual.renderCardPreview)
+      const long = {
+        title: 'The full saved title',
+        highlights: ['A'.repeat(1000), 'B'.repeat(1000), 'C'.repeat(637)]
+      }
+      service.getDraft.mockResolvedValue({
+        preview: long,
+        source: { provider: 'claude' }
+      })
+      service.getPublication.mockResolvedValue({
+        ...publication(),
+        preview: long
+      })
+      const clipped = await previewImage(
+        request({ draftToken: 'signed-preview', format })
+      )
+      expect(clipped.status).toBe(200)
+      expect(clipped.headers.get('content-type')).toContain(
+        format === 'html' ? 'text/html' : 'image/webp'
+      )
+      expect((await publicRequest()).status).toBe(200)
+      expect(long.highlights.map((text) => text.length)).toEqual([
+        1000, 1000, 637
+      ])
     }
   )
 
