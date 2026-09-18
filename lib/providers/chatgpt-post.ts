@@ -121,7 +121,8 @@ export function parseChatgptPost(
           title: post.text,
           linear_conversation: messages.map((message) => ({ message }))
         },
-        status
+        status,
+        `https://chatgpt.com/s/${shareId}`
       )
     }
   } catch {

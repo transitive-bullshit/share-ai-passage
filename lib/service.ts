@@ -182,7 +182,7 @@ export async function prepareSource(
       const capture = source.latestSnapshotVerifiedAt || snapshot?.capturedAt
       if (
         snapshot &&
-        !/^(codex-public-json-v[1-3]|(?:chatgpt|claude)-public-json-v2)$/.test(
+        !/^(codex-public-json-v[1-3]|chatgpt-public-json-v[23]|claude-public-json-v2)$/.test(
           snapshot.parserVersion
         ) &&
         capture &&

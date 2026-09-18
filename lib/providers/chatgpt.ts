@@ -1,9 +1,14 @@
 import type { Message, MessageContent, ProviderResult } from '../domain'
 import { finishConversation, message, record, textContent } from './normalize'
+import { chatgptReferenceText } from './chatgpt-references'
 import { exposedImage } from './images'
 import type { ImageSource } from '../domain'
 
-export function parseChatgpt(payload: unknown, status: number): ProviderResult {
+export function parseChatgpt(
+  payload: unknown,
+  status: number,
+  sourceUrl?: string
+): ProviderResult {
   const data = record(payload)
   if (!data)
     return {
@@ -58,7 +63,21 @@ export function parseChatgpt(payload: unknown, status: number): ProviderResult {
     }
     const content = record(entry.content)
     const parts: MessageContent[] = []
-    const addText = (text: string) => parts.push(textContent(role, text))
+    let textOffset = 0
+    const addText = (text: string) => {
+      parts.push(
+        textContent(
+          role,
+          chatgptReferenceText(
+            text,
+            metadata?.content_references,
+            sourceUrl,
+            textOffset
+          )
+        )
+      )
+      textOffset += Array.from(text).length
+    }
     if (Array.isArray(content?.parts)) {
       for (const part of content.parts) {
         if (typeof part === 'string') addText(part)
@@ -108,7 +127,7 @@ export function parseChatgpt(payload: unknown, status: number): ProviderResult {
   const conversation = finishConversation(
     data.title,
     messages,
-    'chatgpt-public-json-v3'
+    'chatgpt-public-json-v4'
   )
   if (imageSources.length) conversation.imageSources = imageSources
   return { status: 'available', conversation }

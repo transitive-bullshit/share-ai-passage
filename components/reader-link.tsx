@@ -26,10 +26,12 @@ export function ReaderLink({
   href,
   children,
   id,
+  title,
   unavailableFile = false
 }: {
   href?: string
   children?: ReactNode
+  title?: string
   id?: string
   unavailableFile?: boolean
 }) {
@@ -51,6 +53,7 @@ export function ReaderLink({
     <a
       id={id}
       href={href}
+      title={title}
       target={fragment ? undefined : '_blank'}
       rel='noopener noreferrer nofollow'
     >

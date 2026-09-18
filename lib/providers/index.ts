@@ -51,7 +51,7 @@ export function classifyResponse(
   return source.provider === 'chatgpt'
     ? source.shareId.startsWith('cx_')
       ? parseCodex(payload, response.status)
-      : parseChatgpt(payload, response.status)
+      : parseChatgpt(payload, response.status, source.canonicalUrl)
     : parseClaude(payload, response.status)
 }
 

@@ -26,6 +26,8 @@ Older Codex v1/v2 captures flattened reasoning into unphased assistant messages.
 
 [Migration 0004](../drizzle/0004_responses_message_content.sql) wraps older Markdown in text blocks while preserving identity, roles, and order. Historical omission labels already flattened into Markdown stay verbatim; structured omission metadata is available only from new captures.
 
+ChatGPT v4 imports preserve exposed citation destinations as Markdown links, enabling the same reader previews as ordinary source links. Follow-up actions link back to the original chat and retain the provider’s full prompt in the Markdown link title, which the reader preserves. These links do not automatically submit a follow-up. Existing snapshots are immutable; reimport the provider URL to capture previously discarded reference metadata.
+
 ## Reader link previews
 
 Published readers enhance HTTP(S) links inside saved chat text with a compact preview on mouse hover (220 ms dwell) or keyboard focus. Escape, scrolling, blur, and navigation dismiss it; link destinations and native navigation remain unchanged. This enhancement is mounted only around the published conversation, not marketing examples or other site links.

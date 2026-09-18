@@ -211,23 +211,26 @@ describe.skipIf(!testUrl)('publication lifecycle with PostgreSQL', () => {
     await closeDatabase()
   })
 
-  it('refetches older text-only parser captures even within the freshness window', async () => {
-    const url = sourceUrl()
-    upstream.fetchSource.mockResolvedValueOnce({
-      status: 'available',
-      conversation: { ...original, parserVersion: 'chatgpt-public-json-v2' }
-    })
-    const before = await prepareSource(url)
-    upstream.fetchSource.mockResolvedValueOnce({
-      status: 'available',
-      conversation: { ...original, parserVersion: 'chatgpt-public-json-v3' }
-    })
-    const after = await prepareSource(url)
-    expect(readDraftToken(after.draftToken).snapshotId).not.toBe(
-      readDraftToken(before.draftToken).snapshotId
-    )
-    expect(upstream.fetchSource).toHaveBeenCalledTimes(2)
-  })
+  it.each(['chatgpt-public-json-v2', 'chatgpt-public-json-v3'])(
+    'refetches outdated %s captures even within the freshness window',
+    async (parserVersion) => {
+      const url = sourceUrl()
+      upstream.fetchSource.mockResolvedValueOnce({
+        status: 'available',
+        conversation: { ...original, parserVersion }
+      })
+      const before = await prepareSource(url)
+      upstream.fetchSource.mockResolvedValueOnce({
+        status: 'available',
+        conversation: { ...original, parserVersion: 'chatgpt-public-json-v4' }
+      })
+      const after = await prepareSource(url)
+      expect(readDraftToken(after.draftToken).snapshotId).not.toBe(
+        readDraftToken(before.draftToken).snapshotId
+      )
+      expect(upstream.fetchSource).toHaveBeenCalledTimes(2)
+    }
+  )
 
   it('persists captured images before publication and does not persist transient provider references', async () => {
     const saved = {

@@ -63,9 +63,10 @@ const languageLabels = new Map(
 )
 
 const markdownComponents: Components = {
-  a: ({ href, children, id, node }) => (
+  a: ({ href, children, id, title, node }) => (
     <ReaderLink
       href={href}
+      title={title}
       id={id}
       unavailableFile={Boolean(node?.properties.dataUnavailableFile)}
     >
@@ -143,7 +144,7 @@ export function SavedMessage({
     )
   const components: Components = {
     ...markdownComponents,
-    a: ({ href, children, id, node }) => {
+    a: ({ href, children, id, title, node }) => {
       // Linked images zoom rather than nesting a button inside a source link.
       const linkedImage = node?.children.some(
         (child) =>
@@ -156,6 +157,7 @@ export function SavedMessage({
       ) : (
         <ReaderLink
           href={href}
+          title={title}
           id={id}
           unavailableFile={Boolean(node?.properties.dataUnavailableFile)}
         >

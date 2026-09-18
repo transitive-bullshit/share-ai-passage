@@ -82,6 +82,42 @@ describe('ChatGPT shared message posts', () => {
       { type: 'output_text', text: 'The publicly shared answer.' }
     ])
   })
+  it('preserves reference metadata through the public post adapter', () => {
+    const citation = 'citeturn125365view2'
+    const annotated = structuredClone(post)
+    const message = annotated.attachments[0]!.messages[0]!
+    message.content.parts = [citation + '\nContinue']
+    Object.assign(message, {
+      metadata: {
+        content_references: [
+          {
+            type: 'grouped_webpages',
+            start_idx: 0,
+            end_idx: citation.length,
+            matched_text: citation,
+            items: [
+              { attribution: 'Source', url: 'https://example.com/evidence' }
+            ]
+          },
+          {
+            type: 'followup_a',
+            start_idx: citation.length + 1,
+            end_idx: citation.length + 9,
+            matched_text: 'Continue',
+            prompt_text: 'Explain more.'
+          }
+        ]
+      }
+    })
+    const result = classify(page(annotated))
+    if (result.status !== 'available') throw new Error('Expected available')
+    expect(result.conversation.messages[0]?.content).toEqual([
+      {
+        type: 'output_text',
+        text: `([Source](https://example.com/evidence))\n[Continue](${url} "Explain more.")`
+      }
+    ])
+  })
   it.each([
     { ...post, id: 't_other' },
     { ...post, permissions: { can_read: true, share_setting: 'private' } },

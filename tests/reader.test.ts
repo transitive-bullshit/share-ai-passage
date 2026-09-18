@@ -33,6 +33,15 @@ function renderMessage(markdown: string, options: Partial<Message> = {}) {
 }
 
 describe('safe, faithful conversation reader', () => {
+  it('preserves follow-up prompt titles on source links', () => {
+    const html = renderMessage(
+      '[Continue](https://chatgpt.com/s/t_6aac1592586c8191a64acab3214f895c "Explain the argument in detail.")'
+    )
+    expect(html).toContain('title="Explain the argument in detail."')
+    expect(html).toContain(
+      'href="https://chatgpt.com/s/t_6aac1592586c8191a64acab3214f895c"'
+    )
+  })
   it('hides complete Codex annotation pragmas without changing stored text', () => {
     const source =
       'We do need an exact transcript, and I should have made the missing artifact clear earlier. :codex-annotation{index="1"}'
