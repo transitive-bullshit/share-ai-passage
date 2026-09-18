@@ -7,6 +7,7 @@ Supported routes and fetch rules live in [urls.ts](../lib/providers/urls.ts) and
 | Format | Public URL | Anonymous upstream endpoint |
 | --- | --- | --- |
 | ChatGPT | `https://chatgpt.com/share/<UUID>` | `/backend-api/share/<UUID>` |
+| ChatGPT message post | `https://chatgpt.com/s/t_<32 hexadecimal characters>` | Public `/s/t_<ID>` HTML page |
 | Codex, hosted by ChatGPT | `https://chatgpt.com/s/cx_<32 hexadecimal characters>` | `/backend-api/wham/shared_threads/cx_<ID>`, then a signed OpenAI download redirect |
 | Claude | `https://claude.ai/share/<UUID>` | `/api/chat_snapshots/<UUID>?rendering_mode=messages&render_all_tools=true` |
 
@@ -26,6 +27,7 @@ The fork shares saved conversation content but publishes independently, includin
 
 ## Parsing and availability
 
+- ChatGPT message posts read the inert React Router reference table from the public page, require matching post identity and public/readable permissions, and extract ordered `message_slice` attachments through the shared ChatGPT message parser. Only exposed messages are imported; a post may contain a single answer. Other attachment formats, malformed serialization, and missing posts remain inconclusive. No scripts execute and no additional page resources are fetched.
 - ChatGPT reads ordered `linear_conversation` messages and excludes root-only or explicitly hidden nodes.
 - Codex reads the versioned `turns[].items` snapshot, preserving visible user/agent messages, source-provided phases, and public summaries. Parser v4 retains readable user, viewed, and generated images, including `codex:shared-asset/<asset ID>`. Download these through `/backend-api/wham/shared_threads/<share ID>/assets/<asset ID>` with the same OpenAI CDN redirect boundary. Published reasoning summaries remain separate so the reader can collapse them. An unphased agent message remains unphased. Unknown versions or malformed/unknown items are inconclusive.
 - Claude reads public `chat_messages` in provider order, including exposed structured text/tool blocks. Explicit upstream truncation is rejected.

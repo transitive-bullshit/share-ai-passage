@@ -1,4 +1,5 @@
 import type { ProviderResult, SourceReference } from '../domain'
+import { parseChatgptPost } from './chatgpt-post'
 import { parseChatgpt } from './chatgpt'
 import { parseClaude } from './claude'
 import { parseCodex } from './codex'
@@ -34,6 +35,8 @@ export function classifyResponse(
       reason: 'The provider download could not be read. Try again later.'
     }
   }
+  if (source.provider === 'chatgpt' && source.shareId.startsWith('t_'))
+    return parseChatgptPost(response.body, response.status, source.shareId)
   // Download servers may label JSON as text/plain or application/octet-stream.
   // Parse the body and validate the conversation instead of trusting its MIME label.
   let payload: unknown

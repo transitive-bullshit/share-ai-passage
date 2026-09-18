@@ -2,7 +2,7 @@ import type { SourceReference } from '../domain'
 
 const sharePath =
   /^\/share\/([a-f\d]{8}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{12})\/?$/i
-const codexSharePath = /^\/s\/(cx_[a-f\d]{32})\/?$/i
+const chatgptPostPath = /^\/s\/((?:cx_|t_)[a-f\d]{32})\/?$/i
 
 function isCodexDownloadUrl(url: URL) {
   return (
@@ -37,9 +37,9 @@ export function parseSourceUrl(input: string): SourceReference {
     throw new Error('Use a public ChatGPT, Claude, or Passage share link.')
   // Copied links may include tracking parameters or a fragment. They are not
   // part of source identity and are never forwarded to the provider endpoint.
-  const codexMatch = provider === 'chatgpt' && codexSharePath.exec(url.pathname)
-  if (codexMatch) {
-    const shareId = codexMatch[1]!.toLowerCase()
+  const postMatch = provider === 'chatgpt' && chatgptPostPath.exec(url.pathname)
+  if (postMatch) {
+    const shareId = postMatch[1]!.toLowerCase()
     return {
       provider,
       shareId,
@@ -49,7 +49,7 @@ export function parseSourceUrl(input: string): SourceReference {
   const match = sharePath.exec(url.pathname)
   if (!match)
     throw new Error(
-      'Use a public /share/ conversation URL or a ChatGPT /s/cx_ Codex share link.'
+      'Use a public /share/ conversation URL or a ChatGPT /s/t_ or /s/cx_ share link.'
     )
   const shareId = match[1]!.toLowerCase()
   return {
@@ -68,6 +68,8 @@ export function upstreamUrl(source: SourceReference): URL {
   ) {
     throw new Error('The provider and source URL do not agree.')
   }
+  if (source.provider === 'chatgpt' && source.shareId.startsWith('t_'))
+    return new URL(checked.canonicalUrl)
   return new URL(
     source.provider === 'chatgpt'
       ? source.shareId.startsWith('cx_')
