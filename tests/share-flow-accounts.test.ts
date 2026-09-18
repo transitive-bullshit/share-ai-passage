@@ -17,10 +17,11 @@ const mocks = vi.hoisted(() => ({
     }>
   >(),
   anonymous: vi.fn<() => Promise<{ data: object; error: null }>>(),
-  push: vi.fn<(path: string) => void>()
+  push: vi.fn<(path: string) => void>(),
+  replace: vi.fn<(path: string, options?: { scroll: boolean }) => void>()
 }))
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: mocks.push })
+  useRouter: () => mocks
 }))
 vi.mock('@/lib/auth-client', () => ({
   authClient: {
@@ -291,3 +292,32 @@ it('redirects landing-page creation to the allocated draft without waiting for i
   expect(preparationRecovery.getSnapshot()).toBeNull()
   expect(container.textContent).not.toContain('Saved draft ready')
 })
+
+it.each(['ready', 'preparing'])(
+  'navigates direct creation to a saved passage page for a %s result so history can restore its identity',
+  async (status) => {
+    const result = { ...readyDraft, draftId: 'allocated-draft' }
+    requests.mockResolvedValueOnce(
+      Response.json(
+        status === 'ready'
+          ? result
+          : {
+              draftId: result.draftId,
+              status: 'preparing',
+              preparationActive: true
+            }
+      )
+    )
+    if (status === 'preparing')
+      requests.mockResolvedValueOnce(Response.json(result))
+    await act(async () => root.render(createElement(ShareFlow)))
+    await source(readyDraft.sourceUrl)
+    await submit()
+    expect(mocks.replace).toHaveBeenCalledWith(
+      '/create?passage=allocated-draft',
+      { scroll: false }
+    )
+    expect(mocks.push).not.toHaveBeenCalled()
+    expect(preparationRecovery.getSnapshot()).toBeNull()
+  }
+)
