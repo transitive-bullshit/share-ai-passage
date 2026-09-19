@@ -4,6 +4,10 @@ Passage is one Next.js app, PostgreSQL, and Drizzle. This guide covers local set
 
 Read the [project conventions](AGENTS.md) before making changes. Product scope and remaining work live in the [MVP plan](docs/MVP_PLAN.md); terminology lives in the [glossary](docs/CONTEXT.md). Customer-facing changes follow the accepted [brand identity](docs/brand-identity.md).
 
+## Updating dependencies
+
+Use `pnpm update --latest`. The Better Auth Stripe plugin has a version-specific [billing patch](docs/PRODUCTION.md#paid-services-and-launch-gate). If an update reports `ERR_PNPM_UNUSED_PATCH`, inspect the new plugin version, carry the patch forward if still needed, and update both its filename and the `patchedDependencies` entry in `pnpm-workspace.yaml` to match. Update the Better Auth packages together and verify the installed plugin retains the scheduled-phase billing fix. Do not suppress unused-patch errors or remove the patch without the billing checks described in the production guide.
+
 ## Run locally
 
 Requires Node.js 24+ and pnpm; the pinned version is in [package.json](package.json).
