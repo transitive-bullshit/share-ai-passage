@@ -6,7 +6,7 @@ import { createInterface } from 'node:readline/promises'
 
 const defaultBaseUrl = 'https://www.share-ai-passage.com'
 const maxResponseBytes = 64 * 1024
-const help = `Passage — share a public ChatGPT, Codex, or Claude conversation
+const help = `Passage — share a public ChatGPT, Codex, Claude, or Gemini conversation
 
 Usage:
   passage.mjs prepare <url> [--out draft.json] [--json] [--base-url URL]
@@ -147,7 +147,7 @@ function validText(value, maxLength) {
 function validatePrepared(value, exitCode = 1) {
   if (
     !isRecord(value) ||
-    !['chatgpt', 'claude'].includes(value.provider) ||
+    !['chatgpt', 'claude', 'gemini'].includes(value.provider) ||
     typeof value.sourceUrl !== 'string' ||
     typeof value.draftToken !== 'string' ||
     value.draftToken.length > 1024 ||

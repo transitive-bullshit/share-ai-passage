@@ -16,14 +16,17 @@ describe('Passage input URLs', () => {
     })
   })
 
-  it('supports Claude and the configured deployment origin', () => {
-    expect(
-      parsePassageUrl(
-        `https://preview.example/claude/${id}`,
-        'https://preview.example'
-      )
-    ).toEqual({ provider: 'claude', publicationId: id })
-  })
+  it.each(['claude', 'gemini'])(
+    'supports %s and the configured deployment origin',
+    (provider) => {
+      expect(
+        parsePassageUrl(
+          `https://preview.example/${provider}/${id}`,
+          'https://preview.example'
+        )
+      ).toEqual({ provider, publicationId: id })
+    }
+  )
 
   it.each([
     `http://www.share-ai-passage.com/chatgpt/${id}`,

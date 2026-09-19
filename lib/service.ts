@@ -866,7 +866,10 @@ async function publishPaidPreview(
 }
 
 export async function getPublication(provider: string, id: string) {
-  if (!uuidPattern.test(id) || !['chatgpt', 'claude'].includes(provider))
+  if (
+    !uuidPattern.test(id) ||
+    !['chatgpt', 'claude', 'gemini'].includes(provider)
+  )
     return null
   const [record] = await getDb()
     .select({ publication: publications, source: sources, snapshot: snapshots })

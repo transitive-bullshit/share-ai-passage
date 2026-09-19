@@ -20,12 +20,28 @@ export function parseSourceUrl(input: string): SourceReference {
   try {
     url = new URL(input.trim())
   } catch {
-    throw new Error('Paste a complete public ChatGPT, Claude, or Passage URL.')
+    throw new Error(
+      'Paste a complete public ChatGPT, Claude, Gemini, or Passage URL.'
+    )
   }
   if (url.protocol !== 'https:' || url.username || url.password || url.port) {
     throw new Error(
       'Use a public HTTPS share URL without credentials or a custom port.'
     )
+  }
+  const geminiPath =
+    url.hostname === 'g.co'
+      ? /^\/gemini\/share\/([a-f\d]{12})\/?$/i
+      : /^\/share\/([a-f\d]{12})\/?$/i
+  if (url.hostname === 'gemini.google.com' || url.hostname === 'g.co') {
+    const match = geminiPath.exec(url.pathname)
+    if (!match) throw new Error('Use a public Gemini conversation share link.')
+    const shareId = match[1]!.toLowerCase()
+    return {
+      provider: 'gemini',
+      shareId,
+      canonicalUrl: `https://gemini.google.com/share/${shareId}`
+    }
   }
   const provider =
     url.hostname === 'chatgpt.com'
@@ -34,7 +50,9 @@ export function parseSourceUrl(input: string): SourceReference {
         ? 'claude'
         : undefined
   if (!provider)
-    throw new Error('Use a public ChatGPT, Claude, or Passage share link.')
+    throw new Error(
+      'Use a public ChatGPT, Claude, Gemini, or Passage share link.'
+    )
   // Copied links may include tracking parameters or a fragment. They are not
   // part of source identity and are never forwarded to the provider endpoint.
   const postMatch = provider === 'chatgpt' && chatgptPostPath.exec(url.pathname)
@@ -68,6 +86,10 @@ export function upstreamUrl(source: SourceReference): URL {
   ) {
     throw new Error('The provider and source URL do not agree.')
   }
+  if (source.provider === 'gemini')
+    return new URL(
+      'https://gemini.google.com/_/BardChatUi/data/batchexecute?rpcids=ujx1Bf&rt=c'
+    )
   if (source.provider === 'chatgpt' && source.shareId.startsWith('t_'))
     return new URL(checked.canonicalUrl)
   return new URL(

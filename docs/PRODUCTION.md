@@ -36,6 +36,10 @@ The production Plus button opened live Stripe Checkout for Passage Plus at $10/m
 
 Google was already enabled: the production console confirms an External audience **In production**, verified branding shown to users and no required sensitive-scope verification. Deployed sign-in initialization uses the production client, exact production callback and identity-only scopes; the earlier owner callback/session check also passed. Preview retains Vercel authentication, sandbox Stripe and its $1 summary budget. Owner-only receipt: `work/production-launch/billing-activation-evidence.json`. A completed payment → paid upload/template → branded publication journey remains unverified.
 
+## Gemini production migration — September 19
+
+Applied `0017_bright_ares.sql` to production before deploying Gemini support. All 18 migration ledger hashes match the repository; the PostgreSQL provider enum contains `chatgpt`, `claude`, and `gemini`. The additive migration preserves existing sources and publications. Local production build and repository checks passed (800 tests; 114 database-dependent tests skipped locally). Anonymous live Gemini fetching also passed.
+
 ## Production domain
 
 The production address is [https://www.share-ai-passage.com](https://www.share-ai-passage.com); the apex domain redirects there. On September 13, 2026, anonymous HTTPS checks passed for the homepage, the existing 37-message reader, and its WebP image. GitHub records a successful production deployment and CI run for `468d17c`. These reads establish public serving, not fresh hosted extraction, model generation, or actual social-platform unfurls.

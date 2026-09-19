@@ -4,7 +4,7 @@ export const brand = {
   headlineLines: ['Your AI chats,', 'worth sharing'],
   description: 'Turn your AI chats into links you’ll be proud to share.',
   productDescription:
-    'Turn public ChatGPT, Codex, and Claude conversations into links with editable highlights, a share card, and the saved conversation. No account needed.',
+    'Turn public ChatGPT, Codex, Claude, and Gemini conversations into links with editable highlights, a share card, and the saved conversation. No account needed.',
   repositoryUrl: 'https://github.com/transitive-bullshit/share-ai-passage',
   cta: 'Create a passage',
   mantra: 'Good conversations deserve to travel.',

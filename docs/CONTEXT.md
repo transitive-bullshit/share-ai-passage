@@ -6,7 +6,7 @@ A conversation-sharing service makes public AI conversations more engaging to sh
 
 **Conversation**: The exchange of messages being shared from an AI service. Use this for the content itself; use source, snapshot, or publication when referring to its public origin, saved capture, or published presentation. _Avoid_: Chat or thread as separate resource names.
 
-**Provider**: The original AI service hosting a conversation; ChatGPT (including public Codex chats) and Claude are the MVP providers. _Avoid_: Model (the provider is distinct from the model used to generate previews).
+**Provider**: The original AI service hosting a conversation; ChatGPT (including public Codex chats) Claude, and Gemini are the supported providers. _Avoid_: Model (the provider is distinct from the model used to generate previews).
 
 **Source**: A particular public conversation share at its provider, identified by its canonical source URL. Several snapshots and publications can refer to the same source; distinct public shares are distinct sources even if they expose the same underlying conversation. _Avoid_: Publication, proxied chat, short link.
 

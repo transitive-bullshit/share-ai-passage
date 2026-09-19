@@ -1,4 +1,4 @@
-export type Provider = 'chatgpt' | 'claude'
+export type Provider = 'chatgpt' | 'claude' | 'gemini'
 
 export type MessageContent =
   | ({ type: 'image' } & SavedImage)
@@ -112,7 +112,8 @@ export type GeneratedPreview = {
 
 export const providerNames = {
   chatgpt: 'ChatGPT',
-  claude: 'Claude'
+  claude: 'Claude',
+  gemini: 'Gemini'
 } satisfies Record<Provider, string>
 
 export const summaryRecommendations = {

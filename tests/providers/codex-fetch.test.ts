@@ -303,3 +303,35 @@ describe('public Codex downloads through the provider fetch boundary', () => {
     expect(network.request).toHaveBeenCalledTimes(3)
   })
 })
+
+describe('Gemini RPC fetch boundary', () => {
+  it('posts the anonymous request body to the pinned Gemini endpoint', async () => {
+    respond(200, ')]}\'\n[["wrb.fr","ujx1Bf",null,null,null,[5]]]')
+    const gemini = parseSourceUrl('https://g.co/gemini/share/27eb2f855eff')
+    expect((await fetchSource(gemini)).status).toBe('inconclusive')
+    const [url, options] = network.request.mock.calls[0]!
+    expect(url.hostname).toBe('gemini.google.com')
+    expect(options.method).toBe('POST')
+    expect(options.headers).toMatchObject({
+      'content-type': 'application/x-www-form-urlencoded'
+    })
+    expect(network.lookup).toHaveBeenCalledWith('gemini.google.com', {
+      all: true
+    })
+  })
+  it('refuses RPC redirects, including back to the same endpoint', async () => {
+    respond(
+      307,
+      '',
+      'https://gemini.google.com/_/BardChatUi/data/batchexecute?rpcids=ujx1Bf&rt=c'
+    )
+    expect(
+      (
+        await fetchSource(
+          parseSourceUrl('https://gemini.google.com/share/27eb2f855eff')
+        )
+      ).status
+    ).toBe('inconclusive')
+    expect(network.request).toHaveBeenCalledTimes(1)
+  })
+})

@@ -2,7 +2,7 @@
 
 > Turn your AI chats into links you’ll be proud to share.
 
-Passage turns public ChatGPT, Codex, and Claude conversations into shareable pages with a concise title, AI-generated highlights, a social preview card, and the saved conversation with its original-source link. No account is required to create. Optional accounts save drafts, passage history, and curated card preferences across devices.
+Passage turns public ChatGPT, Codex, Claude, and Gemini conversations into shareable pages with a concise title, AI-generated highlights, a social preview card, and the saved conversation with its original-source link. No account is required to create. Optional accounts save drafts, passage history, and curated card preferences across devices.
 
 ## Workflow
 

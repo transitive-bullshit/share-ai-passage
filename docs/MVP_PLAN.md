@@ -1,6 +1,6 @@
 # MVP scope and remaining work
 
-Passage turns a public ChatGPT, Codex, or Claude conversation into a share link with generated highlights, a social card, and a readable saved conversation. MIT licensed.
+Passage turns a public ChatGPT, Codex, Claude, or Gemini conversation into a share link with generated highlights, a social card, and a readable saved conversation. MIT licensed.
 
 This document owns product scope and remaining work. See the [glossary](CONTEXT.md) for terminology, [contributing guide](../contributing.md) for setup, [testing guidelines](testing.md) for validation, and [production guide](PRODUCTION.md) for hosting. Historical results live in [archived verification](archive/VERIFICATION.md); they describe the revisions tested.
 
@@ -89,7 +89,7 @@ Complete hosted paid uploads → template → branded publication verification. 
 
 ## Scope boundary
 
-Included: guest creation; email/password, Google and GitHub accounts; saved drafts, My passages, curated preference sync, generation limits, owner deletion, and public ChatGPT/Codex/Claude sources, generated previews with title/highlight editing during draft review, five curated card styles, browser preferences, immutable saved content and published wording, CLI/skill access, lazy removal checks, basic abuse controls, Vercel hosting, and practical self-hosting.
+Included: guest creation; email/password, Google and GitHub accounts; saved drafts, My passages, curated preference sync, generation limits, owner deletion, and public ChatGPT/Codex/Claude/Gemini sources, generated previews with title/highlight editing during draft review, five curated card styles, browser preferences, immutable saved content and published wording, CLI/skill access, lazy removal checks, basic abuse controls, Vercel hosting, and practical self-hosting.
 
 Implemented and deployed, with live Checkout enabled: Plus ($10/month or $96/year), Pro ($25/month or $240/year), custom branding, uploaded backgrounds/logos, saved templates and account API keys. Both paid plans share customization features; annual plans refill monthly with no included rollover.
 

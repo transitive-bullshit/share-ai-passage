@@ -1,7 +1,7 @@
 import type { Provider } from './domain'
 
 const publicationPath =
-  /^\/(chatgpt|claude)\/([a-f\d]{8}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{12})\/?$/i
+  /^\/(chatgpt|claude|gemini)\/([a-f\d]{8}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{12})\/?$/i
 
 /** Passage links are database references, never upstream fetch targets. */
 export function parsePassageUrl(input: string, origin: string) {

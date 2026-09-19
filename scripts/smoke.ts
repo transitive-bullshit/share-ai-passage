@@ -24,7 +24,7 @@ const outputDirectory = path.join(projectDirectory, 'work', 'smoke')
 let stage = 'configuration'
 
 const preparationSchema = z.strictObject({
-  provider: z.enum(['chatgpt', 'claude']),
+  provider: z.enum(['chatgpt', 'claude', 'gemini']),
   sourceUrl: z.url(),
   draftToken: z.string().min(1),
   preview: generatedPreviewSchema
@@ -35,7 +35,7 @@ const publicationSchema = z.object({
 })
 
 type Result = {
-  provider: 'chatgpt' | 'claude'
+  provider: 'chatgpt' | 'claude' | 'gemini'
   status: 'running' | 'passed' | 'failed'
   messageCount: number
   shareUrl: string

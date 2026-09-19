@@ -439,9 +439,11 @@ function LibraryEntries() {
                   <p>
                     {passage.provider === 'claude'
                       ? 'Claude'
-                      : passage.provider === 'codex'
-                        ? 'Codex'
-                        : 'ChatGPT'}{' '}
+                      : passage.provider === 'gemini'
+                        ? 'Gemini'
+                        : passage.provider === 'codex'
+                          ? 'Codex'
+                          : 'ChatGPT'}{' '}
                     · Published {dateLabel(passage.createdAt)}
                   </p>
                   <a className='library-read' href={passage.shareUrl}>

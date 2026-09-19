@@ -158,7 +158,7 @@ export const guestImports = pgTable('guest_imports', {
     .defaultNow()
 })
 
-export const providerEnum = pgEnum('provider', ['chatgpt', 'claude'])
+export const providerEnum = pgEnum('provider', ['chatgpt', 'claude', 'gemini'])
 export const availabilityEnum = pgEnum('availability', [
   'available',
   'unavailable'

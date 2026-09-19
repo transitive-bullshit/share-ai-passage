@@ -1,6 +1,7 @@
 import type { ProviderResult, SourceReference } from '../domain'
 import { parseChatgptPost } from './chatgpt-post'
 import { parseChatgpt } from './chatgpt'
+import { parseGemini } from './gemini'
 import { parseClaude } from './claude'
 import { parseCodex } from './codex'
 import { fetchPublicJson, type UpstreamResponse } from './safe-fetch'
@@ -35,6 +36,8 @@ export function classifyResponse(
       reason: 'The provider download could not be read. Try again later.'
     }
   }
+  if (source.provider === 'gemini')
+    return parseGemini(response.body, response.status, source.shareId)
   if (source.provider === 'chatgpt' && source.shareId.startsWith('t_'))
     return parseChatgptPost(response.body, response.status, source.shareId)
   // Download servers may label JSON as text/plain or application/octet-stream.
@@ -63,7 +66,7 @@ export async function fetchSource(
   } catch (err) {
     const reason =
       err instanceof Error &&
-      /^(This conversation|The public share|The provider|ChatGPT returned|Claude returned|Codex returned)/.test(
+      /^(This conversation|The public share|The provider|ChatGPT returned|Claude returned|Codex returned|Gemini returned)/.test(
         err.message
       )
         ? err.message

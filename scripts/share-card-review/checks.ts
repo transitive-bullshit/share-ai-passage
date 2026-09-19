@@ -75,7 +75,7 @@ const snapshotSchema = z.object({
           title: z.string().min(1),
           highlights: z.array(z.string().min(1))
         }),
-        provider: z.enum(['chatgpt', 'claude']),
+        provider: z.enum(['chatgpt', 'claude', 'gemini']),
         reviewNotes: z.string(),
         summaryOrigin: z.enum(['authored', 'generated']),
         summaryModel: z.string().nullable(),

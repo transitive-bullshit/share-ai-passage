@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     await enforceBudget(`check:${clientKey(request)}`, 5)
     const parsed = z
       .object({
-        provider: z.enum(['chatgpt', 'claude']),
+        provider: z.enum(['chatgpt', 'claude', 'gemini']),
         publicationId: z.uuid()
       })
       .safeParse(await readJson(request))

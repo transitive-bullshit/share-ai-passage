@@ -9,6 +9,7 @@ Supported routes and fetch rules live in [urls.ts](../lib/providers/urls.ts) and
 | ChatGPT | `https://chatgpt.com/share/<UUID>` | `/backend-api/share/<UUID>` |
 | ChatGPT message post | `https://chatgpt.com/s/t_<32 hexadecimal characters>` | Public `/s/t_<ID>` HTML page |
 | Codex, hosted by ChatGPT | `https://chatgpt.com/s/cx_<32 hexadecimal characters>` | `/backend-api/wham/shared_threads/cx_<ID>`, then a signed OpenAI download redirect |
+| Gemini | `https://gemini.google.com/share/<12 hex characters>` or `https://g.co/gemini/share/<ID>` | Anonymous `ujx1Bf` POST to `/_/BardChatUi/data/batchexecute` |
 | Claude | `https://claude.ai/share/<UUID>` | `/api/chat_snapshots/<UUID>?rendering_mode=messages&render_all_tools=true` |
 
 These first-party public-share endpoints are undocumented external interfaces. Their accessibility and payloads can change. Private, organization-restricted, and artifact-only links are unsupported.
@@ -19,7 +20,7 @@ Codex downloads may follow up to two redirects within the `*.oaiusercontent.com`
 
 ## Forking Passage links
 
-Preparation also accepts `https://www.share-ai-passage.com/<provider>/<publication UUID>`, the apex host, and reader links on the configured application origin. Providers are `chatgpt` and `claude` (Codex uses `chatgpt`). Copied queries/fragments and a trailing slash are ignored; credentials, untrusted hosts, production HTTP/custom ports, and non-reader paths are rejected.
+Preparation also accepts `https://www.share-ai-passage.com/<provider>/<publication UUID>`, the apex host, and reader links on the configured application origin. Providers are `chatgpt`, `claude`, and `gemini` (Codex uses `chatgpt`). Copied queries/fragments and a trailing slash are ignored; credentials, untrusted hosts, production HTTP/custom ports, and non-reader paths are rejected.
 
 These inputs bypass provider fetching, freshness reuse, and AI generation. Look up the available publication in the current database and issue a 24-hour draft bound to its immutable snapshot and reviewed preview. Preserve its card style and original provider source URL. No network request is made to the submitted Passage URL; a deployment without that record returns not found. Missing or disabled passages cannot be forked.
 
@@ -30,6 +31,7 @@ The fork shares saved conversation content but publishes independently, includin
 - ChatGPT message posts read the inert React Router reference table from the public page, require matching post identity and public/readable permissions, and extract ordered `message_slice` attachments through the shared ChatGPT message parser. Only exposed messages are imported; a post may contain a single answer. Other attachment formats, malformed serialization, and missing posts remain inconclusive. No scripts execute and no additional page resources are fetched.
 - ChatGPT reads ordered `linear_conversation` messages and excludes root-only or explicitly hidden nodes. Parser v4 resolves exposed `content_references` at verified Unicode code-point offsets: web citations become safe Markdown source links, and follow-up actions retain their labels and full prompt titles as links back to the original chat. These source links use the reader’s existing hover previews. Follow-up links open the original chat; they do not submit prompts. Unsupported references stay verbatim.
 - Codex reads the versioned `turns[].items` snapshot, preserving visible user/agent messages, source-provided phases, and public summaries. Parser v4 retains readable user, viewed, and generated images, including `codex:shared-asset/<asset ID>`. Download these through `/backend-api/wham/shared_threads/<share ID>/assets/<asset ID>` with the same OpenAI CDN redirect boundary. Published reasoning summaries remain separate so the reader can collapse them. An unphased agent message remains unphased. Unknown versions or malformed/unknown items are inconclusive.
+- Gemini reads the anonymous `ujx1Bf` batchexecute response, verifies the returned share identity and public metadata, and preserves each user message and selected assistant response in provider order. Short links canonicalize directly without fetching `g.co`. The fixed POST endpoint uses the same DNS pinning, deadline and body limits; redirects are rejected. No cookies, API key, or browser execution are needed. Known attachment/image metadata retains omission markers; Markdown images use the existing capture flow. RPC errors, missing shares and changed schemas remain inconclusive because no confirmed-removal signature has been established.
 - Claude reads public `chat_messages` in provider order, including exposed structured text/tool blocks. Explicit upstream truncation is rejected.
 - Preserve supported text and known omissions. Reject an empty/unreadable conversation or more than 1 MiB of normalized message JSON. Never execute provider HTML.
 
@@ -46,3 +48,5 @@ Only exact provider-specific removal signatures classify a source as unavailable
 [Archived observations](archive/EXTRACTION.md) record real local ChatGPT, Codex, and Claude checks from September 10–11, 2026, including the regional Codex redirect regression and missing-source signatures. A nonexistent share demonstrates a response shape, not deletion of a formerly available source. Hosted extraction remains a [release check](MVP_PLAN.md#remaining-work).
 
 [Provider fixtures](../tests/providers/fixtures/) contain sanitized response structures; malformed-response, redirect, and size-limit cases also use synthetic inputs. Those tests establish parser/fetch behavior without live provider or model requests. Follow the [testing guidelines](testing.md); live checks are separate from the committed suite.
+
+Gemini’s anonymous RPC was checked locally on September 19, 2026 against `27eb2f855eff` (one user/assistant turn). The committed fixture sanitizes that observed structure and adds a second authored turn. Hosted preparation and media-rich Gemini shares remain release checks.

@@ -1,10 +1,12 @@
 import { lookup } from 'node:dns/promises'
 import { request } from 'node:https'
+import type { OutgoingHttpHeaders } from 'node:http'
 import { BlockList, isIP } from 'node:net'
 import type { Readable } from 'node:stream'
 import { createBrotliDecompress, createGunzip, createInflate } from 'node:zlib'
 
 import type { SourceReference } from '../domain'
+import { geminiRequestBody } from './gemini'
 import { isAllowedRedirect, upstreamUrl } from './urls'
 
 const responseLimit = 5 * 1024 * 1024
@@ -88,8 +90,13 @@ export async function fetchPublicJson(
   source: SourceReference
 ): Promise<UpstreamResponse> {
   const initial = upstreamUrl(source)
-  const response = await fetchPublicResource(initial, (next, current) =>
-    isAllowedRedirect(next, source, current)
+  const response = await fetchPublicResource(
+    initial,
+    (next, current) =>
+      source.provider !== 'gemini' && isAllowedRedirect(next, source, current),
+    source.provider === 'gemini'
+      ? { body: geminiRequestBody(source.shareId) }
+      : {}
   )
   return { ...response, body: response.body.toString('utf8') }
 }
@@ -98,7 +105,12 @@ export async function fetchPublicJson(
 export async function fetchPublicResource(
   initial: URL,
   allowRedirect: (next: URL, current: URL) => boolean,
-  options: { limit?: number; signal?: AbortSignal; accept?: string } = {}
+  options: {
+    limit?: number
+    signal?: AbortSignal
+    accept?: string
+    body?: string
+  } = {}
 ): Promise<Omit<UpstreamResponse, 'body'> & { body: Buffer }> {
   const signal = options.signal ?? AbortSignal.timeout(timeoutMs)
   const limit = options.limit ?? responseLimit
@@ -129,6 +141,15 @@ export async function fetchPublicResource(
     signal.throwIfAborted()
     const address =
       addresses.find((entry) => entry.family === 4) ?? addresses[0]!
+    const headers: OutgoingHttpHeaders = {
+      'user-agent': 'ConversationSharing/0.1 (anonymous public-share reader)',
+      accept: options.accept ?? 'application/json',
+      'accept-encoding': 'gzip, deflate, br'
+    }
+    if (options.body) {
+      headers['content-type'] = 'application/x-www-form-urlencoded'
+      headers['content-length'] = Buffer.byteLength(options.body)
+    }
     const response = await new Promise<{
       result?: Omit<UpstreamResponse, 'body'> & { body: Buffer }
       redirect?: string
@@ -136,17 +157,12 @@ export async function fetchPublicResource(
       const req = request(
         url,
         {
-          method: 'GET',
+          method: options.body ? 'POST' : 'GET',
           signal,
           family: address.family,
           lookup: (_hostname, _options, callback) =>
             callback(null, address.address, address.family),
-          headers: {
-            'user-agent':
-              'ConversationSharing/0.1 (anonymous public-share reader)',
-            accept: options.accept ?? 'application/json',
-            'accept-encoding': 'gzip, deflate, br'
-          }
+          headers
         },
         (incoming) => {
           const status = incoming.statusCode ?? 0
@@ -204,7 +220,7 @@ export async function fetchPublicResource(
         }
       )
       req.on('error', reject)
-      req.end()
+      req.end(options.body)
     })
     if (response.result) return response.result
     const next = new URL(response.redirect!, url)

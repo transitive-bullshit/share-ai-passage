@@ -14,7 +14,7 @@ Turn your AI chats into links you’ll be proud to share.
 - Open source
 - No account needed to create
 - Optional accounts for saved drafts, history, and synced card styles
-- Supports ChatGPT, Codex, and Claude
+- Supports ChatGPT, Codex, Claude, and Gemini
 
 ## For humans
 

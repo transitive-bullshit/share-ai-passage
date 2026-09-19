@@ -26,6 +26,7 @@ export function LandingDetails() {
             <img src='/providers/claude.svg' width={24} height={24} alt='' />{' '}
             Claude
           </span>
+          <span>Gemini</span>
         </div>
       </section>
 
@@ -51,8 +52,8 @@ export function LandingDetails() {
             <div>
               <h3>Bring a conversation.</h3>
               <p>
-                Paste a public ChatGPT, Codex, or Claude link. We’ll read the
-                conversation and find its main ideas.
+                Paste a public ChatGPT, Codex, Claude, or Gemini link. We’ll
+                read the conversation and find its main ideas.
               </p>
             </div>
           </li>
@@ -152,8 +153,8 @@ export function LandingDetails() {
           <div id='public-link-help'>
             <dt>How do I get a public conversation link?</dt>
             <dd>
-              Choose Share in ChatGPT, Codex, or Claude, then paste the public
-              link here. Check that it opens without signing in.
+              Choose Share in ChatGPT, Codex, Claude, or Gemini, then paste the
+              public link here. Check that it opens without signing in.
             </dd>
           </div>
           <div>
