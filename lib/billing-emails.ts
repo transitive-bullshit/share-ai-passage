@@ -122,10 +122,11 @@ async function claimEmail(userId?: string) {
 /** Bounded, awaited delivery after billing commits; cron resumes abandoned leases. */
 export async function deliverBillingEmails({
   userId,
-  limit = 10
-}: { userId?: string; limit?: number } = {}) {
+  limit = 10,
+  deadlineMs = 40_000
+}: { userId?: string; limit?: number; deadlineMs?: number } = {}) {
   const result = { examined: 0, sent: 0, skipped: 0, failed: 0, needsReview: 0 }
-  const deadline = Date.now() + 40_000
+  const deadline = Date.now() + deadlineMs
   for (let i = 0; i < limit && Date.now() < deadline; i++) {
     const claimed = await claimEmail(userId)
     if (!claimed) break

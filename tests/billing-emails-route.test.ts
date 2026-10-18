@@ -39,7 +39,10 @@ it('sends a bounded batch and returns only private aggregate counts', async () =
   } as typeof counts)
   const response = await GET(request(`Bearer ${secret}`))
   expect(response.status).toBe(200)
-  expect(deliver).toHaveBeenCalledExactlyOnceWith({ limit: 10 })
+  expect(deliver).toHaveBeenCalledExactlyOnceWith({
+    limit: 100,
+    deadlineMs: 240_000
+  })
   expect(response.headers.get('cache-control')).toBe('private, no-store')
   expect(response.headers.get('x-robots-tag')).toContain('noindex')
   expect(await response.json()).toEqual(counts)
