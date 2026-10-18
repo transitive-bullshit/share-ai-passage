@@ -1,3 +1,5 @@
+import { readFile } from 'node:fs/promises'
+
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
 import { GET } from '@/app/api/cron/billing-emails/route'
@@ -49,6 +51,21 @@ it.each(['failed', 'needsReview'] as const)(
     expect((await GET(request(`Bearer ${secret}`))).status).toBe(503)
   }
 )
+it('retries inside the 23-hour review window without hourly database wakes', async () => {
+  const { crons } = JSON.parse(
+    await readFile(new URL('../vercel.json', import.meta.url), 'utf8')
+  ) as { crons: { path: string; schedule: string }[] }
+  const { schedule } = crons.find(
+    (cron) => cron.path === '/api/cron/billing-emails'
+  )!
+  expect(schedule).toMatch(/^0 [\d,]+ \* \* \*$/)
+  const hours = schedule.split(' ')[1]!.split(',').map(Number)
+  const gaps = hours.map(
+    (hour, i) => ((hours[(i + 1) % hours.length]! - hour + 23) % 24) + 1
+  )
+  expect(hours.length).toBeLessThanOrEqual(2)
+  expect(Math.max(...gaps)).toBeLessThan(23)
+})
 it('sanitizes provider or database failures', async () => {
   deliver.mockRejectedValue(new Error('private credential and message'))
   const response = await GET(request(`Bearer ${secret}`))
