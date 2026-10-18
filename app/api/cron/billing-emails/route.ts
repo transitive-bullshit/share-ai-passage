@@ -1,5 +1,5 @@
 export const runtime = 'nodejs'
-export const maxDuration = 60
+export const maxDuration = 300
 
 const headers = {
   'Cache-Control': 'private, no-store',
@@ -15,8 +15,9 @@ export async function GET(request: Request) {
     return Response.json({ error: 'Unauthorized.' }, { status: 401, headers })
   try {
     const { deliverBillingEmails } = await import('@/lib/billing-emails')
+    // Runs are 12 hours apart, so each wake drains the due backlog, not a small batch.
     const { examined, sent, skipped, failed, needsReview } =
-      await deliverBillingEmails({ limit: 10 })
+      await deliverBillingEmails({ limit: 100, deadlineMs: 240_000 })
     const counts = { examined, sent, skipped, failed, needsReview }
     return Response.json(counts, {
       status: counts.failed || counts.needsReview ? 503 : 200,
